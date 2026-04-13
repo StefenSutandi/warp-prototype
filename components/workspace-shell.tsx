@@ -12,6 +12,7 @@ import { useEffect } from 'react';
 import { EmployerDashboard } from './employer-dashboard';
 import { LevelUpModal } from './level-up-modal';
 import { AvatarCustomizer } from './avatar-customizer';
+import { VirtualRoomLayout } from './virtual-room-layout';
 
 interface WorkspaceShellProps {
   user: User;
@@ -28,6 +29,18 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
     initTasks(tasks, teammates);
   }, [user, tasks, teammates, initUser, initTasks]);
 
+  // Employee gets the new reference-inspired Virtual Room layout
+  if (user.role === 'employee') {
+    return (
+      <>
+        <VirtualRoomLayout />
+        <LevelUpModal />
+        <AvatarCustomizer />
+      </>
+    );
+  }
+
+  // Employer keeps existing layout
   return (
     <div className="h-screen w-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col overflow-hidden">
       <RoleBadge role={user.role} />
@@ -37,7 +50,7 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
         <WorkspaceSidebar role={user.role} />
         
         <main className="flex-1 p-6 overflow-auto bg-slate-900 bg-opacity-50 flex flex-col">
-          {user.role === 'employer' ? <EmployerDashboard /> : <VirtualOfficePlaceholder />}
+          <EmployerDashboard />
         </main>
       </div>
       
