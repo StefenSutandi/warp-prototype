@@ -101,6 +101,18 @@ interface TeammateData {
 type SeatVariant = 'front' | 'back';
 type SeatColor = 'orange' | 'green' | 'blue';
 type SeatState = 'idle' | 'hover' | 'selected';
+type SeatRow = 'top' | 'bottom';
+
+const SEAT_ASSET_METRICS = {
+  front: {
+    idle: { width: 186, height: 227 },
+    hover: { width: 169, height: 229, offsetX: 11, offsetY: 0 },
+  },
+  back: {
+    idle: { width: 186, height: 214 },
+    hover: { width: 169, height: 189, offsetX: 8, offsetY: 18 },
+  },
+} as const;
 
 interface FigmaRect {
   x: number;
@@ -113,6 +125,7 @@ interface SeatData {
   id: string;
   idleSprite: Phaser.GameObjects.Image;
   hoverSprite: Phaser.GameObjects.Image;
+  row: SeatRow;
   variant: SeatVariant;
   color: SeatColor;
   x: number;
@@ -150,13 +163,13 @@ const FIGMA_MAIN_ROOM = {
   table: { x: 402.1380920410156, y: 389.75921630859375, w: 387.66632080078125, h: 269.8779296875 },
   door: { x: 974.2535400390625, y: 272.61749267578125, w: 135.90972900390625, h: 300.29583740234375 },
   seats: [
-    { id: 'front-orange', variant: 'front', color: 'orange', x: 565.2298583984375, y: 352.8690185546875, w: 120.377197265625, h: 146.91197204589844 },
-    { id: 'front-green', variant: 'front', color: 'green', x: 647.423095703125, y: 389.1114501953125, w: 120.377197265625, h: 146.91197204589844 },
-    { id: 'front-blue', variant: 'front', color: 'blue', x: 731.5571899414062, y: 426.00164794921875, w: 120.377197265625, h: 146.91197204589844 },
-    { id: 'back-orange', variant: 'back', color: 'orange', x: 351.65777587890625, y: 477.77667236328125, w: 120.377197265625, h: 138.49850463867188 },
-    { id: 'back-green', variant: 'back', color: 'green', x: 432.5563049316406, y: 515.9607543945312, w: 120.377197265625, h: 138.49850463867188 },
-    { id: 'back-blue', variant: 'back', color: 'blue', x: 512.807861328125, y: 551.5562744140625, w: 120.377197265625, h: 138.49850463867188 },
-  ] as Array<FigmaRect & { id: string; variant: SeatVariant; color: SeatColor }>,
+    { id: 'front-orange', row: 'top', variant: 'front', color: 'orange', x: 565.2298583984375, y: 352.8690185546875, w: 120.377197265625, h: 146.91197204589844 },
+    { id: 'front-green', row: 'top', variant: 'front', color: 'green', x: 647.423095703125, y: 389.1114501953125, w: 120.377197265625, h: 146.91197204589844 },
+    { id: 'front-blue', row: 'top', variant: 'front', color: 'blue', x: 731.5571899414062, y: 426.00164794921875, w: 120.377197265625, h: 146.91197204589844 },
+    { id: 'back-orange', row: 'bottom', variant: 'back', color: 'orange', x: 351.65777587890625, y: 477.77667236328125, w: 120.377197265625, h: 138.49850463867188 },
+    { id: 'back-green', row: 'bottom', variant: 'back', color: 'green', x: 432.5563049316406, y: 515.9607543945312, w: 120.377197265625, h: 138.49850463867188 },
+    { id: 'back-blue', row: 'bottom', variant: 'back', color: 'blue', x: 512.807861328125, y: 551.5562744140625, w: 120.377197265625, h: 138.49850463867188 },
+  ] as Array<FigmaRect & { id: string; row: SeatRow; variant: SeatVariant; color: SeatColor }>,
 } as const;
 
 interface DeskData {
@@ -182,6 +195,7 @@ export default class MainOfficeScene extends Phaser.Scene {
   private teammates: TeammateData[] = [];
   private desks: DeskData[] = [];
   private seats: SeatData[] = [];
+  private hoveredSeat: SeatData | null = null;
   private selectedSeat: SeatData | null = null;
   private roomObjects: Phaser.GameObjects.GameObject[] = [];
 
@@ -420,6 +434,8 @@ export default class MainOfficeScene extends Phaser.Scene {
       .setDepth(tableRect.y + tableRect.h);
     this.roomObjects.push(table);
 
+    const tableDepth = table.depth;
+
     FIGMA_MAIN_ROOM.seats.forEach((seatRect, index) => {
       const mappedSeat = mapRect(seatRect);
       this.spawnSeat({
@@ -428,9 +444,10 @@ export default class MainOfficeScene extends Phaser.Scene {
         y: mappedSeat.y,
         w: mappedSeat.w,
         h: mappedSeat.h,
+        row: seatRect.row,
         variant: seatRect.variant,
         color: seatRect.color,
-        depth: mappedSeat.y + mappedSeat.h + index,
+        depth: this.getSeatDepth(seatRect.row, mappedSeat.y, mappedSeat.h, tableDepth, index),
       });
     });
 
@@ -465,12 +482,23 @@ export default class MainOfficeScene extends Phaser.Scene {
     return variant === 'front' ? `chair_front_hover_${color}` : `chair_back_hover_${color}`;
   }
 
+  private getSeatDepth(row: SeatRow, seatY: number, seatH: number, tableDepth: number, index: number): number {
+    const baseDepth = seatY + seatH + index;
+
+    if (row === 'top') {
+      return Math.min(baseDepth, tableDepth - 6 - index);
+    }
+
+    return Math.max(baseDepth, tableDepth + 6 + index);
+  }
+
   private spawnSeat({
     id,
     x,
     y,
     w,
     h,
+    row,
     variant,
     color,
     depth,
@@ -480,13 +508,21 @@ export default class MainOfficeScene extends Phaser.Scene {
     y: number;
     w: number;
     h: number;
+    row: SeatRow;
     variant: SeatVariant;
     color: SeatColor;
     depth: number;
   }) {
-    const hoverSprite = this.add.image(x, y, this.getSeatHoverTextureKey(variant, color))
+    const metrics = SEAT_ASSET_METRICS[variant];
+    const scaleX = w / metrics.idle.width;
+    const scaleY = h / metrics.idle.height;
+    const hoverSprite = this.add.image(
+      x + metrics.hover.offsetX * scaleX,
+      y + metrics.hover.offsetY * scaleY,
+      this.getSeatHoverTextureKey(variant, color),
+    )
       .setOrigin(0, 0)
-      .setDisplaySize(w, h)
+      .setDisplaySize(metrics.hover.width * scaleX, metrics.hover.height * scaleY)
       .setDepth(depth - 1)
       .setVisible(false);
 
@@ -500,6 +536,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       id,
       idleSprite,
       hoverSprite,
+      row,
       variant,
       color,
       x,
@@ -510,8 +547,8 @@ export default class MainOfficeScene extends Phaser.Scene {
       state: 'idle',
     };
 
-    idleSprite.on('pointerover', () => this.setSeatState(seat, seat === this.selectedSeat ? 'selected' : 'hover'));
-    idleSprite.on('pointerout', () => this.setSeatState(seat, seat === this.selectedSeat ? 'selected' : 'idle'));
+    idleSprite.on('pointerover', () => this.handleSeatHover(seat));
+    idleSprite.on('pointerout', () => this.handleSeatHoverEnd(seat));
     idleSprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       pointer.event.stopPropagation();
       this.selectSeat(seat);
@@ -532,27 +569,54 @@ export default class MainOfficeScene extends Phaser.Scene {
     }
   }
 
+  private handleSeatHover(seat: SeatData) {
+    if (this.hoveredSeat && this.hoveredSeat !== seat && this.hoveredSeat !== this.selectedSeat) {
+      this.setSeatState(this.hoveredSeat, 'idle');
+    }
+
+    if (this.selectedSeat && this.selectedSeat !== seat) {
+      this.setSeatState(this.selectedSeat, 'idle');
+      this.selectedSeat = null;
+    }
+
+    this.hoveredSeat = seat;
+    this.setSeatState(seat, 'hover');
+  }
+
+  private handleSeatHoverEnd(seat: SeatData) {
+    if (this.hoveredSeat === seat) {
+      this.hoveredSeat = null;
+    }
+
+    this.setSeatState(seat, seat === this.selectedSeat ? 'selected' : 'idle');
+  }
+
   private selectSeat(seat: SeatData) {
     if (this.selectedSeat && this.selectedSeat !== seat) {
       this.setSeatState(this.selectedSeat, 'idle');
     }
 
     this.selectedSeat = seat;
+    this.hoveredSeat = seat;
     this.setSeatState(seat, 'selected');
   }
 
   private showSeatChip(seat: SeatData) {
-    if (seat.sitOverlay) {
-      seat.sitOverlay.setVisible(true);
-      return;
-    }
-
     const overlayWidth = 66 * (seat.w / 120.377197265625);
     const overlayHeight = 28 * (seat.w / 120.377197265625);
     const overlayX = seat.x + (seat.w - overlayWidth) / 2;
     const overlayY = seat.variant === 'front'
-      ? seat.y + seat.h * 0.76
-      : seat.y + seat.h * 0.82;
+      ? seat.y - overlayHeight - seat.h * 0.06
+      : seat.y - overlayHeight * 0.78;
+
+    if (seat.sitOverlay) {
+      seat.sitOverlay
+        .setPosition(overlayX, overlayY)
+        .setDisplaySize(overlayWidth, overlayHeight)
+        .setDepth(seat.depth + 6)
+        .setVisible(true);
+      return;
+    }
 
     seat.sitOverlay = this.add.image(overlayX, overlayY, 'sit_popup_primary')
       .setOrigin(0, 0)
@@ -578,12 +642,6 @@ export default class MainOfficeScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     this.roomObjects.push(doorImg);
 
-    // Door label
-    const doorLabel = this.add.text(x + w / 2, y + h + 10, label, {
-      fontSize: '11px', color: '#7c3aed', fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(y + 20);
-    this.roomObjects.push(doorLabel);
-
     // Hover effects
     doorImg.on('pointerover', () => {
       doorImg.setTint(0xddd6fe);
@@ -608,6 +666,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     }
     this.roomObjects = [];
     this.seats = [];
+    this.hoveredSeat = null;
     this.selectedSeat = null;
 
     // Clear teammate data (call rings, domains, join labels)
@@ -696,7 +755,6 @@ export default class MainOfficeScene extends Phaser.Scene {
   private spawnDesk(x: number, y: number, w: number, h: number, color: number, label: string, description: string, invisible: boolean = false) {
     const desk = this.add.rectangle(x, y, w, h, color, invisible ? 0 : 0.2);
     if (!invisible) desk.setStrokeStyle(1, color);
-    desk.setInteractive({ useHandCursor: true });
     desk.setDepth(invisible ? 3 : 1); // Higher depth if invisible overlay
     this.roomObjects.push(desk);
 
@@ -704,6 +762,12 @@ export default class MainOfficeScene extends Phaser.Scene {
 
     const deskData: DeskData = { rect: desk, label, description, x, y };
     this.desks.push(deskData);
+
+    if (invisible) {
+      return;
+    }
+
+    desk.setInteractive({ useHandCursor: true });
 
     desk.on('pointerover', () => {
       if (!invisible) {
