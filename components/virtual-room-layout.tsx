@@ -322,8 +322,8 @@ function UserCardOverlay() {
   const openCustomizer = useAvatarStore(s => s.openCustomizer);
 
   return (
-    <div className="absolute left-[113px] top-[76px] z-30 pointer-events-auto">
-      <div className="flex max-w-[280px] items-center gap-3 rounded-[30px] border border-[#e2e0f0] bg-white px-[10px] py-[10px] shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
+    <div className="absolute left-[20px] top-[104px] z-30 pointer-events-auto">
+      <div className="flex h-[59px] w-[233px] items-center gap-[12px] rounded-[30px] border border-[#e2e0f0] bg-white p-[10px] shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
         <div className="h-[39px] w-[39px] rounded-full shrink-0" style={{ background: 'linear-gradient(135deg, #9a7cff, #9ae4ff)' }} />
         <div className="flex-1 min-w-0">
           <p className="warp-font-ui truncate text-[16px] font-medium leading-none text-black">
