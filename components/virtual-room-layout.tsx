@@ -56,8 +56,6 @@ const PURPLE = {
 const VIRTUAL_ROOM_SHELL_STYLE: CSSProperties = {
   width: '100%',
   height: '100%',
-  minWidth: '1440px',
-  minHeight: '900px',
   backgroundImage: SHELL_TOKENS.backgroundGradient,
   ['--vr-shell-bg' as string]: SHELL_TOKENS.backgroundGradient,
   ['--vr-color-purple-500' as string]: SHELL_TOKENS.purple[500],
@@ -852,7 +850,7 @@ function RightPanel({ onCreateTask }: { onCreateTask: () => void }) {
   };
 
   return (
-    <aside className="flex w-[323px] shrink-0 flex-col overflow-hidden border-l border-[#e2e0f0] bg-[#fcfcff]">
+    <aside className="flex h-full min-h-0 w-[323px] shrink-0 flex-col overflow-x-hidden overflow-y-auto border-l border-[#e2e0f0] bg-[#fcfcff]">
       <div className="h-[486px] border-b border-[#e2e0f0]">
         {/* TASK LIST HEADER */}
         <div className="flex items-center justify-between px-[22px] pb-[14px] pt-[27px]">
@@ -1240,7 +1238,7 @@ export function VirtualRoomLayout() {
   };
 
   return (
-    <div className="warp-font-ui flex h-screen w-screen overflow-hidden bg-[#F9FBFD]" style={VIRTUAL_ROOM_SHELL_STYLE}>
+    <div className="warp-font-ui flex h-[100svh] w-full overflow-hidden bg-[#F9FBFD]" style={VIRTUAL_ROOM_SHELL_STYLE}>
       {/* Left Nav Rail */}
       <NavRail />
 

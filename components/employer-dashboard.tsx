@@ -1,18 +1,19 @@
 'use client';
 
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import {
   ArrowRight,
   Bell,
   ChartColumnBig,
-  CheckSquare,
-  LayoutDashboard,
-  MessageCircleMore,
+  ClipboardCheck,
+  LayoutGrid,
+  MessageCircle,
   PenLine,
   Plus,
   Settings2,
-  Users,
+  UsersRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAvatarStore } from '@/stores/useAvatarStore';
@@ -21,12 +22,21 @@ import { useTaskStore } from '@/stores/useTaskStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { VirtualOfficePlaceholder } from './virtual-office-placeholder';
 
+const EMPLOYER_DASHBOARD_ASSETS = {
+  logo: '/assets/dashboard-employer/branding/warp-logo.svg',
+  heroDecor: '/assets/dashboard-employer/hero/banner-decor.svg',
+  joinRoom: '/assets/dashboard-employer/cards/join-room.png',
+  createRoom: '/assets/dashboard-employer/cards/create-room.png',
+  roomPreview: '/assets/dashboard-employer/recents/room-preview.svg',
+  profileMain: '/assets/dashboard-employer/avatars/profile-main.svg',
+} as const;
+
 const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
   { id: 'stats', label: 'My Stats', icon: ChartColumnBig },
-  { id: 'todo', label: 'To-Do', icon: CheckSquare },
-  { id: 'chat', label: 'Chat', icon: MessageCircleMore },
-  { id: 'team', label: 'My Team', icon: Users },
+  { id: 'todo', label: 'To-Do', icon: ClipboardCheck },
+  { id: 'chat', label: 'Chat', icon: MessageCircle },
+  { id: 'team', label: 'My Team', icon: UsersRound },
   { id: 'settings', label: 'Settings', icon: Settings2 },
 ] as const;
 
@@ -42,16 +52,26 @@ const avatarGradients = [
   'from-[#b0a7ff] to-[#7fefe0]',
 ];
 
+const activityAvatarGradients = [
+  'from-[#9E97FF] to-[#56EFC4]',
+  'from-[#8DBBFF] to-[#86E4F2]',
+  'from-[#B4A8FF] to-[#9BE7E1]',
+  'from-[#F2B7C9] to-[#FFCFA8]',
+  'from-[#69D5CF] to-[#B6F3DA]',
+  'from-[#A8B7FF] to-[#C7F3FF]',
+] as const;
+
 function WarpMark() {
   return (
-    <div className="flex items-center gap-3">
-      <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-[#eef0ff]">
-        <div className="absolute inset-[8px] rounded-full border-[4px] border-[#7c5cfc] border-t-transparent border-r-[#5ddbd2]" />
-        <div className="h-2.5 w-2.5 rounded-full bg-[#56efc4]" />
-      </div>
-      <span className="warp-font-display text-[2rem] font-black tracking-[-0.03em] text-[#111111]">
-        warp
-      </span>
+    <div className="flex items-center">
+      <Image
+        src={EMPLOYER_DASHBOARD_ASSETS.logo}
+        alt="Warp"
+        width={119}
+        height={29}
+        priority
+        className="h-[29px] w-auto"
+      />
     </div>
   );
 }
@@ -64,15 +84,15 @@ function SidebarNav({
   onSelect: (id: (typeof navItems)[number]['id']) => void;
 }) {
   return (
-    <aside className="flex h-full flex-col gap-10 border-b border-[#e2e0f0] bg-white px-7 py-7 lg:border-b-0 lg:border-r">
+    <aside className="flex h-full min-h-screen w-[283px] shrink-0 flex-col gap-10 border-r border-[#e2e0f0] bg-white px-[23px] py-[29px]">
       <WarpMark />
 
       <div className="space-y-5">
-        <p className="warp-font-display text-[13px] font-extrabold uppercase tracking-[0.08em] text-[#9b96b8]">
+        <p className="warp-font-display text-[13px] font-extrabold uppercase tracking-[0.04em] text-[#9b96b8]">
           Main Menu
         </p>
 
-        <nav className="flex gap-3 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible">
+        <nav className="flex flex-col gap-[8px]">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.id === activeItem;
@@ -83,14 +103,14 @@ function SidebarNav({
                 type="button"
                 onClick={() => onSelect(item.id)}
                 className={cn(
-                  'flex min-w-max items-center gap-4 rounded-[14px] px-4 py-3 text-left transition-all duration-200',
+                  'flex w-[235px] items-center gap-4 rounded-[14px] px-[14px] py-[11px] text-left transition-all duration-200',
                   isActive
                     ? 'bg-[linear-gradient(136deg,#efedff_2%,#eff3fc_48%,#eff9fb_108%)] text-[#7c5cfc]'
                     : 'bg-white text-[#5c5780] hover:bg-[#f7f5ff]'
                 )}
               >
                 <Icon className={cn('h-5 w-5', isActive ? 'text-[#7c5cfc]' : 'text-[#8b86ab]')} strokeWidth={1.8} />
-                <span className="text-base font-medium">{item.label}</span>
+                <span className="text-[16px] font-medium">{item.label}</span>
               </button>
             );
           })}
@@ -108,23 +128,23 @@ function TopBar({
   rewardBalance: number;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#e2e0f0] bg-white px-6 py-5 lg:px-8">
-      <h1 className="warp-font-display text-[2rem] font-extrabold tracking-[-0.03em] text-[#111111]">
+    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#e2e0f0] bg-white px-[22px] py-[16px] lg:px-[23px]">
+      <h1 className="warp-font-display text-[24px] font-extrabold tracking-[-0.03em] text-[#111111]">
         Good Morning,{' '}
         <span className="bg-[linear-gradient(90deg,#685eeb_15%,#46d2d2_100%)] bg-clip-text text-transparent">
           {displayName}
         </span>
       </h1>
 
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 rounded-[13px] border border-[#e2e0f0] bg-[#f0eff8] px-4 py-2 text-[#5c5780]">
-          <span className="font-['Azeret_Mono',_monospace] text-lg font-medium text-[#685eeb]">#</span>
-          <span className="text-xl font-medium">{rewardBalance}</span>
+      <div className="flex items-center gap-[11px]">
+        <div className="flex h-[40px] items-center gap-2 rounded-[13px] border border-[#e2e0f0] bg-[#f0eff8] px-[14px] text-[#5c5780]">
+          <span className="font-['Azeret_Mono',_monospace] text-[18px] font-medium text-[#685eeb]">#</span>
+          <span className="text-[20px] font-medium">{rewardBalance}</span>
         </div>
 
         <button
           type="button"
-          className="relative flex h-10 w-10 items-center justify-center rounded-[13px] border border-[#e2e0f0] bg-[#f0eff8] text-[#5c5780] transition hover:bg-[#ebe9fe]"
+          className="relative flex h-[40px] w-[42px] items-center justify-center rounded-[13px] border border-[#e2e0f0] bg-[#f0eff8] text-[#5c5780] transition hover:bg-[#ebe9fe]"
           aria-label="Notifications"
         >
           <Bell className="h-5 w-5" strokeWidth={1.8} />
@@ -137,49 +157,24 @@ function TopBar({
 
 function HeroPanel() {
   return (
-    <section className="relative overflow-hidden rounded-[21px] bg-[linear-gradient(175deg,#1c1836_14%,#3c298d_88%)] px-10 py-11 text-white">
-      <div className="absolute -right-12 top-6 h-52 w-52 rounded-full border-[18px] border-[#5481d2]/40 border-l-transparent border-b-transparent" />
-      <div className="absolute bottom-[-68px] left-28 h-36 w-[28rem] rounded-full border-[14px] border-[#49d7d0]/55 border-r-transparent border-t-transparent" />
+    <section className="relative min-h-[198px] overflow-hidden rounded-[21px] bg-[linear-gradient(175deg,#1c1836_14%,#3c298d_88%)] px-[54px] py-[44px] text-white shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
+      <Image
+        src={EMPLOYER_DASHBOARD_ASSETS.heroDecor}
+        alt=""
+        fill
+        sizes="840px"
+        className="pointer-events-none object-cover object-center"
+      />
 
       <div className="relative max-w-2xl space-y-3">
-        <h2 className="warp-font-display text-[2.5rem] font-extrabold leading-none tracking-[-0.04em]">
+        <h2 className="warp-font-display text-[40px] font-extrabold leading-none tracking-[-0.04em]">
           Ready to Start <span className="text-[#56efc4]">Warping?</span>
         </h2>
-        <p className="max-w-xl text-sm text-[#a29bfc]">
+        <p className="max-w-xl text-[14px] text-[#a29bfc]">
           Jump in and start collaborating with your team, from anywhere
         </p>
       </div>
     </section>
-  );
-}
-
-function DoorIllustration() {
-  return (
-    <div className="relative h-28 w-24 shrink-0">
-      <div className="absolute left-0 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl bg-[linear-gradient(180deg,#ffd8bb_0%,#ff9f88_100%)] shadow-[0_8px_18px_rgba(255,159,136,0.4)]">
-        <ArrowRight className="h-5 w-5 text-white" strokeWidth={2.4} />
-      </div>
-      <div className="absolute left-8 top-0 h-full w-16 rounded-[18px] bg-[linear-gradient(180deg,#9a93ff_0%,#56efc4_100%)] shadow-[0_14px_26px_rgba(124,92,252,0.24)]">
-        <div
-          className="h-full w-full rounded-[18px] bg-no-repeat"
-          style={{
-            backgroundImage: "url('/assets/virtual-room/door.png')",
-            backgroundPosition: 'center top',
-            backgroundSize: '100% 200%',
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function CreateRoomIllustration() {
-  return (
-    <div className="relative h-28 w-28 shrink-0">
-      <div className="absolute left-6 top-0 h-16 w-16 rotate-45 rounded-[18px] bg-[linear-gradient(180deg,#82ceff_0%,#4bc8f0_100%)] opacity-95 shadow-[0_16px_20px_rgba(75,200,240,0.24)]" />
-      <div className="absolute left-4 top-4 h-16 w-16 rotate-45 rounded-[18px] bg-[linear-gradient(180deg,#9fe1ff_0%,#79d6ed_100%)] opacity-80" />
-      <div className="absolute left-2 top-8 h-16 w-16 rotate-45 rounded-[18px] bg-[linear-gradient(180deg,#bcecff_0%,#9de2ee_100%)] opacity-70" />
-    </div>
   );
 }
 
@@ -195,15 +190,24 @@ function ActionCard({
   onClick?: () => void;
 }) {
   const isJoin = variant === 'join';
+  const illustrationSrc = isJoin ? EMPLOYER_DASHBOARD_ASSETS.joinRoom : EMPLOYER_DASHBOARD_ASSETS.createRoom;
 
   return (
-    <article className="rounded-[21px] border border-[#e2e0f0] bg-white px-7 py-6 shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
-      <div className="flex items-center gap-5">
-        {isJoin ? <DoorIllustration /> : <CreateRoomIllustration />}
+    <article className="rounded-[21px] border border-[#e2e0f0] bg-white px-[30px] py-[19px] shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
+      <div className="flex min-h-[154px] items-center gap-6">
+        <div className="relative h-[155px] w-[130px] shrink-0">
+          <Image
+            src={illustrationSrc}
+            alt=""
+            fill
+            sizes="130px"
+            className="object-contain"
+          />
+        </div>
 
         <div className="space-y-4">
           <div>
-            <h3 className="text-[1.65rem] font-bold leading-none tracking-[-0.03em] text-[#111111]">{title}</h3>
+            <h3 className="text-[20px] font-bold leading-none tracking-[-0.03em] text-[#111111]">{title}</h3>
             <p className="mt-2 text-[11px] text-[#5c5780]">{description}</p>
           </div>
 
@@ -217,7 +221,7 @@ function ActionCard({
                 : 'bg-[#ebe9fe] text-[#685eeb] hover:bg-[#e2defd]'
             )}
           >
-            <span>enter room</span>
+            <span className="font-medium">enter room</span>
             <ArrowRight className="h-4 w-4" strokeWidth={2.2} />
           </button>
         </div>
@@ -226,79 +230,30 @@ function ActionCard({
   );
 }
 
-function ChairSprite({
-  variant,
-  column,
-  row,
-  className,
-}: {
-  variant: 'front' | 'back';
-  column: 0 | 1 | 2;
-  row: 0 | 1 | 2;
-  className?: string;
-}) {
-  const asset = variant === 'front' ? '/assets/virtual-room/chair_front.png' : '/assets/virtual-room/chair_back.png';
-  const x = ['0%', '50%', '100%'][column];
-  const y = ['0%', '50%', '100%'][row];
-
-  return (
-    <div
-      className={cn('bg-no-repeat', className)}
-      style={{
-        backgroundImage: `url('${asset}')`,
-        backgroundPosition: `${x} ${y}`,
-        backgroundSize: '300% 300%',
-      }}
-    />
-  );
-}
-
 function RoomPreview() {
   return (
-    <div className="relative h-[125px] overflow-hidden rounded-[12px] bg-[linear-gradient(180deg,#f7efe4_0%,#efd5ba_100%)]">
-      <div className="absolute inset-x-0 bottom-0 h-8 bg-[linear-gradient(180deg,rgba(195,133,84,0)_0%,rgba(195,133,84,0.18)_100%)]" />
-
-      <div className="absolute -left-8 -top-9 h-[210px] w-[280px] opacity-95">
-        <Image
-          src="/assets/virtual-room/room_base.png"
-          alt=""
-          fill
-          sizes="330px"
-          className="object-contain"
-        />
-      </div>
-
-      <div className="absolute left-[84px] top-[46px] h-[58px] w-[122px]">
-        <Image
-          src="/assets/virtual-room/table.png"
-          alt=""
-          fill
-          sizes="122px"
-          className="object-contain"
-        />
-      </div>
-
-      <div className="absolute left-[42px] top-[22px] h-[52px] w-[86px] opacity-95">
-        <Image src="/assets/virtual-room/tv.png" alt="" fill sizes="86px" className="object-contain" />
-      </div>
-
-      <ChairSprite variant="back" column={2} row={0} className="absolute left-[155px] top-[30px] h-[44px] w-[44px]" />
-      <ChairSprite variant="front" column={0} row={0} className="absolute left-[174px] top-[56px] h-[42px] w-[42px]" />
-      <ChairSprite variant="front" column={2} row={0} className="absolute left-[206px] top-[52px] h-[42px] w-[42px]" />
+    <div className="relative h-[125px] overflow-hidden rounded-[9px] bg-[#d9d9d9]">
+      <Image
+        src={EMPLOYER_DASHBOARD_ASSETS.roomPreview}
+        alt=""
+        fill
+        sizes="330px"
+        className="object-cover"
+      />
     </div>
   );
 }
 
 function RoomCard({ title, level }: { title: string; level: string }) {
   return (
-    <article className="rounded-[21px] border border-[#e2e0f0] bg-white p-4">
+    <article className="rounded-[21px] border border-[#e2e0f0] bg-white p-4 shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
       <RoomPreview />
 
       <div className="mt-4 flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-[1.65rem] font-semibold leading-none tracking-[-0.03em] text-[#111111]">{title}</h3>
+          <h3 className="text-[20px] font-semibold leading-none tracking-[-0.03em] text-[#111111]">{title}</h3>
         </div>
-        <span className="pt-1 text-base text-[#111111]">{level}</span>
+        <span className="pt-1 text-[16px] text-[#111111]">{level}</span>
       </div>
 
       <div className="mt-5 flex items-center justify-between gap-4">
@@ -315,7 +270,7 @@ function RoomCard({ title, level }: { title: string; level: string }) {
             <div
               key={gradient}
               className={cn(
-                'h-8 w-8 rounded-full border-2 border-white bg-gradient-to-br shadow-[0_6px_18px_rgba(124,92,252,0.15)]',
+                'h-[28px] w-[28px] rounded-full border-2 border-white bg-gradient-to-br shadow-[0_6px_18px_rgba(124,92,252,0.15)]',
                 gradient,
                 index > 0 && '-ml-2'
               )}
@@ -337,9 +292,9 @@ function ActivityItem({
   index: number;
 }) {
   return (
-    <article className="flex items-center gap-3 rounded-[10px] bg-white px-3 py-3">
+    <article className="flex items-center gap-[11px] rounded-[10px] bg-white px-[11px] py-[9px]">
       <div className="relative h-12 w-12 shrink-0">
-        <div className={cn('h-full w-full rounded-full bg-gradient-to-br', avatarGradients[index % avatarGradients.length])} />
+        <div className={cn('h-full w-full rounded-full bg-gradient-to-br', activityAvatarGradients[index % activityAvatarGradients.length])} />
         <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#56efc4]" />
       </div>
 
@@ -356,37 +311,57 @@ function ActivityItem({
 function ProfilePanel({
   displayName,
   roleLabel,
+  interests,
   teammates,
   onEditProfile,
 }: {
   displayName: string;
   roleLabel: string;
+  interests: string[];
   teammates: Array<{ id: string; name: string; role: string }>;
   onEditProfile: () => void;
 }) {
-  const initials = displayName
-    .split(' ')
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
   return (
-    <aside className="border-t border-[#e2e0f0] bg-white px-6 py-6 lg:border-l lg:border-t-0">
-      <div className="rounded-[34px] border-2 border-[#685eeb] p-6 shadow-[0_18px_30px_rgba(124,92,252,0.08)]">
-        <div className="mx-auto flex h-[86px] w-[86px] items-center justify-center rounded-full bg-[linear-gradient(135deg,#8da4ff_0%,#f3b1ad_48%,#8eeede_100%)] text-[1.75rem] font-bold text-white shadow-[0_16px_28px_rgba(124,92,252,0.18)]">
-          {initials}
+    <aside className="border-t border-[#e2e0f0] bg-white px-[15px] py-[17px] lg:border-l lg:border-t-0">
+      <div className="rounded-[34px] border border-white bg-[linear-gradient(295deg,#d5d2ff_11%,#f5f3ee_28%,#f1f5ef_63%,#d9fff4_107%)] px-[22px] py-[22px] shadow-[0_18px_30px_rgba(124,92,252,0.08)]">
+        <div className="flex items-start gap-[14px]">
+          <div className="relative h-[82px] w-[82px] shrink-0">
+            <Image
+              src={EMPLOYER_DASHBOARD_ASSETS.profileMain}
+              alt={displayName}
+              fill
+              sizes="82px"
+              className="object-contain"
+            />
+            <span className="absolute bottom-[6px] right-[8px] h-[12px] w-[12px] rounded-full border-2 border-white bg-[#56efc4]" />
+          </div>
+
+          <div className="min-w-0 flex-1 pt-[8px]">
+            <p className="text-[20px] font-bold leading-none tracking-[-0.03em] text-[#111111]">{displayName}</p>
+            <p className="mt-[8px] text-[11px] text-[#5c5780]">{roleLabel}</p>
+          </div>
         </div>
 
-        <div className="mt-4 text-center">
-          <p className="text-[1.65rem] font-bold leading-none tracking-[-0.03em] text-[#111111]">{displayName}</p>
-          <p className="mt-2 text-[11px] text-[#5c5780]">{roleLabel}</p>
+        <div className="mt-[18px] min-h-[78px] rounded-[20px] bg-white/55 px-[12px] py-[12px] backdrop-blur-[2px]">
+          <p className="warp-font-display text-[11px] font-bold uppercase tracking-[0.04em] text-[#9b96b8]">
+            Interests
+          </p>
+          <div className="mt-[10px] flex flex-wrap gap-[8px]">
+            {interests.map((interest, index) => (
+              <span
+                key={`${interest}-${index}`}
+                className="inline-flex items-center rounded-full bg-white/80 px-[12px] py-[6px] text-[11px] font-medium text-[#5c5780] shadow-[0_6px_14px_rgba(124,92,252,0.08)]"
+              >
+                {interest}
+              </span>
+            ))}
+          </div>
         </div>
 
         <button
           type="button"
           onClick={onEditProfile}
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-full border border-[#a29bfc] px-4 py-2 text-[11px] text-[#5c5780] transition hover:bg-[#f6f4ff]"
+          className="mt-[18px] flex w-full items-center justify-center gap-2 rounded-full border border-[#a29bfc] bg-white/75 px-4 py-[9px] text-[11px] text-[#5c5780] transition hover:bg-white"
         >
           <PenLine className="h-3.5 w-3.5" strokeWidth={1.8} />
           <span>Edit Profile</span>
@@ -394,7 +369,7 @@ function ProfilePanel({
       </div>
 
       <div className="mt-8">
-        <p className="warp-font-display text-[13px] font-extrabold uppercase tracking-[0.08em] text-[#5c5780]">
+        <p className="warp-font-display text-[13px] font-extrabold uppercase tracking-[0.04em] text-[#5c5780]">
           Team Activity
         </p>
 
@@ -416,10 +391,10 @@ function EmployerDashboardHome({
   onCreateRoom: () => void;
 }) {
   return (
-    <div className="space-y-6 px-6 py-6 lg:px-8 lg:py-7">
+    <div className="space-y-[22px] px-[21px] py-[23px]">
       <HeroPanel />
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-2">
         <ActionCard title="Join a Room" description="Join an existing room" variant="join" />
         <ActionCard
           title="Create a Room"
@@ -430,11 +405,11 @@ function EmployerDashboardHome({
       </div>
 
       <section>
-        <h2 className="warp-font-display text-[2rem] font-extrabold tracking-[-0.03em] text-[#111111]">
+        <h2 className="warp-font-display text-[20px] font-extrabold tracking-[-0.03em] text-[#111111]">
           Recents
         </h2>
 
-        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+        <div className="mt-4 grid gap-[14px] xl:grid-cols-2">
           {recentRooms.map((room) => (
             <RoomCard key={room.id} title={room.title} level={room.level} />
           ))}
@@ -666,11 +641,12 @@ function EmployerCreateRoomFlow({
 }
 
 export function EmployerDashboard() {
+  const router = useRouter();
   const [stage, setStage] = useState<EmployerStage>('dashboard');
   const [activeItem, setActiveItem] = useState<(typeof navItems)[number]['id']>('dashboard');
   const teammates = useTaskStore((state) => state.teammates);
   const currentUser = useUserStore((state) => state.currentUser);
-  const openCustomizer = useAvatarStore((state) => state.openCustomizer);
+  const avatarProfile = useAvatarStore((state) => state.profile);
 
   const visibleTeammates = useMemo(
     () =>
@@ -682,17 +658,17 @@ export function EmployerDashboard() {
     [teammates]
   );
 
-  const displayName = currentUser?.name ?? 'Your Name';
-  const roleLabel = currentUser?.role === 'employer' ? 'Workspace Lead' : 'UI/UX Designer';
+  const displayName = avatarProfile.displayName || currentUser?.name || 'Your Name';
+  const roleLabel = avatarProfile.position || 'UI/UX Designer';
   const rewardBalance = Math.max(200, Math.round((currentUser?.xp ?? 5200) / 26));
 
   return (
-    <div className="warp-font-ui min-h-screen bg-[#f8f7fc] text-[#111111]">
-      <div className="grid min-h-screen lg:grid-cols-[283px_minmax(0,1fr)_320px]">
+    <div className="warp-font-ui min-h-screen w-full bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)] text-[#111111]">
+      <div className="grid min-h-screen w-full grid-cols-[283px_minmax(0,1fr)_285px]">
         <SidebarNav activeItem={activeItem} onSelect={setActiveItem} />
 
         <main
-          className="min-w-0 bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)]"
+          className="min-h-screen min-w-0 border-r border-[#e2e0f0] bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)]"
           style={{ fontFamily: 'var(--font-ui-stack)' }}
         >
           <TopBar displayName={displayName} rewardBalance={rewardBalance} />
@@ -707,8 +683,9 @@ export function EmployerDashboard() {
         <ProfilePanel
           displayName={displayName}
           roleLabel={roleLabel}
+          interests={avatarProfile.interests}
           teammates={visibleTeammates}
-          onEditProfile={openCustomizer}
+          onEditProfile={() => router.push('/avatar')}
         />
       </div>
     </div>

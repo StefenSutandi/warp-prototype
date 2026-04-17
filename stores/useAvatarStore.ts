@@ -9,10 +9,19 @@ export interface AvatarConfig {
   bottomColor: string;
 }
 
+export interface AvatarProfile {
+  displayName: string;
+  position: string;
+  interests: string[];
+  bio: string;
+}
+
 interface AvatarState {
   config: AvatarConfig;
+  profile: AvatarProfile;
   isCustomizerOpen: boolean;
   updateConfig: (partial: Partial<AvatarConfig>) => void;
+  updateProfile: (partial: Partial<AvatarProfile>) => void;
   openCustomizer: () => void;
   closeCustomizer: () => void;
 }
@@ -77,11 +86,21 @@ const defaultConfig: AvatarConfig = {
   bottomColor: '#1e293b',
 };
 
+const defaultProfile: AvatarProfile = {
+  displayName: 'Jordan Quinn',
+  position: 'UI/UX Designer',
+  interests: [],
+  bio: '',
+};
+
 export const useAvatarStore = create<AvatarState>((set) => ({
   config: defaultConfig,
+  profile: defaultProfile,
   isCustomizerOpen: false,
   updateConfig: (partial) =>
     set((state) => ({ config: { ...state.config, ...partial } })),
+  updateProfile: (partial) =>
+    set((state) => ({ profile: { ...state.profile, ...partial } })),
   openCustomizer: () => set({ isCustomizerOpen: true }),
   closeCustomizer: () => set({ isCustomizerOpen: false }),
 }));

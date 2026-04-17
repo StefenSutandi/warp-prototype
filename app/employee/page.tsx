@@ -8,10 +8,12 @@ export const metadata = {
 
 export default function EmployeePage() {
   return (
-    <WorkspaceShell 
-      user={mockCurrentEmployeeUser}
-      tasks={mockEmployeeTasks}
-      teammates={mockTeammates}
-    />
+    <div className="h-[100svh] overflow-hidden">
+      <WorkspaceShell 
+        user={mockCurrentEmployeeUser}
+        tasks={mockEmployeeTasks}
+        teammates={mockTeammates}
+      />
+    </div>
   );
 }

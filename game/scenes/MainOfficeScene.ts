@@ -214,6 +214,8 @@ export default class MainOfficeScene extends Phaser.Scene {
   private focusSyncTimeout: number | null = null;
   private sceneZoom = MainOfficeScene.DEFAULT_ZOOM;
   private mainRoomBounds: Phaser.Geom.Rectangle | null = null;
+  private isSceneReady = false;
+  private isSceneShuttingDown = false;
   private handleExternalRoomSwitch = (event: Event) => {
     const customEvent = event as CustomEvent<{ roomId?: string }>;
     const nextRoomId = customEvent.detail?.roomId;
@@ -242,6 +244,10 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.syncMovementKeyboardState(true);
   };
   private handleViewportControl = (event: Event) => {
+    if (!this.canApplySceneViewport()) {
+      return;
+    }
+
     const customEvent = event as CustomEvent<{ action?: 'zoom-in' | 'zoom-out' }>;
     const action = customEvent.detail?.action;
 
@@ -252,6 +258,10 @@ export default class MainOfficeScene extends Phaser.Scene {
     }
   };
   private handleScaleResize = () => {
+    if (this.isSceneShuttingDown || !this.sys?.isActive()) {
+      return;
+    }
+
     this.loadRoom(this.currentRoomId);
   };
 
@@ -287,6 +297,7 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   create() {
+    this.isSceneShuttingDown = false;
     this.cameras.main.setBackgroundColor('rgba(0,0,0,0)');
 
     // --- Room title HUD (top-right, persistent) ---
@@ -346,6 +357,8 @@ export default class MainOfficeScene extends Phaser.Scene {
       document.addEventListener('focusin', this.handleDocumentFocusChange);
       document.addEventListener('focusout', this.handleDocumentFocusChange);
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        this.isSceneReady = false;
+        this.isSceneShuttingDown = true;
         window.removeEventListener('warp:switch-room', this.handleExternalRoomSwitch as EventListener);
         window.removeEventListener('warp:viewport-control', this.handleViewportControl as EventListener);
         window.removeEventListener('blur', this.handleWindowBlur);
@@ -366,6 +379,7 @@ export default class MainOfficeScene extends Phaser.Scene {
 
     // --- Load initial room ---
     this.loadRoom('main');
+    this.isSceneReady = true;
   }
 
   update() {
@@ -806,17 +820,34 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.mainRoomBounds = null;
   }
 
+  private canApplySceneViewport() {
+    return Boolean(
+      this.isSceneReady &&
+      !this.isSceneShuttingDown &&
+      this.sys?.isActive() &&
+      this.mainRoomBounds
+    );
+  }
+
   private setSceneZoom(nextZoom: number) {
+    if (!this.canApplySceneViewport()) {
+      return;
+    }
+
     this.sceneZoom = Phaser.Math.Clamp(nextZoom, MainOfficeScene.MIN_ZOOM, MainOfficeScene.MAX_ZOOM);
     this.applySceneViewport();
   }
 
   private applySceneViewport() {
-    if (!this.mainRoomBounds) {
+    if (!this.canApplySceneViewport()) {
       return;
     }
 
-    const camera = this.cameras.main;
+    const camera = this.cameras?.main;
+    if (!camera) {
+      return;
+    }
+
     camera.setZoom(this.sceneZoom);
     camera.centerOn(this.mainRoomBounds.centerX, this.mainRoomBounds.centerY - MainOfficeScene.VISUAL_CAMERA_Y_OFFSET);
   }

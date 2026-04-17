@@ -6,16 +6,21 @@ import MainOfficeScene from '@/game/scenes/MainOfficeScene';
 
 export default function PhaserGameDynamic() {
   const gameRef = useRef<HTMLDivElement>(null);
+  const lastSizeRef = useRef({ width: 0, height: 0 });
+  const resizeFrameRef = useRef<number | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     if (!gameRef.current) return;
+    const container = gameRef.current;
+    const initialWidth = Math.round(container.clientWidth);
+    const initialHeight = Math.round(container.clientHeight);
 
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
-      width: window.innerWidth,
-      height: window.innerHeight,
-      parent: gameRef.current,
+      width: initialWidth,
+      height: initialHeight,
+      parent: container,
       transparent: true,
       scale: {
         mode: Phaser.Scale.RESIZE,
@@ -32,10 +37,84 @@ export default function PhaserGameDynamic() {
     };
 
     const game = new Phaser.Game(config);
+    lastSizeRef.current = { width: initialWidth, height: initialHeight };
+
+    const soundManager = game.sound as (Phaser.Sound.NoAudioSoundManager | Phaser.Sound.HTML5AudioSoundManager | Phaser.Sound.WebAudioSoundManager) & {
+      context?: AudioContext;
+    };
+
+    if (soundManager?.context) {
+      const context = soundManager.context;
+      const wrapContextMethod = (methodName: 'resume' | 'suspend' | 'close') => {
+        const originalMethod = context[methodName].bind(context);
+
+        context[methodName] = (() => {
+          if (context.state === 'closed') {
+            return Promise.resolve();
+          }
+
+          return originalMethod().catch((error: unknown) => {
+            if (
+              error instanceof DOMException &&
+              error.name === 'InvalidStateError' &&
+              context.state === 'closed'
+            ) {
+              return;
+            }
+
+            throw error;
+          });
+        }) as typeof context[typeof methodName];
+      };
+
+      wrapContextMethod('resume');
+      wrapContextMethod('suspend');
+      wrapContextMethod('close');
+    }
+
+    const RESIZE_THRESHOLD = 4;
+
+    const resizeObserver = new ResizeObserver(([entry]) => {
+      const width = Math.round(entry.contentRect.width);
+      const height = Math.round(entry.contentRect.height);
+
+      if (!width || !height) return;
+
+      const { width: lastWidth, height: lastHeight } = lastSizeRef.current;
+      const widthDelta = Math.abs(width - lastWidth);
+      const heightDelta = Math.abs(height - lastHeight);
+
+      if (widthDelta < RESIZE_THRESHOLD && heightDelta < RESIZE_THRESHOLD) return;
+
+      if (resizeFrameRef.current !== null) {
+        cancelAnimationFrame(resizeFrameRef.current);
+      }
+
+      resizeFrameRef.current = requestAnimationFrame(() => {
+        resizeFrameRef.current = null;
+
+        const measuredWidth = Math.round(container.clientWidth);
+        const measuredHeight = Math.round(container.clientHeight);
+        const nextWidthDelta = Math.abs(measuredWidth - lastSizeRef.current.width);
+        const nextHeightDelta = Math.abs(measuredHeight - lastSizeRef.current.height);
+
+        if (!measuredWidth || !measuredHeight) return;
+        if (nextWidthDelta < RESIZE_THRESHOLD && nextHeightDelta < RESIZE_THRESHOLD) return;
+
+        lastSizeRef.current = { width: measuredWidth, height: measuredHeight };
+        game.scale.resize(measuredWidth, measuredHeight);
+      });
+    });
+
+    resizeObserver.observe(container);
 
     const timer = setTimeout(() => setIsReady(true), 150);
 
     return () => {
+      resizeObserver.disconnect();
+      if (resizeFrameRef.current !== null) {
+        cancelAnimationFrame(resizeFrameRef.current);
+      }
       clearTimeout(timer);
       game.destroy(true);
       setIsReady(false);
