@@ -13,10 +13,14 @@ export default function PhaserGameDynamic() {
 
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
-      width: '100%',
-      height: '100%',
+      width: window.innerWidth,
+      height: window.innerHeight,
       parent: gameRef.current,
       transparent: true,
+      scale: {
+        mode: Phaser.Scale.RESIZE,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+      },
       physics: {
         default: 'arcade',
         arcade: {

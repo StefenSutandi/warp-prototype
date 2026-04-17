@@ -137,16 +137,17 @@ interface SeatData {
 }
 
 const VIRTUAL_ROOM_ASSETS = {
-  roomBase: '/assets/virtual-room/base/room_base.png',
-  table: '/assets/virtual-room/furniture/table.png',
-  tv: '/assets/virtual-room/furniture/tv_console.png',
-  door: '/assets/virtual-room/furniture/door_closed.png',
-  chairFrontOrange: '/assets/virtual-room/chairs/front/chair_front_orange.png',
-  chairFrontGreen: '/assets/virtual-room/chairs/front/chair_front_green.png',
-  chairFrontBlue: '/assets/virtual-room/chairs/front/chair_front_blue.png',
-  chairBackOrange: '/assets/virtual-room/chairs/back/chair_back_orange.png',
-  chairBackGreen: '/assets/virtual-room/chairs/back/chair_back_green.png',
-  chairBackBlue: '/assets/virtual-room/chairs/back/chair_back_blue.png',
+  roomBase: '/assets/virtual-room/base/room_base.svg',
+  table: '/assets/virtual-room/furniture/table.svg',
+  tv: '/assets/virtual-room/furniture/tv_console.svg',
+  door: '/assets/virtual-room/furniture/door 3.svg',
+  doorHover: '/assets/virtual-room/furniture/door_hover.svg',
+  chairFrontOrange: '/assets/virtual-room/chairs/front/chair_front_orange.svg',
+  chairFrontGreen: '/assets/virtual-room/chairs/front/chair_front_green.svg',
+  chairFrontBlue: '/assets/virtual-room/chairs/front/chair_front_blue.svg',
+  chairBackOrange: '/assets/virtual-room/chairs/back/chair_back_orange.svg',
+  chairBackGreen: '/assets/virtual-room/chairs/back/chair_back_green.svg',
+  chairBackBlue: '/assets/virtual-room/chairs/back/chair_back_blue.svg',
   chairFrontHoverOrange: '/assets/virtual-room/chairs/hover/chair_front_hover_orange.png',
   chairFrontHoverGreen: '/assets/virtual-room/chairs/hover/chair_front_hover_green.png',
   chairFrontHoverBlue: '/assets/virtual-room/chairs/hover/chair_front_hover_blue.png',
@@ -184,6 +185,12 @@ interface DeskData {
 // =============================================
 
 export default class MainOfficeScene extends Phaser.Scene {
+  private static readonly DEFAULT_ZOOM = 1;
+  private static readonly MIN_ZOOM = 0.8;
+  private static readonly MAX_ZOOM = 1.35;
+  private static readonly ZOOM_STEP = 0.1;
+  private static readonly VISUAL_CAMERA_Y_OFFSET = 70;
+
   private player!: Phaser.GameObjects.Arc;
   private playerLabel!: Phaser.GameObjects.Text;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -205,6 +212,8 @@ export default class MainOfficeScene extends Phaser.Scene {
   private roomSubText!: Phaser.GameObjects.Text;
   private movementInputBlocked = false;
   private focusSyncTimeout: number | null = null;
+  private sceneZoom = MainOfficeScene.DEFAULT_ZOOM;
+  private mainRoomBounds: Phaser.Geom.Rectangle | null = null;
   private handleExternalRoomSwitch = (event: Event) => {
     const customEvent = event as CustomEvent<{ roomId?: string }>;
     const nextRoomId = customEvent.detail?.roomId;
@@ -232,6 +241,19 @@ export default class MainOfficeScene extends Phaser.Scene {
   private handleWindowBlur = () => {
     this.syncMovementKeyboardState(true);
   };
+  private handleViewportControl = (event: Event) => {
+    const customEvent = event as CustomEvent<{ action?: 'zoom-in' | 'zoom-out' }>;
+    const action = customEvent.detail?.action;
+
+    if (action === 'zoom-in') {
+      this.setSceneZoom(this.sceneZoom + MainOfficeScene.ZOOM_STEP);
+    } else if (action === 'zoom-out') {
+      this.setSceneZoom(this.sceneZoom - MainOfficeScene.ZOOM_STEP);
+    }
+  };
+  private handleScaleResize = () => {
+    this.loadRoom(this.currentRoomId);
+  };
 
   private lastAvatarColor: string = '';
 
@@ -248,6 +270,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.load.image('table', VIRTUAL_ROOM_ASSETS.table);
     this.load.image('tv', VIRTUAL_ROOM_ASSETS.tv);
     this.load.image('door_main', VIRTUAL_ROOM_ASSETS.door);
+    this.load.image('door_hover', VIRTUAL_ROOM_ASSETS.doorHover);
     this.load.image('chair_front_orange', VIRTUAL_ROOM_ASSETS.chairFrontOrange);
     this.load.image('chair_front_green', VIRTUAL_ROOM_ASSETS.chairFrontGreen);
     this.load.image('chair_front_blue', VIRTUAL_ROOM_ASSETS.chairFrontBlue);
@@ -264,13 +287,10 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   create() {
-    const width = this.cameras.main.width;
-    const height = this.cameras.main.height;
-
-    // --- Soft background fill (warm beige, visible if assets don't cover edges) ---
-    this.add.rectangle(width / 2, height / 2, width, height, 0xf0ece4).setDepth(-1);
+    this.cameras.main.setBackgroundColor('rgba(0,0,0,0)');
 
     // --- Room title HUD (top-right, persistent) ---
+    const width = this.cameras.main.width;
     this.roomTitleText = this.add.text(width - 20, 18, '', {
       fontSize: '14px', color: '#6366f1', fontStyle: 'bold'
     }).setOrigin(1, 0).setDepth(50).setScrollFactor(0).setVisible(false);
@@ -320,11 +340,13 @@ export default class MainOfficeScene extends Phaser.Scene {
 
     if (typeof window !== 'undefined') {
       window.addEventListener('warp:switch-room', this.handleExternalRoomSwitch as EventListener);
+      window.addEventListener('warp:viewport-control', this.handleViewportControl as EventListener);
       window.addEventListener('blur', this.handleWindowBlur);
       document.addEventListener('focusin', this.handleDocumentFocusChange);
       document.addEventListener('focusout', this.handleDocumentFocusChange);
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
         window.removeEventListener('warp:switch-room', this.handleExternalRoomSwitch as EventListener);
+        window.removeEventListener('warp:viewport-control', this.handleViewportControl as EventListener);
         window.removeEventListener('blur', this.handleWindowBlur);
         document.removeEventListener('focusin', this.handleDocumentFocusChange);
         document.removeEventListener('focusout', this.handleDocumentFocusChange);
@@ -334,6 +356,10 @@ export default class MainOfficeScene extends Phaser.Scene {
         }
       });
     }
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.handleScaleResize, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off(Phaser.Scale.Events.RESIZE, this.handleScaleResize, this);
+    });
 
     this.syncMovementKeyboardState();
 
@@ -433,10 +459,8 @@ export default class MainOfficeScene extends Phaser.Scene {
       // ===== MAIN OFFICE: Use image assets =====
       this.loadMainOfficeAssets(width, height, room);
     } else {
-      // ===== OTHER ROOMS: Keep a neutral non-final holding state only =====
-      const fallbackBg = this.add.rectangle(width / 2, height / 2, width, height, 0xf5f1e8)
-        .setDepth(0);
-      this.roomObjects.push(fallbackBg);
+      this.mainRoomBounds = new Phaser.Geom.Rectangle(0, 0, width, height);
+      this.applySceneViewport();
     }
 
     if (roomId === 'main') {
@@ -470,19 +494,21 @@ export default class MainOfficeScene extends Phaser.Scene {
   // =============================================
 
   private loadMainOfficeAssets(width: number, height: number, room: RoomDef) {
-    const baseScale = Math.min(width / 1970, height / 1205) * 1.08;
-    const roomCenterX = width * 0.505;
-    const roomCenterY = height * 0.54;
+    const baseScale = Math.min(width / 1970, height / 1205) * 0.98;
+    const roomVerticalOffset = height * 0.08;
     const roomBaseWidth = 1970 * baseScale;
     const roomBaseHeight = 1205 * baseScale;
-    const roomBaseLeft = roomCenterX - roomBaseWidth / 2;
-    const roomBaseTop = roomCenterY - roomBaseHeight / 2;
+    const roomBaseLeft = (width - roomBaseWidth) / 2;
+    const roomBaseTop = (height - roomBaseHeight) / 2 + roomVerticalOffset;
+    const roomCenterX = roomBaseLeft + roomBaseWidth / 2;
+    const roomCenterY = roomBaseTop + roomBaseHeight / 2;
     const layoutScale = roomBaseWidth / FIGMA_MAIN_ROOM.roomBase.w;
-
+    this.mainRoomBounds = new Phaser.Geom.Rectangle(roomBaseLeft, roomBaseTop, roomBaseWidth, roomBaseHeight);
     const roomBase = this.add.image(roomCenterX, roomCenterY, 'room_base')
       .setScale(baseScale)
       .setDepth(0);
     this.roomObjects.push(roomBase);
+    this.applySceneViewport();
 
     const mapRect = (rect: FigmaRect) => ({
       x: roomBaseLeft + (rect.x - FIGMA_MAIN_ROOM.roomBase.x) * layoutScale,
@@ -715,12 +741,10 @@ export default class MainOfficeScene extends Phaser.Scene {
 
     // Hover effects
     doorImg.on('pointerover', () => {
-      doorImg.setTint(0xddd6fe);
-      doorImg.setAlpha(0.96);
+      doorImg.setTexture('door_hover');
     });
     doorImg.on('pointerout', () => {
-      doorImg.clearTint();
-      doorImg.setAlpha(1);
+      doorImg.setTexture('door_main');
     });
 
     // Click → switch room
@@ -749,6 +773,22 @@ export default class MainOfficeScene extends Phaser.Scene {
     }
     this.teammates = [];
     this.desks = [];
+    this.mainRoomBounds = null;
+  }
+
+  private setSceneZoom(nextZoom: number) {
+    this.sceneZoom = Phaser.Math.Clamp(nextZoom, MainOfficeScene.MIN_ZOOM, MainOfficeScene.MAX_ZOOM);
+    this.applySceneViewport();
+  }
+
+  private applySceneViewport() {
+    if (!this.mainRoomBounds) {
+      return;
+    }
+
+    const camera = this.cameras.main;
+    camera.setZoom(this.sceneZoom);
+    camera.centerOn(this.mainRoomBounds.centerX, this.mainRoomBounds.centerY - MainOfficeScene.VISUAL_CAMERA_Y_OFFSET);
   }
 
   private switchRoom(targetRoom: string) {
