@@ -133,7 +133,7 @@ interface SeatData {
   h: number;
   depth: number;
   state: SeatState;
-  sitOverlay?: Phaser.GameObjects.Image;
+  sitOverlay?: Phaser.GameObjects.Container;
 }
 
 const VIRTUAL_ROOM_ASSETS = {
@@ -706,20 +706,49 @@ export default class MainOfficeScene extends Phaser.Scene {
     const overlayY = seat.variant === 'front'
       ? seat.y - overlayHeight - seat.h * 0.06
       : seat.y - overlayHeight * 0.78;
+    const overlayDepth = 1000;
 
     if (seat.sitOverlay) {
       seat.sitOverlay
         .setPosition(overlayX, overlayY)
-        .setDisplaySize(overlayWidth, overlayHeight)
-        .setDepth(seat.depth + 6)
+        .setDepth(overlayDepth)
         .setVisible(true);
       return;
     }
 
-    seat.sitOverlay = this.add.image(overlayX, overlayY, 'sit_popup_primary')
-      .setOrigin(0, 0)
-      .setDisplaySize(overlayWidth, overlayHeight)
-      .setDepth(seat.depth + 6);
+    const bg = this.add.graphics();
+    bg.fillStyle(0xffffff, 0.98);
+    bg.lineStyle(1.5, 0xe2e0f0, 1);
+    bg.fillRoundedRect(0, 0, overlayWidth, overlayHeight, overlayHeight / 2);
+    bg.strokeRoundedRect(0, 0, overlayWidth, overlayHeight, overlayHeight / 2);
+
+    const icon = this.add.text(overlayWidth * 0.28, overlayHeight / 2, '✓', {
+      fontFamily: 'Arial',
+      fontSize: `${Math.max(11, overlayHeight * 0.48)}px`,
+      color: '#7C5CFC',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    const label = this.add.text(overlayWidth * 0.6, overlayHeight / 2, 'Sit', {
+      fontFamily: 'Funnel Sans, Arial, sans-serif',
+      fontSize: `${Math.max(10, overlayHeight * 0.42)}px`,
+      color: '#7C5CFC',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    seat.sitOverlay = this.add.container(overlayX, overlayY, [bg, icon, label])
+      .setDepth(overlayDepth)
+      .setSize(overlayWidth, overlayHeight)
+      .setInteractive(
+        new Phaser.Geom.Rectangle(0, 0, overlayWidth, overlayHeight),
+        Phaser.Geom.Rectangle.Contains
+      );
+    seat.sitOverlay.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      pointer.event.stopPropagation();
+      this.selectSeat(seat);
+    });
+    seat.sitOverlay.on('pointerover', () => this.handleSeatHover(seat));
+    seat.sitOverlay.on('pointerout', () => this.handleSeatHoverEnd(seat));
     this.roomObjects.push(seat.sitOverlay);
   }
 

@@ -5,7 +5,6 @@ import { PhaserGame } from '@/game/components/PhaserGame';
 import { useTaskStore } from '@/stores/useTaskStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useOfficeStore } from '@/stores/useOfficeStore';
-import { useAvatarStore } from '@/stores/useAvatarStore';
 import { type Task } from '@/lib/types';
 import { Check, Pause, SkipForward, Smile } from 'lucide-react';
 
@@ -324,27 +323,103 @@ function TopRightHud() {
 
 function UserCardOverlay() {
   const user = useUserStore(s => s.currentUser);
-  const tasks = useTaskStore(s => s.tasks);
-  const currentTask = tasks.find(t => t.status === 'started');
-  const openCustomizer = useAvatarStore(s => s.openCustomizer);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const activityOptions = [
+    'Finalize login screen wireframe',
+    'Review user feedback',
+    'Prepare analytics setup',
+    'Setup analytics',
+    'Documentation sprint',
+  ];
+  const [selectedActivity, setSelectedActivity] = useState(activityOptions[0]);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const activityPillStyles = ['bg-[#EEF2FF]', 'bg-[#FFEBEC]', 'bg-[#EAFBF3]'];
+  const subtitle = selectedActivity;
+
+  useEffect(() => {
+    if (!isExpanded) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!cardRef.current?.contains(event.target as Node)) {
+        setIsExpanded(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [isExpanded]);
 
   return (
-    <div className="absolute left-[20px] top-[104px] z-30 pointer-events-auto">
-      <div className="flex h-[59px] w-[233px] items-center gap-[12px] rounded-[30px] border border-[#e2e0f0] bg-white p-[10px] shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
-        <div className="h-[39px] w-[39px] rounded-full shrink-0" style={{ background: 'linear-gradient(135deg, #9a7cff, #9ae4ff)' }} />
-        <div className="flex-1 min-w-0">
+    <div ref={cardRef} className="absolute left-[20px] top-[104px] z-30 pointer-events-auto">
+      <button
+        onClick={() => setIsExpanded(prev => !prev)}
+        className="flex h-[59px] w-[233px] items-center gap-[12px] rounded-[30px] border border-[#e2e0f0] bg-white px-[10px] py-[10px] text-left shadow-[0_5px_17.6px_rgba(133,133,133,0.16)] transition-shadow hover:shadow-[0_7px_21px_rgba(133,133,133,0.18)]"
+      >
+        <div className="h-[39px] w-[39px] shrink-0 rounded-full" style={{ background: 'linear-gradient(135deg, #9a7cff, #9ae4ff)' }} />
+        <div className="min-w-0 flex-1">
           <p className="warp-font-ui truncate text-[16px] font-medium leading-none text-black">
             {user?.name || 'Your Name'}
           </p>
-          <p className="warp-font-ui mt-1 truncate text-[11px] font-medium leading-none text-[#9B96B8]">
-            {currentTask ? currentTask.title : 'No active task'}
+          <p className="warp-font-ui mt-[5px] truncate text-[11px] font-medium leading-none text-[#9B96B8]">
+            {subtitle}
           </p>
         </div>
-        <button onClick={openCustomizer} className="flex h-[17px] w-[17px] shrink-0 items-center justify-center text-[#9B96B8] transition-colors hover:text-[#685EEB]">
+        <span
+          onClick={(event) => {
+            event.stopPropagation();
+            setIsExpanded(true);
+          }}
+          className="flex h-[17px] w-[17px] shrink-0 items-center justify-center text-[#9B96B8] transition-colors hover:text-[#685EEB]"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              event.stopPropagation();
+              setIsExpanded(true);
+            }
+          }}
+        >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
           </svg>
-        </button>
+        </span>
+      </button>
+
+      <div
+        className={`absolute left-0 top-[71px] flex w-[231px] flex-col rounded-[30px] border border-[#e2e0f0] bg-white px-[16px] py-[14px] shadow-[0_5px_17.6px_rgba(133,133,133,0.16)] transition-all duration-150 ease-out ${
+          isExpanded
+            ? 'pointer-events-auto translate-y-0 opacity-100'
+            : 'pointer-events-none -translate-y-[6px] opacity-0'
+        }`}
+      >
+        <div>
+          <p className="warp-font-ui text-[11px] font-semibold uppercase tracking-[0.08em] text-[#9B96B8]">
+            Current Activity
+          </p>
+        </div>
+
+        <div className="mt-[10px] flex flex-col gap-[8px]">
+          {activityOptions.map((activity, index) => (
+            <button
+              key={activity}
+              type="button"
+              onClick={() => {
+                setSelectedActivity(activity);
+                setIsExpanded(false);
+              }}
+              className={`warp-font-ui inline-flex max-w-full items-center rounded-full px-[12px] py-[8px] text-[11px] font-medium leading-[1.2] text-left text-[#5C5780] transition-all duration-150 ${
+                selectedActivity === activity
+                  ? 'ring-1 ring-[#c8c2f2] shadow-[0_4px_12px_rgba(133,133,133,0.12)]'
+                  : 'hover:translate-x-[2px]'
+              } ${
+                activityPillStyles[index % activityPillStyles.length]
+              }`}
+            >
+              {activity}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -622,13 +697,18 @@ function ZoomControls({
 //  RIGHT PANEL — TASK CARD (Figma-precise)
 // =============================================
 
-function TaskCard({ task, onAction }: { task: Task; onAction: (t: Task) => void }) {
+function TaskCard({ task, onAction, index }: { task: Task; onAction: (t: Task) => void; index: number }) {
   const isCompleted = task.status === 'completed';
   const isStarted = task.status === 'started';
+  const cardBackgrounds = [
+    'bg-[linear-gradient(180deg,#F0F0FF_0%,#EBF3FE_100%)]',
+    'bg-[linear-gradient(180deg,#FFECEE_0%,#FFE7E7_100%)]',
+  ];
+  const cardBackgroundClass = cardBackgrounds[index % cardBackgrounds.length];
 
   if (isCompleted) {
     return (
-      <div className="min-h-[98px] rounded-[19px] bg-[#DFDFFF] px-[18px] pb-[18px] pt-[15px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
+      <div className="min-h-[98px] rounded-[19px] bg-[linear-gradient(180deg,#F4F5F8_0%,#ECEEF3_100%)] px-[18px] pb-[18px] pt-[15px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-[6px] text-[12px] leading-[1.2] tracking-[-0.12px] text-[#9B96B8]">
@@ -654,7 +734,7 @@ function TaskCard({ task, onAction }: { task: Task; onAction: (t: Task) => void 
 
   // Active task (assigned or started) — Figma shows a purple "Start" button
   return (
-    <div className={`rounded-[19px] px-[18px] py-[15px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)] transition-all ${isStarted ? 'bg-[linear-gradient(180deg,#FFECEE_0%,#FFE7E7_100%)]' : 'bg-[linear-gradient(180deg,#F0F0FF_0%,#EBF3FE_100%)]'}`}>
+    <div className={`rounded-[19px] px-[18px] py-[15px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)] transition-all ${cardBackgroundClass}`}>
       <p className="warp-font-ui text-[12px] font-medium text-[#9B96B8]">Due <span className="font-normal">{task.dueDate || '26/03/2026'} 17.00 PM</span></p>
       <p className="warp-font-ui mt-[12px] text-[14px] font-medium leading-[1.2] text-[#5C5780]">{task.title}</p>
 
@@ -790,8 +870,8 @@ function RightPanel({ onCreateTask }: { onCreateTask: () => void }) {
 
         {/* TASK LIST */}
         <div className="h-[calc(486px-69px)] overflow-y-auto px-[22px] pb-[20px] space-y-[14px]">
-          {tasks.slice(0, 5).map(task => (
-            <TaskCard key={task.id} task={task} onAction={handleTaskAction} />
+          {tasks.slice(0, 5).map((task, index) => (
+            <TaskCard key={task.id} task={task} index={index} onAction={handleTaskAction} />
           ))}
         </div>
       </div>
@@ -858,7 +938,9 @@ function RightPanel({ onCreateTask }: { onCreateTask: () => void }) {
             ref={emojiButtonRef}
             type="button"
             onClick={() => setIsEmojiPickerOpen((current) => !current)}
-            className="flex h-[35px] w-[35px] items-center justify-center rounded-full bg-[#6CB5FF] text-white transition-colors hover:opacity-90"
+            className={`flex h-[35px] w-[35px] shrink-0 items-center justify-center rounded-full p-0 aspect-square bg-[#6CB5FF] text-white transition-colors hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B8D8FF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#fcfcff] ${
+              isEmojiPickerOpen ? 'ring-2 ring-[#B8D8FF] ring-offset-2 ring-offset-[#fcfcff]' : ''
+            }`}
           >
             <Smile size={18} strokeWidth={2.2} />
           </button>
