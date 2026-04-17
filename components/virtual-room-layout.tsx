@@ -7,7 +7,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useOfficeStore } from '@/stores/useOfficeStore';
 import { useAvatarStore } from '@/stores/useAvatarStore';
 import { type Task } from '@/lib/types';
-import { Pause, SkipForward } from 'lucide-react';
+import { Pause, SkipForward, Smile } from 'lucide-react';
 
 // =============================================
 //  DESIGN TOKENS (Figma typography + colors)
@@ -295,9 +295,16 @@ function TopRightHud() {
   return (
     <div className="absolute right-[21px] top-[22px] z-30 flex items-center gap-[11px] pointer-events-auto">
       {/* W + Points badge */}
-      <div className="flex h-[40px] w-[110px] items-center gap-[10px] rounded-[13px] border border-[#e2e0f0] bg-[#f0eff8] px-[18px]">
-        <span className="text-[24px] leading-none text-[#685EEB]" style={{ fontFamily: '"Baloo Bhai", "Funnel Sans", sans-serif' }}>W</span>
-        <span className="warp-font-ui text-[20px] font-medium leading-none text-[#5C5780] tabular-nums">{user?.xp || 200}</span>
+      <div className="flex h-[40px] min-w-[110px] items-center justify-center gap-[8px] rounded-[13px] border border-[#e2e0f0] bg-[#f0eff8] px-[16px]">
+        <span
+          className="inline-flex h-[15px] items-center text-[24px] font-normal leading-none text-[#685EEB]"
+          style={{ fontFamily: '"Baloo Bhai", "Funnel Sans", sans-serif' }}
+        >
+          W
+        </span>
+        <span className="warp-font-ui inline-flex h-[14px] items-center text-[20px] font-medium leading-none text-[#5C5780] tabular-nums">
+          {user?.xp || 200}
+        </span>
       </div>
 
       {/* Bell */}
@@ -305,7 +312,7 @@ function TopRightHud() {
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
         </svg>
-        <span className="absolute right-[-2px] top-[-1px] h-[11px] w-[11px] rounded-full bg-[#FF7675]" />
+        <span className="absolute right-[3px] top-[4px] h-[9px] w-[9px] rounded-full bg-[#FB7675] ring-2 ring-[#f0eff8]" />
       </button>
     </div>
   );
@@ -701,10 +708,68 @@ function RightPanel({ onCreateTask }: { onCreateTask: () => void }) {
 
   const activeCount = tasks.filter(t => t.status !== 'completed').length;
   const [chatInput, setChatInput] = useState('');
-  const chatMessages = [
+  const [chatMessages, setChatMessages] = useState([
     { id: 1, sender: 'You', text: 'On it matee', time: '13.35', isMe: true },
     { id: 2, sender: 'Coworker', text: 'im still working on it', time: '13.35', isMe: false },
-  ];
+  ]);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const emojiChoices = ['\u{1F600}', '\u{1F525}', '\u{1F44D}', '\u{1F389}', '\u2764\uFE0F', '\u2705'];
+
+  useEffect(() => {
+    const viewport = chatScrollRef.current;
+    if (!viewport) return;
+    viewport.scrollTop = viewport.scrollHeight;
+  }, [chatMessages]);
+
+  useEffect(() => {
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (emojiPickerRef.current?.contains(target) || emojiButtonRef.current?.contains(target)) {
+        return;
+      }
+      setIsEmojiPickerOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, []);
+
+  const formatChatTime = () =>
+    new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }).replace(':', '.');
+
+  const sendChatMessage = () => {
+    const nextText = chatInput.trim();
+    if (!nextText) return;
+
+    setChatMessages((current) => [
+      ...current,
+      { id: Date.now(), sender: 'You', text: nextText, time: formatChatTime(), isMe: true },
+    ]);
+    setChatInput('');
+
+    const coworkerReplies = [
+      'Sounds good, I am on it.',
+      'Okay, I will update that now.',
+      'Nice, let me sync my part too.',
+      'Got it, still working on mine.',
+    ];
+    const replyText = coworkerReplies[Math.floor(Math.random() * coworkerReplies.length)];
+
+    window.setTimeout(() => {
+      setChatMessages((current) => [
+        ...current,
+        { id: Date.now() + 1, sender: 'Coworker', text: replyText, time: formatChatTime(), isMe: false },
+      ]);
+    }, 900);
+  };
+
+  const insertEmoji = (emoji: string) => {
+    setChatInput((current) => `${current}${emoji}`);
+    setIsEmojiPickerOpen(false);
+  };
 
   return (
     <aside className="flex w-[323px] shrink-0 flex-col overflow-hidden border-l border-[#e2e0f0] bg-[#fcfcff]">
@@ -733,41 +798,71 @@ function RightPanel({ onCreateTask }: { onCreateTask: () => void }) {
 
       {/* ROOM CHAT */}
       <div className="flex h-[413px] flex-col bg-[#fcfcff]">
-        <p className="warp-font-display px-[22px] pb-[18px] pt-[18px] text-[13px] font-bold uppercase tracking-[0.04em] text-[#9B96B8]">Room Chat</p>
+        <p className="warp-font-display px-[22px] pb-[16px] pt-[18px] text-[13px] font-bold uppercase tracking-[0.04em] text-[#9B96B8]">Room Chat</p>
 
-        <div className="flex-1 overflow-y-auto px-[22px]">
+        <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-[22px] pb-[12px]">
           {chatMessages.map(msg => (
-            <div key={msg.id} className={`mb-[22px] flex flex-col ${msg.isMe ? 'items-end' : 'items-start'}`}>
-              {msg.isMe && <span className="warp-font-ui mb-[6px] text-[10px] font-normal text-[#858585]">{msg.time}</span>}
+            <div key={msg.id} className={`mb-[18px] flex flex-col ${msg.isMe ? 'items-end' : 'items-start'}`}>
+              {msg.isMe && <span className="warp-font-ui mb-[5px] pr-[10px] text-[10px] font-normal tracking-[0.01em] text-[#9B96B8]">{msg.time}</span>}
               {!msg.isMe && (
-                <div className="mb-[8px] flex items-center gap-[12px]">
-                  <div className="h-[37px] w-[37px] rounded-full shadow-sm" style={{ background: 'linear-gradient(135deg, #6fd7ff, #8d86ff)' }} />
-                  <span className="warp-font-ui text-[11px] font-medium text-[#858585]">{msg.sender}</span>
+                <div className="mb-[6px] flex items-center gap-[10px]">
+                  <div className="h-[36px] w-[36px] rounded-full shadow-[0_4px_10px_rgba(104,94,235,0.12)]" style={{ background: 'linear-gradient(135deg, #6fd7ff, #8d86ff)' }} />
+                  <span className="warp-font-ui text-[11px] font-medium tracking-[0.01em] text-[#9B96B8]">{msg.sender}</span>
                 </div>
               )}
-              <div className={`warp-font-ui relative max-w-[171px] rounded-[36px] px-[18px] py-[9px] text-[15px] font-normal leading-[1.2] tracking-[-0.15px] shadow-[0_4px_10px_rgba(84,86,106,0.05)] ${
+              <div className={`warp-font-ui relative max-w-[164px] rounded-[28px] px-[16px] py-[10px] text-[14px] font-normal leading-[1.25] tracking-[-0.12px] shadow-[0_4px_10px_rgba(84,86,106,0.05)] ${
                 msg.isMe
                   ? 'bg-[#685EEB] text-white'
-                  : 'bg-[#F0EFF8] text-black'
+                  : 'bg-[#F0EFF8] text-[#4C4E62]'
               }`}>
                 {msg.text}
-                <span className={`absolute bottom-[-4px] h-[22px] w-[16px] rounded-full ${msg.isMe ? 'right-[-5px] bg-[#685EEB]' : 'left-[-5px] bg-[#F0EFF8]'}`} />
+                <span className={`absolute bottom-[-3px] h-[18px] w-[14px] rounded-full ${msg.isMe ? 'right-[-4px] bg-[#685EEB]' : 'left-[-4px] bg-[#F0EFF8]'}`} />
               </div>
-              {!msg.isMe && <span className="warp-font-ui mt-[6px] self-end text-[10px] font-normal text-[#858585]">{msg.time}</span>}
+              {!msg.isMe && <span className="warp-font-ui mt-[5px] pl-[46px] text-[10px] font-normal tracking-[0.01em] text-[#9B96B8]">{msg.time}</span>}
             </div>
           ))}
         </div>
 
-      <div className="flex h-[60px] items-center gap-[7px] border-t border-[#e2e0f0] bg-[#fcfcff] px-[22px]">
+      <div className="relative flex h-[64px] items-center gap-[10px] border-t border-[#e2e0f0] bg-[#fcfcff] px-[22px]">
+        {isEmojiPickerOpen && (
+          <div
+            ref={emojiPickerRef}
+            className="absolute bottom-[72px] right-[64px] z-10 grid grid-cols-3 gap-[8px] rounded-[18px] border border-[#E2E0F0] bg-white p-[12px] shadow-[0_12px_28px_rgba(84,86,106,0.14)]"
+          >
+            {emojiChoices.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => insertEmoji(emoji)}
+                className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[#F7F5FF] text-[18px] transition-colors hover:bg-[#ECE8FF]"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
         <input
           type="text"
           placeholder="Say something..."
             value={chatInput}
             onChange={e => setChatInput(e.target.value)}
-            className="warp-font-ui h-[35px] flex-1 rounded-[38px] border border-[#e2e0f0] bg-[#F0EFF8] px-[18px] text-[14px] font-normal text-[#54566A] placeholder:text-[#A5A4A4] focus:outline-none focus:ring-2 focus:ring-[#DFDFFF]"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                sendChatMessage();
+              }
+            }}
+            className="warp-font-ui h-[38px] flex-1 rounded-[38px] border border-[#e2e0f0] bg-[#F0EFF8] px-[18px] text-[14px] font-normal text-[#54566A] placeholder:text-[#A5A4A4] focus:outline-none focus:ring-2 focus:ring-[#DFDFFF]"
           />
-          <button className="flex h-[35px] w-[35px] items-center justify-center rounded-full bg-[#6CB5FF] text-sm text-white transition-colors hover:opacity-90">😊</button>
-          <button className="flex h-[35px] w-[35px] items-center justify-center rounded-full bg-[#685EEB] text-white transition shadow-[0_4px_10px_rgba(104,94,235,0.18)] hover:bg-[#7970F0]">
+          <button
+            ref={emojiButtonRef}
+            type="button"
+            onClick={() => setIsEmojiPickerOpen((current) => !current)}
+            className="flex h-[35px] w-[35px] items-center justify-center rounded-full bg-[#6CB5FF] text-white transition-colors hover:opacity-90"
+          >
+            <Smile size={18} strokeWidth={2.2} />
+          </button>
+          <button onClick={sendChatMessage} className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-[#685EEB] text-white transition shadow-[0_4px_10px_rgba(104,94,235,0.18)] hover:bg-[#7970F0]">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
         </div>
@@ -1070,3 +1165,4 @@ export function VirtualRoomLayout() {
     </div>
   );
 }
+

@@ -325,6 +325,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       };
 
       this.input.keyboard.removeCapture([
+        Phaser.Input.Keyboard.KeyCodes.SPACE,
         Phaser.Input.Keyboard.KeyCodes.W,
         Phaser.Input.Keyboard.KeyCodes.A,
         Phaser.Input.Keyboard.KeyCodes.S,
