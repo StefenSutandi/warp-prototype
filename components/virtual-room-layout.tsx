@@ -7,7 +7,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useOfficeStore } from '@/stores/useOfficeStore';
 import { useAvatarStore } from '@/stores/useAvatarStore';
 import { type Task } from '@/lib/types';
-import { Pause, SkipForward, Smile } from 'lucide-react';
+import { Check, Pause, SkipForward, Smile } from 'lucide-react';
 
 // =============================================
 //  DESIGN TOKENS (Figma typography + colors)
@@ -962,6 +962,14 @@ export function CreateNewTaskModal({ open, onClose }: { open: boolean; onClose: 
   const [desc, setDesc] = useState('');
   const addTask = useTaskStore(s => s.addTask);
   const addXp = useUserStore(s => s.addXp);
+  const teammates = [
+    { id: 'baskara', name: 'Baskara Putra', role: 'UI/UX', assignable: true, gradient: 'linear-gradient(135deg, #c4b5fd, #818cf8)' },
+    { id: 'salsa', name: 'Salsa Prananda', role: 'Product', assignable: true, gradient: 'linear-gradient(135deg, #67e8f9, #818cf8)' },
+    { id: 'kevin', name: 'Kevin Hartono', role: 'Frontend', assignable: true, gradient: 'linear-gradient(135deg, #f9a8d4, #a78bfa)' },
+    { id: 'nadine', name: 'Nadine Prameswari', role: 'Project Manager', assignable: true, gradient: 'linear-gradient(135deg, #86efac, #22c55e)' },
+    { id: 'farhan', name: 'Farhan Akbar', role: 'Backend', assignable: true, gradient: 'linear-gradient(135deg, #fdba74, #fb7185)' },
+  ];
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>(['baskara']);
 
   if (!open) return null;
 
@@ -984,9 +992,17 @@ export function CreateNewTaskModal({ open, onClose }: { open: boolean; onClose: 
     }
   };
 
+  const toggleAssignee = (id: string, assignable: boolean) => {
+    if (!assignable) return;
+
+    setSelectedAssigneeIds((current) =>
+      current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id]
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
-      <div className="warp-font-ui w-[460px] rounded-[30px] bg-white p-7 shadow-2xl ring-1 ring-black/5" onClick={e => e.stopPropagation()}>
+      <div className="warp-font-ui flex max-h-[88vh] w-[460px] flex-col rounded-[30px] bg-white p-7 shadow-2xl ring-1 ring-black/5" onClick={e => e.stopPropagation()}>
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-purple-400">Task Flow</p>
@@ -996,7 +1012,7 @@ export function CreateNewTaskModal({ open, onClose }: { open: boolean; onClose: 
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
         </div>
 
-        <div className="space-y-5">
+        <div className="flex-1 space-y-5 overflow-y-auto pr-1">
           <div className="rounded-[26px] border border-purple-100 bg-gradient-to-br from-purple-50 to-cyan-50 p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -1039,27 +1055,49 @@ export function CreateNewTaskModal({ open, onClose }: { open: boolean; onClose: 
             </div>
             {/* Placeholder assignee rows */}
             <div className="mt-3 space-y-2">
-              {['Baskara Putra', 'Salsa Prananda'].map((name, i) => (
-                <div key={i} className="flex items-center gap-3 rounded-2xl bg-white px-3 py-2 shadow-sm">
-                  <div className="w-10 h-10 rounded-full" style={{ background: i === 0 ? 'linear-gradient(135deg, #c4b5fd, #818cf8)' : 'linear-gradient(135deg, #67e8f9, #818cf8)' }} />
+              {teammates.map((teammate) => {
+                const isSelected = selectedAssigneeIds.includes(teammate.id);
+
+                return (
+                <button
+                  key={teammate.id}
+                  type="button"
+                  onClick={() => toggleAssignee(teammate.id, teammate.assignable)}
+                  disabled={!teammate.assignable}
+                  className={`flex w-full items-center gap-3 rounded-2xl bg-white px-3 py-2 text-left shadow-sm transition-colors ${
+                    teammate.assignable ? 'hover:bg-[#faf9ff]' : 'cursor-not-allowed opacity-60'
+                  }`}
+                >
+                  <div className="h-10 w-10 rounded-full" style={{ background: teammate.gradient }} />
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-800">{name}</p>
-                    <p className="text-[11px] text-gray-400">{i === 0 ? 'UI/UX' : 'Product'}</p>
+                    <p className="text-sm font-semibold text-gray-800">{teammate.name}</p>
+                    <p className="text-[11px] text-gray-400">{teammate.role}</p>
                   </div>
-                  <div className={`flex h-5 w-5 items-center justify-center rounded-full border ${i === 0 ? 'border-purple-200 bg-purple-500 text-white' : 'border-gray-300 bg-gray-50 text-transparent'}`}>✓</div>
-                </div>
-              ))}
+                  <div
+                    className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[4px] border ${
+                      !teammate.assignable
+                        ? 'border-gray-200 bg-gray-100 text-transparent'
+                        : isSelected
+                          ? 'border-[#685EEB] bg-[#685EEB] text-white'
+                          : 'border-[#D9D6EA] bg-white text-transparent'
+                    }`}
+                  >
+                    {teammate.assignable && isSelected ? <Check size={14} strokeWidth={3} /> : null}
+                  </div>
+                </button>
+              );
+            })}
             </div>
           </div>
 
-          <div className="flex items-center gap-3 pt-1">
-            <button onClick={onClose} className="warp-font-ui flex-1 rounded-2xl border border-gray-200 py-3 text-sm font-bold text-gray-500 transition-colors hover:bg-gray-50">
-              Cancel
-            </button>
-            <button onClick={handleConfirm} className="warp-font-ui flex-[1.4] rounded-2xl py-3.5 text-base font-bold text-white shadow-lg transition-all hover:shadow-xl active:scale-[0.98]" style={{ background: PURPLE.gradient }}>
-              Confirm
-            </button>
-          </div>
+        </div>
+        <div className="flex items-center gap-3 pt-5">
+          <button onClick={onClose} className="warp-font-ui flex-1 rounded-2xl border border-gray-200 py-3 text-sm font-bold text-gray-500 transition-colors hover:bg-gray-50">
+            Cancel
+          </button>
+          <button onClick={handleConfirm} className="warp-font-ui flex-[1.4] rounded-2xl py-3.5 text-base font-bold text-white shadow-lg transition-all hover:shadow-xl active:scale-[0.98]" style={{ background: PURPLE.gradient }}>
+            Confirm
+          </button>
         </div>
       </div>
     </div>
@@ -1165,4 +1203,5 @@ export function VirtualRoomLayout() {
     </div>
   );
 }
+
 
