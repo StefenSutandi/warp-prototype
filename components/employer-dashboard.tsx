@@ -20,6 +20,7 @@ import { useAvatarStore } from '@/stores/useAvatarStore';
 import { useRoomStore } from '@/stores/useRoomStore';
 import { useTaskStore } from '@/stores/useTaskStore';
 import { useUserStore } from '@/stores/useUserStore';
+import { EmployerTaskManagementPage } from './employer-task-management-page';
 import { VirtualOfficePlaceholder } from './virtual-office-placeholder';
 
 const EMPLOYER_DASHBOARD_ASSETS = {
@@ -34,7 +35,7 @@ const EMPLOYER_DASHBOARD_ASSETS = {
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
   { id: 'stats', label: 'My Stats', icon: ChartColumnBig },
-  { id: 'todo', label: 'To-Do', icon: ClipboardCheck },
+  { id: 'tasks', label: 'Tasks', icon: ClipboardCheck },
   { id: 'chat', label: 'Chat', icon: MessageCircle },
   { id: 'team', label: 'My Team', icon: UsersRound },
   { id: 'settings', label: 'Settings', icon: Settings2 },
@@ -661,32 +662,41 @@ export function EmployerDashboard() {
   const displayName = avatarProfile.displayName || currentUser?.name || 'Your Name';
   const roleLabel = avatarProfile.position || 'UI/UX Designer';
   const rewardBalance = Math.max(200, Math.round((currentUser?.xp ?? 5200) / 26));
+  const isTaskPage = activeItem === 'tasks';
 
   return (
     <div className="warp-font-ui min-h-screen w-full bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)] text-[#111111]">
-      <div className="grid min-h-screen w-full grid-cols-[283px_minmax(0,1fr)_285px]">
+      <div className={cn('grid min-h-screen w-full', isTaskPage ? 'grid-cols-[283px_minmax(0,1fr)]' : 'grid-cols-[283px_minmax(0,1fr)_285px]')}>
         <SidebarNav activeItem={activeItem} onSelect={setActiveItem} />
 
         <main
-          className="min-h-screen min-w-0 border-r border-[#e2e0f0] bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)]"
+          className="min-h-screen min-w-0 w-full border-r border-[#e2e0f0] bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)]"
           style={{ fontFamily: 'var(--font-ui-stack)' }}
         >
-          <TopBar displayName={displayName} rewardBalance={rewardBalance} />
-
-          {stage === 'dashboard' ? (
-            <EmployerDashboardHome onCreateRoom={() => setStage('create-room')} />
+          {isTaskPage ? (
+            <EmployerTaskManagementPage />
           ) : (
-            <EmployerCreateRoomFlow onBack={() => setStage('dashboard')} />
+            <>
+              <TopBar displayName={displayName} rewardBalance={rewardBalance} />
+
+              {stage === 'dashboard' ? (
+                <EmployerDashboardHome onCreateRoom={() => setStage('create-room')} />
+              ) : (
+                <EmployerCreateRoomFlow onBack={() => setStage('dashboard')} />
+              )}
+            </>
           )}
         </main>
 
-        <ProfilePanel
-          displayName={displayName}
-          roleLabel={roleLabel}
-          interests={avatarProfile.interests}
-          teammates={visibleTeammates}
-          onEditProfile={() => router.push('/avatar')}
-        />
+        {!isTaskPage ? (
+          <ProfilePanel
+            displayName={displayName}
+            roleLabel={roleLabel}
+            interests={avatarProfile.interests}
+            teammates={visibleTeammates}
+            onEditProfile={() => router.push('/avatar')}
+          />
+        ) : null}
       </div>
     </div>
   );

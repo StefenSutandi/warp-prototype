@@ -16,8 +16,12 @@ WARP is a gamified virtual workspace prototype for remote creative teams. Built 
 - **`PhaserGameDynamic`** — Dynamic (SSR-safe) wrapper that mounts/unmounts the Phaser game instance
 - **`AvatarCreationPage`** — Full-screen avatar builder before entering the workspace
 - **`AvatarCustomizer`** — In-session avatar colour picker with live preview
-- **`EmployerDashboard`** — Employer-side workspace with task management and team overview
-- **`CreateNewTaskModal`** — Modal for creating and assigning tasks to teammates
+- **`EmployerDashboard`** — Employer-side workspace with sidebar nav; routes to `EmployerTaskManagementPage` when the Tasks nav item is active
+- **`EmployerTaskManagementPage`** — Full employer task management page with three views:
+  - `list` — tabbed task list (My Tasks / Review Tasks) with progress bars and status badges
+  - `detail` — task detail view with description, bullet checklist, activity feed, attachments, and comments
+  - `review-detail` — submitter review view with previews, approve / request-revision actions, and image lightbox
+- **`CreateNewTaskModal`** — Shared modal for creating and assigning tasks (used by both VirtualRoomLayout and EmployerTaskManagementPage)
 
 ### Game Engine (`game/`)
 - **`game/scenes/MainOfficeScene.ts`** — Primary Phaser scene:
