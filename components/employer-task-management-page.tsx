@@ -1,6 +1,6 @@
 'use client';
 
-import { type MouseEvent, useEffect, useState } from 'react';
+import { type ChangeEvent, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import {
   Check,
   ArrowLeft,
@@ -31,6 +31,23 @@ type TaskActivityItem = {
   time: string;
   bold?: boolean;
   avatarGradient?: string;
+};
+
+type AttachmentFile = {
+  id: string;
+  name: string;
+  size: string;
+  file?: File;
+};
+
+type SubmitState = 'idle' | 'submitting' | 'submitted';
+
+type CommentItem = {
+  id: string;
+  name: string;
+  text: string;
+  timestamp: string;
+  avatarGradient: string;
 };
 
 type TaskCardData = {
@@ -170,12 +187,6 @@ const attachmentFiles = [
   { name: 'Campaign_References.zip', size: '6.8 MB' },
 ] as const;
 
-const deadlines = [
-  { title: 'Landing Page Design', due: '25/05/2026 10:00', badge: 'Due Soon', badgeClass: 'bg-[#ffeeee] text-[#ff7675]' },
-  { title: 'Brand Guidelines', due: '25/05/2026 10:00', badge: '2 Days', badgeClass: 'bg-[#fff4d5] text-[#e29c4c]' },
-  { title: 'Social Media Campaign', due: '25/05/2026 10:00', badge: '5 Days', badgeClass: 'bg-[#dfffd7] text-[#54b499]' },
-] as const;
-
 const reviewTask = {
   id: 'review-task-1',
   submittedBy: 'Kevin',
@@ -207,6 +218,305 @@ const reviewTask = {
 } as const;
 
 type ReviewTaskData = typeof reviewTask;
+
+const attachmentAccept = '.pdf,.doc,.docx,.png,.jpg,.jpeg,.svg,.zip';
+const allowedAttachmentExtensions = new Set(['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'svg', 'zip']);
+const prototypeToday = new Date(2026, 4, 25, 0, 0);
+
+function formatFileSize(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 KB';
+
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const unitIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / 1024 ** unitIndex;
+  const digits = unitIndex === 0 ? 0 : 1;
+
+  return `${value.toFixed(digits)} ${units[unitIndex]}`;
+}
+
+function createUploadId(file: File, index: number) {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${file.name}-${file.size}-${file.lastModified}-${Date.now()}-${index}-${Math.random().toString(36).slice(2)}`;
+}
+
+function isSupportedAttachment(file: File) {
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  return extension ? allowedAttachmentExtensions.has(extension) : false;
+}
+
+function buildUploadedFiles(files: FileList | File[]) {
+  return Array.from(files)
+    .filter(isSupportedAttachment)
+    .map((file, index) => ({
+      id: createUploadId(file, index),
+      name: file.name,
+      size: formatFileSize(file.size),
+      file,
+    }));
+}
+
+function parseTaskDueDate(value: string) {
+  const [datePart, timePart] = value.split(' ');
+  const [day, month, year] = datePart.split('/').map(Number);
+  const [hours, minutes] = timePart.split(':').map(Number);
+
+  return new Date(year, month - 1, day, hours, minutes);
+}
+
+function getCalendarDayDiff(from: Date, to: Date) {
+  const start = new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime();
+  const end = new Date(to.getFullYear(), to.getMonth(), to.getDate()).getTime();
+  return Math.round((end - start) / 86400000);
+}
+
+function getDeadlineBadge(due: string) {
+  const diffDays = getCalendarDayDiff(prototypeToday, parseTaskDueDate(due));
+
+  if (diffDays <= 0) return { label: 'Due Soon', className: 'bg-[#ffeeee] text-[#ff7675]' };
+  if (diffDays <= 2) return { label: `${diffDays} Day${diffDays === 1 ? '' : 's'}`, className: 'bg-[#fff4d5] text-[#e29c4c]' };
+  return { label: `${diffDays} Days`, className: 'bg-[#dfffd7] text-[#54b499]' };
+}
+
+function buildUpcomingDeadlines(tasks: TaskCardData[]) {
+  return [...tasks]
+    .sort((left, right) => parseTaskDueDate(left.due).getTime() - parseTaskDueDate(right.due).getTime())
+    .slice(0, 4)
+    .map((task) => {
+      const badge = getDeadlineBadge(task.due);
+
+      return {
+        title: task.title,
+        due: task.due,
+        badge: badge.label,
+        badgeClass: badge.className,
+      };
+    });
+}
+
+function AttachmentRow({
+  file,
+  action,
+  actionLabel,
+}: {
+  file: { name: string; size: string };
+  action: ReactNode;
+  actionLabel: string;
+}) {
+  return (
+    <article className="flex items-center gap-[16px] rounded-[8px] border border-[#e5e7eb] bg-white px-[16px] py-[16px]">
+      <div className="flex h-[40px] w-[40px] items-center justify-center rounded-[8px] bg-[#dbeafe] text-[#4c82ff]">
+        <FileText className="h-5 w-5" strokeWidth={1.8} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[14px] font-medium text-black">{file.name}</p>
+        <p className="mt-[3px] text-[12px] text-[#6b7280]">{file.size}</p>
+      </div>
+      <div aria-label={actionLabel}>{action}</div>
+    </article>
+  );
+}
+
+function createCommentId() {
+  return `comment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function AttachmentUploadCard({
+  initialFiles,
+  submitState = 'idle',
+  onSubmit,
+}: {
+  initialFiles: readonly { name: string; size: string }[];
+  submitState?: SubmitState;
+  onSubmit?: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<AttachmentFile[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [attachmentMessage, setAttachmentMessage] = useState('');
+
+  useEffect(() => {
+    const preventWindowFileDrop = (event: globalThis.DragEvent) => {
+      event.preventDefault();
+    };
+
+    window.addEventListener('dragover', preventWindowFileDrop);
+    window.addEventListener('drop', preventWindowFileDrop);
+
+    return () => {
+      window.removeEventListener('dragover', preventWindowFileDrop);
+      window.removeEventListener('drop', preventWindowFileDrop);
+    };
+  }, []);
+
+  const handleBrowseClick = () => {
+    inputRef.current?.click();
+  };
+
+  const appendFiles = (files: FileList | File[]) => {
+    const filesArray = Array.from(files);
+    const nextFiles = buildUploadedFiles(files);
+    const skippedCount = filesArray.length - nextFiles.length;
+
+    setAttachmentMessage(skippedCount > 0 ? 'Some files were skipped because their type is not supported.' : '');
+
+    if (nextFiles.length === 0) return;
+    setUploadedFiles((current) => [...current, ...nextFiles]);
+  };
+
+  const handleFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+    appendFiles(files);
+    event.target.value = '';
+  };
+
+  const handleDragEnter = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
+    if (event.dataTransfer.files.length > 0) {
+      appendFiles(event.dataTransfer.files);
+      event.dataTransfer.clearData();
+    }
+  };
+
+  const handleRemoveFile = (fileId: string) => {
+    setUploadedFiles((current) => current.filter((file) => file.id !== fileId));
+  };
+
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleBrowseClick();
+    }
+  };
+
+  const submitButtonContent =
+    submitState === 'submitting' ? 'Submitting...' : submitState === 'submitted' ? 'Submitted for Review' : 'Submit for Review';
+
+  return (
+    <>
+      <section className="rounded-[13px] border border-[#e2e0f0] bg-white px-[20px] py-[22px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
+        <h2 className="text-[20px] font-medium text-black">Attachments</h2>
+
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept={attachmentAccept}
+          className="sr-only"
+          onChange={handleFileInputChange}
+        />
+
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Upload attachment files"
+          onClick={handleBrowseClick}
+          onKeyDown={handleKeyDown}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={cn(
+            'mt-[18px] rounded-[8px] border px-[20px] py-[22px] text-center transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(104,94,235,0.22)]',
+            isDragging
+              ? 'cursor-copy border-[#685eeb] bg-[rgba(104,94,235,0.1)] shadow-[0_0_0_1px_rgba(104,94,235,0.14),0_16px_32px_rgba(104,94,235,0.14)]'
+              : 'cursor-pointer border-[#e2e0f0] bg-[#f8f7fc] hover:border-[#cfc7ff] hover:bg-[#f4f1ff]'
+          )}
+        >
+          <UploadCloud className={cn('mx-auto h-6 w-6 transition-colors', isDragging ? 'text-[#685eeb]' : 'text-black')} strokeWidth={1.9} />
+          <p className="mt-[10px] text-[12px] font-medium text-black">Drag and drop files</p>
+          <p className="mt-[2px] text-[12px] font-medium text-[#685eeb]">or click to upload</p>
+        </div>
+
+        {attachmentMessage ? (
+          <p className="mt-[10px] text-[11px] text-[#ff7675]">{attachmentMessage}</p>
+        ) : null}
+
+        <p className="mt-[12px] text-[11px] text-[#7a7694]">Attach your latest work before submitting.</p>
+
+        <div className="mt-[16px] space-y-[10px]">
+          {uploadedFiles.map((file) => (
+            <AttachmentRow
+              key={file.id}
+              file={file}
+              actionLabel={`Remove ${file.name}`}
+              action={
+                <button
+                  type="button"
+                  onClick={() => handleRemoveFile(file.id)}
+                  aria-label={`Remove ${file.name}`}
+                  className="text-[#94a3b8] transition hover:text-[#685eeb]"
+                >
+                  <X className="h-4 w-4" strokeWidth={2} />
+                </button>
+              }
+            />
+          ))}
+
+          {initialFiles.map((file, index) => (
+            <AttachmentRow
+              key={`${file.name}-${index}`}
+              file={file}
+              actionLabel={`Download ${file.name}`}
+              action={
+                <button type="button" aria-label={`Download ${file.name}`} className="text-[#94a3b8] transition hover:text-[#685eeb]">
+                  <Download className="h-4 w-4" strokeWidth={1.9} />
+                </button>
+              }
+            />
+          ))}
+        </div>
+      </section>
+
+      {onSubmit ? (
+        <div>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={submitState !== 'idle'}
+            className={cn(
+              'flex h-[48px] w-full items-center justify-center gap-[8px] rounded-[10px] text-[16px] font-semibold text-white shadow-[0_10px_20px_rgba(104,94,235,0.18)] transition',
+              submitState === 'submitted'
+                ? 'bg-[linear-gradient(135deg,#685eeb_0%,#54b499_100%)]'
+                : submitState === 'submitting'
+                  ? 'cursor-wait bg-[#7a72ef]'
+                  : 'bg-[#685eeb] hover:bg-[#5d53df]'
+            )}
+          >
+            {submitState === 'submitted' ? <Check className="h-4 w-4" strokeWidth={2.4} /> : null}
+            <span>{submitButtonContent}</span>
+          </button>
+
+          {submitState === 'submitted' ? (
+            <p className="mt-[10px] text-[12px] text-[#5f5a7b]">Your task has been submitted and is now waiting for review.</p>
+          ) : null}
+        </div>
+      ) : null}
+    </>
+  );
+}
 
 function HeaderTabs({
   activeTab,
@@ -467,6 +777,8 @@ function OverallProgressCard() {
 }
 
 function UpcomingDeadlinesCard() {
+  const deadlines = buildUpcomingDeadlines(taskCards);
+
   return (
     <section className="rounded-[13px] border border-[#e2e0f0] bg-white px-[27px] py-[24px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
       <h2 className="text-[20px] font-semibold text-black">Upcoming Deadlines</h2>
@@ -669,58 +981,82 @@ function ReviewTaskCard({
   );
 }
 
-function AttachmentsCard() {
-  return (
-    <>
-      <section className="rounded-[13px] border border-[#e2e0f0] bg-white px-[20px] py-[22px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
-        <h2 className="text-[20px] font-medium text-black">Attachments</h2>
+function CommentsCard({
+  initialComments = [],
+}: {
+  initialComments?: CommentItem[];
+}) {
+  const [comments, setComments] = useState<CommentItem[]>(initialComments);
+  const [draft, setDraft] = useState('');
 
-        <div className="mt-[18px] rounded-[8px] border border-[#e2e0f0] bg-[#f8f7fc] px-[20px] py-[22px] text-center">
-          <UploadCloud className="mx-auto h-6 w-6 text-black" strokeWidth={1.9} />
-          <p className="mt-[10px] text-[12px] font-medium text-black">Drag and drop files</p>
-          <p className="mt-[2px] text-[12px] font-medium text-[#685eeb]">or click to upload</p>
-        </div>
+  const trimmedDraft = draft.trim();
+  const isSubmitDisabled = trimmedDraft.length === 0;
 
-        <div className="mt-[16px] space-y-[10px]">
-          {attachmentFiles.map((file, index) => (
-            <article key={`${file.name}-${index}`} className="flex items-center gap-[16px] rounded-[8px] border border-[#e5e7eb] bg-white px-[16px] py-[16px]">
-              <div className="flex h-[40px] w-[40px] items-center justify-center rounded-[8px] bg-[#dbeafe] text-[#4c82ff]">
-                <FileText className="h-5 w-5" strokeWidth={1.8} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[14px] font-medium text-black">{file.name}</p>
-                <p className="mt-[3px] text-[12px] text-[#6b7280]">{file.size}</p>
-              </div>
-              <button type="button" aria-label={`Download ${file.name}`} className="text-[#94a3b8] transition hover:text-[#685eeb]">
-                <Download className="h-4 w-4" strokeWidth={1.9} />
-              </button>
-            </article>
-          ))}
-        </div>
-      </section>
+  const handleSubmitComment = () => {
+    if (isSubmitDisabled) return;
 
-      <button
-        type="button"
-        className="flex h-[48px] w-full items-center justify-center rounded-[10px] bg-[#685eeb] text-[16px] font-semibold text-white shadow-[0_10px_20px_rgba(104,94,235,0.18)] transition hover:bg-[#5d53df]"
-      >
-        Submit for Review
-      </button>
-    </>
-  );
-}
+    setComments((current) => [
+      ...current,
+      {
+        id: createCommentId(),
+        name: 'You',
+        text: trimmedDraft,
+        timestamp: 'Just now',
+        avatarGradient: 'linear-gradient(135deg,#A29BFC 0%,#82ECEC 100%)',
+      },
+    ]);
+    setDraft('');
+  };
 
-function CommentsCard() {
+  const handleInputKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleSubmitComment();
+    }
+  };
+
   return (
     <section className="rounded-[13px] border border-[#e2e0f0] bg-white px-[20px] py-[22px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
       <h2 className="text-[20px] font-semibold text-black">Comments</h2>
 
-      <div className="mt-[44px] flex h-[41px] items-center rounded-[8px] border border-[#e2e0f0] bg-[#f8f7fc] px-[12px]">
+      {comments.length > 0 ? (
+        <div className="mt-[18px] space-y-[12px]">
+          {comments.map((comment) => (
+            <article key={comment.id} className="rounded-[10px] border border-[#ebe8f5] bg-[#fcfbff] px-[12px] py-[11px]">
+              <div className="flex items-start gap-[10px]">
+                <div className="mt-[1px] h-[28px] w-[28px] shrink-0 rounded-full" style={{ background: comment.avatarGradient }} />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-[8px]">
+                    <p className="text-[12px] font-semibold leading-none text-black">{comment.name}</p>
+                    <p className="text-[10px] leading-none text-[#8b88a3]">{comment.timestamp}</p>
+                  </div>
+                  <p className="mt-[6px] text-[11px] leading-[1.45] text-[#3d3957]">{comment.text}</p>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-[18px] flex h-[41px] items-center rounded-[8px] border border-[#e2e0f0] bg-[#f8f7fc] px-[12px] transition-colors focus-within:border-[#cfc7ff] focus-within:bg-[#fbfaff]">
         <input
           type="text"
-          placeholder=""
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={handleInputKeyDown}
+          placeholder="Add a comment..."
           className="w-full bg-transparent text-[12px] text-black outline-none placeholder:text-[#b3b0ca]"
         />
-        <button type="button" aria-label="Send comment" className="text-[#685eeb] transition hover:text-[#5d53df]">
+        <button
+          type="button"
+          aria-label="Send comment"
+          onClick={handleSubmitComment}
+          disabled={isSubmitDisabled}
+          className={cn(
+            'transition',
+            isSubmitDisabled ? 'cursor-not-allowed text-[#c7c3de]' : 'text-[#685eeb] hover:text-[#5d53df]'
+          )}
+        >
           <SendHorizontal className="h-7 w-7" fill="currentColor" strokeWidth={1.5} />
         </button>
       </div>
@@ -852,7 +1188,17 @@ function ReviewTaskDetailView({
 
         <aside className="space-y-[16px]">
           <ReviewDetailAttachmentsCard attachments={task.attachments} />
-          <CommentsCard />
+          <CommentsCard
+            initialComments={[
+              {
+                id: 'review-comment-1',
+                name: 'Kevin',
+                text: 'Please confirm whether the filled icon direction should be prioritized for the final handoff.',
+                timestamp: 'Just now',
+                avatarGradient: 'linear-gradient(135deg,#A29BFC 0%,#82ECEC 100%)',
+              },
+            ]}
+          />
         </aside>
       </div>
 
@@ -868,6 +1214,22 @@ function DetailView({
   task: TaskCardData;
   onBack: () => void;
 }) {
+  const [submitState, setSubmitState] = useState<SubmitState>('idle');
+
+  const currentActionTitle =
+    submitState === 'submitted' ? 'This task is waiting for approval.' : task.currentActionTitle;
+  const currentActionSubtitle =
+    submitState === 'submitted' ? 'The creator will review your submission.' : task.currentActionSubtitle;
+
+  const handleSubmitForReview = () => {
+    if (submitState !== 'idle') return;
+
+    setSubmitState('submitting');
+    window.setTimeout(() => {
+      setSubmitState('submitted');
+    }, 850);
+  };
+
   return (
     <>
       <DetailHeader onBack={onBack} />
@@ -917,8 +1279,8 @@ function DetailView({
                     <Hourglass className="h-6 w-6" strokeWidth={1.9} />
                   </div>
                   <div>
-                    <p className="text-[14px] font-medium text-black">{task.currentActionTitle}</p>
-                    <p className="mt-[5px] text-[11px] text-black">{task.currentActionSubtitle}</p>
+                    <p className="text-[14px] font-medium text-black">{currentActionTitle}</p>
+                    <p className="mt-[5px] text-[11px] text-black">{currentActionSubtitle}</p>
                   </div>
                 </div>
               </div>
@@ -952,9 +1314,19 @@ function DetailView({
         </section>
 
         <aside className="space-y-[13px]">
-          <AttachmentsCard />
+          <AttachmentUploadCard initialFiles={attachmentFiles} submitState={submitState} onSubmit={handleSubmitForReview} />
           <div className="pt-[81px]">
-            <CommentsCard />
+            <CommentsCard
+              initialComments={[
+                {
+                  id: 'detail-comment-1',
+                  name: 'Kevin',
+                  text: 'Please attach the latest file before submitting for review.',
+                  timestamp: 'Just now',
+                  avatarGradient: 'linear-gradient(135deg,#A29BFC 0%,#82ECEC 100%)',
+                },
+              ]}
+            />
           </div>
         </aside>
       </div>
