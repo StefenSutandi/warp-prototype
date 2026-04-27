@@ -25,27 +25,42 @@ import { cn } from '@/lib/utils';
 
 type EmployerTaskView = 'list' | 'detail' | 'review-detail';
 type EmployerTaskTab = 'my' | 'review';
+type TaskStatus = 'IN REVIEW' | 'IN PROGRESS' | 'TO DO' | 'OVERDUE';
+type TaskActivityItem = {
+  title: string;
+  time: string;
+  bold?: boolean;
+  avatarGradient?: string;
+};
 
 type TaskCardData = {
   id: string;
   assignee: string;
+  assigneeRole?: string;
+  avatarGradient: string;
   due: string;
+  progress: number;
+  status: TaskStatus;
   title: string;
   description: string;
   detailDescription: string;
   bullets: string[];
-  progress: number;
-  status: string;
+  currentActionTitle: string;
+  currentActionSubtitle: string;
+  activity: TaskActivityItem[];
 };
 
 const taskCards: TaskCardData[] = [
   {
     id: 'task-card-1',
     assignee: 'Kevin',
+    assigneeRole: 'Frontend',
+    avatarGradient: 'linear-gradient(135deg,#A29BFC 0%,#82ECEC 100%)',
     due: '25/05/2026 10:00',
+    progress: 70,
+    status: 'IN REVIEW',
     title: 'Icon Set Exploration',
-    description:
-      'Explore icon styles (outline vs filled) for the collaboration tools. Prepare at least two style options.',
+    description: 'Explore icon styles for collaboration tools and prepare two style options.',
     detailDescription:
       'Explore icon styles (outline vs filled) for the collaboration tools and develop two visual directions for comparison.',
     bullets: [
@@ -55,16 +70,23 @@ const taskCards: TaskCardData[] = [
       'Ensure icons remain clear and readable at small sizes',
       'Align the style with the current UI (clean, modern, minimal)',
     ],
-    progress: 70,
-    status: 'IN REVIEW',
+    currentActionTitle: 'This task is waiting for approval.',
+    currentActionSubtitle: 'Kevin is reviewing the two icon directions you submitted.',
+    activity: [
+      { title: 'You submitted the task for review', time: 'Today, 09.35', avatarGradient: 'linear-gradient(135deg,#A29BFC 0%,#82ECEC 100%)' },
+      { title: 'Kevin is reviewing your work', time: 'Today, 10.35', bold: true, avatarGradient: 'linear-gradient(135deg,#A29BFC 0%,#82ECEC 100%)' },
+    ],
   },
   {
     id: 'task-card-2',
-    assignee: 'Kevin',
+    assignee: 'Nadine',
+    assigneeRole: 'Project Manager',
+    avatarGradient: 'linear-gradient(135deg,#6CB5FF 0%,#D9FFF4 100%)',
     due: '26/05/2026 14:30',
+    progress: 64,
+    status: 'IN PROGRESS',
     title: 'Landing Page Design',
-    description:
-      'Refine the hero section and CTA hierarchy for the landing page to improve clarity and conversion focus.',
+    description: 'Refine the hero section and CTA hierarchy for the landing page.',
     detailDescription:
       'Refine the hero section and CTA hierarchy for the landing page, balancing visual impact with a clearer content flow for first-time visitors.',
     bullets: [
@@ -74,16 +96,23 @@ const taskCards: TaskCardData[] = [
       'Keep typography clear at desktop and laptop widths',
       'Match the updated pastel WARP design language',
     ],
-    progress: 64,
-    status: 'IN REVIEW',
+    currentActionTitle: 'This task is actively in progress.',
+    currentActionSubtitle: 'Nadine is iterating on the hero layout and CTA hierarchy.',
+    activity: [
+      { title: 'Nadine shared a revised hero exploration', time: 'Today, 08.20', avatarGradient: 'linear-gradient(135deg,#6CB5FF 0%,#D9FFF4 100%)' },
+      { title: 'Stakeholder feedback was added to the task', time: 'Today, 11.10', bold: true, avatarGradient: 'linear-gradient(135deg,#6CB5FF 0%,#D9FFF4 100%)' },
+    ],
   },
   {
     id: 'task-card-3',
-    assignee: 'Kevin',
+    assignee: 'Farhan',
+    assigneeRole: 'Backend',
+    avatarGradient: 'linear-gradient(135deg,#8B83F8 0%,#FFEEEE 100%)',
     due: '27/05/2026 09:00',
+    progress: 72,
+    status: 'IN REVIEW',
     title: 'Brand Guidelines Update',
-    description:
-      'Review typography, color usage, and component consistency for the new brand kit before team rollout.',
+    description: 'Review typography, color usage, and component consistency for the brand kit.',
     detailDescription:
       'Review typography, color usage, and component consistency for the new brand kit so internal teams can apply the system consistently across product surfaces.',
     bullets: [
@@ -93,16 +122,23 @@ const taskCards: TaskCardData[] = [
       'Check consistency between web and mobile references',
       'Prepare a concise handoff summary for the team',
     ],
-    progress: 72,
-    status: 'IN REVIEW',
+    currentActionTitle: 'This task is waiting for approval.',
+    currentActionSubtitle: 'Farhan uploaded the latest guideline audit for review.',
+    activity: [
+      { title: 'Farhan updated the token usage notes', time: 'Yesterday, 16.05', avatarGradient: 'linear-gradient(135deg,#8B83F8 0%,#FFEEEE 100%)' },
+      { title: 'Brand guideline audit submitted for review', time: 'Today, 09.50', bold: true, avatarGradient: 'linear-gradient(135deg,#8B83F8 0%,#FFEEEE 100%)' },
+    ],
   },
   {
     id: 'task-card-4',
-    assignee: 'Kevin',
+    assignee: 'Salsa',
+    assigneeRole: 'Product',
+    avatarGradient: 'linear-gradient(135deg,#46D8D8 0%,#A29BFC 100%)',
     due: '29/05/2026 11:15',
+    progress: 68,
+    status: 'TO DO',
     title: 'Social Media Campaign',
-    description:
-      'Prepare visual concepts and post variations for the upcoming campaign launch across key channels.',
+    description: 'Prepare visual concepts and post variations for the campaign launch.',
     detailDescription:
       'Prepare visual concepts and post variations for the upcoming campaign launch, ensuring a consistent style across promotional assets and supporting layouts.',
     bullets: [
@@ -112,8 +148,12 @@ const taskCards: TaskCardData[] = [
       'Optimize compositions for small-format previews',
       'Package the final concepts for review and approval',
     ],
-    progress: 68,
-    status: 'IN REVIEW',
+    currentActionTitle: 'This task is ready to be picked up.',
+    currentActionSubtitle: 'Salsa is waiting on creative direction before starting production.',
+    activity: [
+      { title: 'Campaign brief was attached to the task', time: 'Yesterday, 13.10', avatarGradient: 'linear-gradient(135deg,#46D8D8 0%,#A29BFC 100%)' },
+      { title: 'Creative kickoff scheduled for tomorrow', time: 'Today, 12.15', bold: true, avatarGradient: 'linear-gradient(135deg,#46D8D8 0%,#A29BFC 100%)' },
+    ],
   },
 ];
 
@@ -124,20 +164,16 @@ const progressStats = [
   { label: 'Overdue', value: 2, color: '#FF7675', tone: 'bg-[#fff4f4]' },
 ] as const;
 
+const attachmentFiles = [
+  { name: 'Briefing_Deck_v2.pdf', size: '2.1 MB' },
+  { name: 'Hero_Wireframe_Notes.docx', size: '1.4 MB' },
+  { name: 'Campaign_References.zip', size: '6.8 MB' },
+] as const;
+
 const deadlines = [
   { title: 'Landing Page Design', due: '25/05/2026 10:00', badge: 'Due Soon', badgeClass: 'bg-[#ffeeee] text-[#ff7675]' },
   { title: 'Brand Guidelines', due: '25/05/2026 10:00', badge: '2 Days', badgeClass: 'bg-[#fff4d5] text-[#e29c4c]' },
   { title: 'Social Media Campaign', due: '25/05/2026 10:00', badge: '5 Days', badgeClass: 'bg-[#dfffd7] text-[#54b499]' },
-] as const;
-
-const attachmentFiles = [
-  { name: 'Icon_Design_V2.pdf', size: '2.4 MB' },
-  { name: 'Icon_Design_V2.pdf', size: '2.4 MB' },
-] as const;
-
-const detailActivity = [
-  { title: 'You submitted the task for review', time: 'Today, 09.35', bold: false },
-  { title: 'Kevin is reviewing your work', time: 'Today, 10.35', bold: true },
 ] as const;
 
 const reviewTask = {
@@ -233,6 +269,34 @@ function DetailHeader({ onBack }: { onBack: () => void }) {
   );
 }
 
+function getStatusClasses(status: TaskStatus, interactive = false) {
+  switch (status) {
+    case 'IN PROGRESS':
+      return interactive ? 'bg-[#6CB5FF] text-white group-hover:bg-[#59a4f2]' : 'bg-[#6CB5FF] text-white';
+    case 'TO DO':
+      return interactive ? 'bg-[#82ECEC] text-[#2d5f75] group-hover:bg-[#70dddd]' : 'bg-[#82ECEC] text-[#2d5f75]';
+    case 'OVERDUE':
+      return interactive ? 'bg-[#FF7675] text-white group-hover:bg-[#f06261]' : 'bg-[#FF7675] text-white';
+    case 'IN REVIEW':
+    default:
+      return interactive ? 'bg-[#A29BFC] text-white group-hover:bg-[#8b83f8]' : 'bg-[#A29BFC] text-white';
+  }
+}
+
+function getProgressColor(status: TaskStatus) {
+  switch (status) {
+    case 'IN PROGRESS':
+      return '#6CB5FF';
+    case 'TO DO':
+      return '#46D8D8';
+    case 'OVERDUE':
+      return '#FF7675';
+    case 'IN REVIEW':
+    default:
+      return '#685EEB';
+  }
+}
+
 function TopActions({ rewardBalance }: { rewardBalance: number }) {
   return (
     <div className="absolute right-[25px] top-[21px] z-10 flex items-center gap-[11px]">
@@ -255,14 +319,22 @@ function TopActions({ rewardBalance }: { rewardBalance: number }) {
   );
 }
 
-function TaskMeta({ label, value, calendar = false }: { label: string; value: string; calendar?: boolean }) {
+function TaskMeta({
+  label,
+  value,
+  calendar = false,
+  avatarGradient,
+}: {
+  label: string;
+  value: string;
+  calendar?: boolean;
+  avatarGradient?: string;
+}) {
   return (
     <div className="flex items-center gap-[10px]">
       <div
-        className={cn(
-          'flex h-[30px] w-[30px] items-center justify-center rounded-full',
-          calendar ? 'bg-[#f2eefc] text-[#9b96b8]' : 'bg-[linear-gradient(135deg,#a29bfc_10%,#82ecec_100%)]'
-        )}
+        className={cn('flex h-[30px] w-[30px] items-center justify-center rounded-full', calendar ? 'bg-[#f2eefc] text-[#9b96b8]' : '')}
+        style={!calendar ? { background: avatarGradient || 'linear-gradient(135deg,#a29bfc_10%,#82ecec_100%)' } : undefined}
       >
         {calendar ? <CalendarDays className="h-4 w-4" strokeWidth={1.8} /> : null}
       </div>
@@ -293,7 +365,7 @@ function TaskCard({
         className="grid w-full cursor-pointer grid-cols-[160px_minmax(0,1fr)_140px_32px] items-center gap-x-[24px] px-[30px] py-[26px] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(104,94,235,0.22)]"
       >
         <div className="space-y-[12px] self-center">
-          <TaskMeta label="ASSIGNED TO" value={task.assignee} />
+          <TaskMeta label="ASSIGNED TO" value={task.assignee} avatarGradient={task.avatarGradient} />
           <TaskMeta label="DUE" value={task.due} calendar />
         </div>
 
@@ -304,16 +376,16 @@ function TaskCard({
           <div className="mt-[18px] w-full max-w-[430px]">
             <div className="flex items-center justify-between text-[11px] font-bold">
               <span className="text-[#858585]">Progress</span>
-              <span className="text-[#685eeb]">{task.progress}%</span>
+              <span style={{ color: getProgressColor(task.status) }}>{task.progress}%</span>
             </div>
             <div className="mt-[4px] h-[5px] rounded-full bg-[#d9d9d9]">
-              <div className="h-full rounded-full bg-[#685eeb]" style={{ width: `${task.progress}%` }} />
+              <div className="h-full rounded-full" style={{ width: `${task.progress}%`, backgroundColor: getProgressColor(task.status) }} />
             </div>
           </div>
         </div>
 
         <div className="flex justify-end self-center">
-          <span className="inline-flex h-[33px] items-center justify-center rounded-[10px] bg-[#a29bfc] px-[16px] text-[16px] font-extrabold text-white transition-colors duration-200 group-hover:bg-[#8b83f8]">
+          <span className={cn('inline-flex h-[33px] items-center justify-center rounded-[10px] px-[16px] text-[16px] font-extrabold transition-colors duration-200', getStatusClasses(task.status, true))}>
             {task.status}
           </span>
         </div>
@@ -805,23 +877,23 @@ function DetailView({
           <article className="rounded-[13px] border border-[#e2e0f0] bg-white px-[34px] py-[36px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
             <div className="flex items-start justify-between gap-4">
               <h1 className="text-[20px] font-bold text-black">{task.title}</h1>
-              <span className="inline-flex h-[33px] items-center justify-center rounded-[10px] bg-[#a29bfc] px-[16px] text-[16px] font-extrabold text-white">
+              <span className={cn('inline-flex h-[33px] items-center justify-center rounded-[10px] px-[16px] text-[16px] font-extrabold', getStatusClasses(task.status))}>
                 {task.status}
               </span>
             </div>
 
             <div className="mt-[30px] flex flex-wrap items-center gap-[46px]">
-              <TaskMeta label="ASSIGNED BY" value={task.assignee} />
-              <TaskMeta label="DUE" value="25/05/2026 10:00" calendar />
+              <TaskMeta label="ASSIGNED TO" value={task.assignee} avatarGradient={task.avatarGradient} />
+              <TaskMeta label="DUE" value={task.due} calendar />
             </div>
 
             <div className="mt-[28px] w-full">
               <div className="flex items-center justify-between text-[11px] font-bold">
                 <span className="text-[#858585]">Progress</span>
-                <span className="text-[#685eeb]">{task.progress}%</span>
+                <span style={{ color: getProgressColor(task.status) }}>{task.progress}%</span>
               </div>
               <div className="mt-[8px] h-[5px] rounded-full bg-[#d9d9d9]">
-                <div className="h-full rounded-full bg-[#685eeb]" style={{ width: `${task.progress}%` }} />
+                <div className="h-full rounded-full" style={{ width: `${task.progress}%`, backgroundColor: getProgressColor(task.status) }} />
               </div>
             </div>
 
@@ -845,8 +917,8 @@ function DetailView({
                     <Hourglass className="h-6 w-6" strokeWidth={1.9} />
                   </div>
                   <div>
-                    <p className="text-[14px] font-medium text-black">This task is waiting for approval.</p>
-                    <p className="mt-[5px] text-[11px] text-black">The creator will review your submission</p>
+                    <p className="text-[14px] font-medium text-black">{task.currentActionTitle}</p>
+                    <p className="mt-[5px] text-[11px] text-black">{task.currentActionSubtitle}</p>
                   </div>
                 </div>
               </div>
@@ -862,9 +934,9 @@ function DetailView({
                 </div>
 
                 <div className="space-y-[28px]">
-                  {detailActivity.map((item) => (
+                  {task.activity.map((item) => (
                     <div key={item.title} className="flex items-start gap-[10px]">
-                      <div className="mt-[2px] h-[30px] w-[30px] rounded-full bg-[linear-gradient(135deg,#a29bfc_10%,#82ecec_100%)]" />
+                      <div className="mt-[2px] h-[30px] w-[30px] rounded-full" style={{ background: item.avatarGradient || task.avatarGradient }} />
                       <div>
                         <p className={cn('text-[14px] text-black', item.bold ? 'font-bold' : 'font-normal')}>
                           {item.title}
