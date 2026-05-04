@@ -1,9 +1,4 @@
 import Phaser from 'phaser';
-import { useAvatarStore } from '@/stores/useAvatarStore';
-
-function hexToNum(hex: string): number {
-  return parseInt(hex.replace('#', ''), 16);
-}
 
 // =============================================
 //  ROOM DEFINITIONS
@@ -157,6 +152,32 @@ const VIRTUAL_ROOM_ASSETS = {
   sitPopupPrimary: '/assets/virtual-room/overlays/sit_popup_primary.png',
 } as const;
 
+type AvatarDirection = 'FR' | 'FL' | 'BR' | 'BL';
+
+const AVATAR_BODY_BASE_PATH = '/assets/avatar/walk/body/light';
+const AVATAR_DEPTH_OFFSET = 16;
+const AVATAR_DIRECTIONS: AvatarDirection[] = ['FR', 'FL', 'BR', 'BL'];
+const AVATAR_BODY_IDLE_FILES: Record<AvatarDirection, string> = {
+  FR: 'base_light_idle_FR.png',
+  FL: 'base_light_idle_FL.png',
+  BR: 'base_light_idle_BR.png',
+  BL: 'base_light_idle_BL.png',
+};
+const AVATAR_BODY_WALK_FILES: Record<AvatarDirection, string[]> = {
+  FR: Array.from({ length: 13 }, (_, index) => `base_walk${String(index + 1).padStart(4, '0')} 1.png`),
+  FL: Array.from({ length: 13 }, (_, index) => `base_walk${String(index + 1).padStart(4, '0')} 1.png`),
+  BR: Array.from({ length: 13 }, (_, index) => `walkcycle_back_${String(index + 1).padStart(4, '0')} 1.png`),
+  BL: Array.from({ length: 13 }, (_, index) => `walkcycle_back_${String(index + 1).padStart(4, '0')} 1.png`),
+};
+
+function avatarBodyTextureKey(direction: AvatarDirection, frame: 'idle' | number): string {
+  return `avatar-body-light-${direction}-${frame}`;
+}
+
+function avatarBodyAssetPath(direction: AvatarDirection, fileName: string): string {
+  return `${AVATAR_BODY_BASE_PATH}/${direction}/${encodeURIComponent(fileName)}`;
+}
+
 const FIGMA_MAIN_ROOM = {
   roomBase: { x: 8, y: 127, w: 1274.9627685546875, h: 779.8630981445312 },
   tv: { x: 232.869140625, y: 143.8271484375, w: 291.2351379394531, h: 372.7810363769531 },
@@ -191,11 +212,13 @@ export default class MainOfficeScene extends Phaser.Scene {
   private static readonly ZOOM_STEP = 0.1;
   private static readonly VISUAL_CAMERA_Y_OFFSET = 70;
 
-  private player!: Phaser.GameObjects.Arc;
+  private player!: Phaser.Physics.Arcade.Sprite;
   private playerLabel!: Phaser.GameObjects.Text;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
   private speed: number = 250;
+  private lastAvatarDirection: AvatarDirection = 'FR';
+  private isPlayerWalking = false;
 
   private currentRoomId: string = 'main';
   private teammates: TeammateData[] = [];
@@ -265,8 +288,6 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.loadRoom(this.currentRoomId);
   };
 
-  private lastAvatarColor: string = '';
-
   constructor() {
     super({ key: 'MainOfficeScene' });
   }
@@ -294,6 +315,20 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.load.image('chair_back_hover_green', VIRTUAL_ROOM_ASSETS.chairBackHoverGreen);
     this.load.image('chair_back_hover_blue', VIRTUAL_ROOM_ASSETS.chairBackHoverBlue);
     this.load.image('sit_popup_primary', VIRTUAL_ROOM_ASSETS.sitPopupPrimary);
+
+    AVATAR_DIRECTIONS.forEach((direction) => {
+      this.load.image(
+        avatarBodyTextureKey(direction, 'idle'),
+        avatarBodyAssetPath(direction, AVATAR_BODY_IDLE_FILES[direction]),
+      );
+
+      AVATAR_BODY_WALK_FILES[direction].forEach((fileName, index) => {
+        this.load.image(
+          avatarBodyTextureKey(direction, index + 1),
+          avatarBodyAssetPath(direction, fileName),
+        );
+      });
+    });
   }
 
   create() {
@@ -309,13 +344,15 @@ export default class MainOfficeScene extends Phaser.Scene {
       fontSize: '10px', color: '#9ca3af'
     }).setOrigin(1, 0).setDepth(50).setScrollFactor(0).setVisible(false);
 
+    this.createAvatarAnimations();
+
     // --- Player Avatar (persistent across rooms) ---
-    const avatarColor = hexToNum(useAvatarStore.getState().config.topColor);
-    this.player = this.add.circle(400, 300, 14, avatarColor);
-    this.player.setStrokeStyle(2, 0xffffff);
-    this.player.setDepth(5);
-    this.physics.add.existing(this.player);
-    (this.player.body as Phaser.Physics.Arcade.Body).setCollideWorldBounds(true);
+    this.player = this.physics.add.sprite(400, 300, avatarBodyTextureKey(this.lastAvatarDirection, 'idle'));
+    this.player.setOrigin(0.5, 0.88);
+    this.player.setDisplaySize(112, 112);
+    this.player.setCollideWorldBounds(true);
+    this.player.body?.setSize(26, 20, true);
+    this.updatePlayerDepth();
 
     this.playerLabel = this.add.text(400, 270, 'You', {
       fontSize: '11px', color: '#6366f1', fontStyle: 'bold'
@@ -323,6 +360,7 @@ export default class MainOfficeScene extends Phaser.Scene {
 
     this.events.on('update', () => {
       this.playerLabel.setPosition(this.player.x, this.player.y - 22);
+      this.playerLabel.setDepth(this.player.depth + 1);
     });
 
     // --- Keyboard Input ---
@@ -382,6 +420,24 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.isSceneReady = true;
   }
 
+  private createAvatarAnimations() {
+    AVATAR_DIRECTIONS.forEach((direction) => {
+      const key = `avatar-walk-${direction}`;
+      if (this.anims.exists(key)) {
+        return;
+      }
+
+      this.anims.create({
+        key,
+        frames: AVATAR_BODY_WALK_FILES[direction].map((_, index) => ({
+          key: avatarBodyTextureKey(direction, index + 1),
+        })),
+        frameRate: 11,
+        repeat: -1,
+      });
+    });
+  }
+
   update() {
     if (!this.cursors || !this.player.body) return;
 
@@ -389,6 +445,8 @@ export default class MainOfficeScene extends Phaser.Scene {
     body.setVelocity(0);
 
     if (this.movementInputBlocked || this.isEditableElementFocused()) {
+      this.setAvatarIdle();
+      this.updatePlayerDepth();
       return;
     }
 
@@ -402,12 +460,56 @@ export default class MainOfficeScene extends Phaser.Scene {
     if (up) body.setVelocityY(-this.speed);
     else if (down) body.setVelocityY(this.speed);
 
-    // Reactive avatar color sync
-    const currentColor = useAvatarStore.getState().config.topColor;
-    if (currentColor !== this.lastAvatarColor) {
-      this.lastAvatarColor = currentColor;
-      this.player.setFillStyle(hexToNum(currentColor));
+    const isMoving = left || right || up || down;
+    if (isMoving) {
+      this.lastAvatarDirection = this.getAvatarDirection(left, right, up, down);
+      this.isPlayerWalking = true;
+      this.player.anims.play(`avatar-walk-${this.lastAvatarDirection}`, true);
+    } else {
+      this.setAvatarIdle();
     }
+
+    this.updatePlayerDepth();
+  }
+
+  private updatePlayerDepth() {
+    const footY = this.player.y + this.player.displayHeight * (1 - this.player.originY);
+    this.player.setDepth(footY + AVATAR_DEPTH_OFFSET);
+    this.playerLabel?.setDepth(this.player.depth + 1);
+  }
+
+  private setAvatarIdle() {
+    if (!this.isPlayerWalking) {
+      return;
+    }
+
+    this.isPlayerWalking = false;
+    this.player.anims.stop();
+    this.player.setTexture(avatarBodyTextureKey(this.lastAvatarDirection, 'idle'));
+  }
+
+  private getAvatarDirection(left: boolean, right: boolean, up: boolean, down: boolean): AvatarDirection {
+    if (up) {
+      if (left) return 'BL';
+      if (right) return 'BR';
+      return this.lastAvatarDirection.endsWith('L') ? 'BL' : 'BR';
+    }
+
+    if (down) {
+      if (left) return 'FL';
+      if (right) return 'FR';
+      return this.lastAvatarDirection.endsWith('L') ? 'FL' : 'FR';
+    }
+
+    if (left) {
+      return this.lastAvatarDirection.startsWith('B') ? 'BL' : 'FL';
+    }
+
+    if (right) {
+      return this.lastAvatarDirection.startsWith('B') ? 'BR' : 'FR';
+    }
+
+    return this.lastAvatarDirection;
   }
 
   private isEditableElementFocused(): boolean {
@@ -440,6 +542,8 @@ export default class MainOfficeScene extends Phaser.Scene {
     if (this.player.body) {
       (this.player.body as Phaser.Physics.Arcade.Body).setVelocity(0);
     }
+
+    this.setAvatarIdle();
   }
 
   // =============================================
@@ -871,6 +975,7 @@ export default class MainOfficeScene extends Phaser.Scene {
         }
       }
 
+      this.updatePlayerDepth();
       this.loadRoom(targetRoom);
     });
   }

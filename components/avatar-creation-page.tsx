@@ -4,29 +4,97 @@ import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Pencil, Plus, X } from 'lucide-react';
-import {
-  FACE_PRESETS,
-  useAvatarStore,
-} from '@/stores/useAvatarStore';
 import { cn } from '@/lib/utils';
+import { useAvatarStore } from '@/stores/useAvatarStore';
 
-const AVATAR_TABS = ['Face', 'Hair', 'Tops', 'Bottoms', 'Shoes'] as const;
-type AvatarTab = (typeof AVATAR_TABS)[number];
+type AvatarTab = 'face' | 'hair' | 'outfit';
+type HairColorId = 'dark' | 'brown' | 'blonde';
 
-const AVATAR_PREVIEW_ASSET = '/assets/avatar/custom%20profile.svg';
-const FACE_OPTION_ASSET = '/assets/avatar/face%201.svg';
-
-const DEMO_INTERESTS = ['UI/UX', 'Product', 'Frontend', 'Backend', 'Branding', 'Research', 'Motion', 'DevOps'];
-
-type OptionCard = {
+type AvatarOption = {
   id: string;
   label: string;
-  preview?: string;
-  imageSrc?: string;
-  color?: string;
-  active?: boolean;
-  onSelect: () => void;
+  src: string;
+  closedSrc?: string;
 };
+
+type ColorOption = {
+  id: string;
+  label: string;
+  value: string;
+};
+
+type HairColorOption = ColorOption & {
+  id: HairColorId;
+};
+
+const avatarTabs: { id: AvatarTab; label: string }[] = [
+  { id: 'face', label: 'Face' },
+  { id: 'hair', label: 'Hair' },
+  { id: 'outfit', label: 'Outfit' },
+];
+
+const avatarPreviewAsset = '/assets/avatar/custom%20profile.svg';
+
+const faceOptions: AvatarOption[] = [
+  { id: 'face-detail', label: 'Face detail', src: '/assets/avatar/face/Group%201252.png' },
+  { id: 'face-layer-1', label: 'Face 1', src: '/assets/avatar/face/Layer_1.png' },
+  { id: 'face-layer-1-1', label: 'Face 2', src: '/assets/avatar/face/Layer_1-1.png' },
+  { id: 'face-layer-1-2', label: 'Face 3', src: '/assets/avatar/face/Layer_1-2.png' },
+  { id: 'face-layer-1-3', label: 'Face 4', src: '/assets/avatar/face/Layer_1-3.png' },
+  { id: 'face-layer-1-4', label: 'Face 5', src: '/assets/avatar/face/Layer_1-4.png' },
+  { id: 'face-layer-1-5', label: 'Face 6', src: '/assets/avatar/face/Layer_1-5.png' },
+  { id: 'face-layer-1-6', label: 'Face 7', src: '/assets/avatar/face/Layer_1-6.png' },
+  { id: 'face-layer-1-7', label: 'Face 8', src: '/assets/avatar/face/Layer_1-7.png' },
+];
+
+const hairOptionsByColor: Record<HairColorId, AvatarOption[]> = {
+  dark: [
+    { id: 'hair-dark-1', label: 'Bob dark', src: '/assets/avatar/hair/hair_1%202.svg' },
+    { id: 'hair-dark-2', label: 'Side dark', src: '/assets/avatar/hair/hair_2%202.svg' },
+    { id: 'hair-dark-3', label: 'Wave dark', src: '/assets/avatar/hair/hair_3%202.svg' },
+    { id: 'hair-dark-4', label: 'Crop dark', src: '/assets/avatar/hair/hair_4%202.svg' },
+    { id: 'hair-dark-1-back', label: 'Bob dark back', src: '/assets/avatar/hair/hair_1_back%202.svg' },
+    { id: 'hair-dark-2-back', label: 'Side dark back', src: '/assets/avatar/hair/hair_2_back%202.svg' },
+    { id: 'hair-dark-3-back', label: 'Wave dark back', src: '/assets/avatar/hair/hair_3_back%202.svg' },
+    { id: 'hair-dark-4-back', label: 'Crop dark back', src: '/assets/avatar/hair/hair_4_back%202.svg' },
+  ],
+  brown: [
+    { id: 'hair-brown-1', label: 'Bob brown', src: '/assets/avatar/hair/hair_1%201.svg' },
+    { id: 'hair-brown-2', label: 'Side brown', src: '/assets/avatar/hair/hair_2%201.svg' },
+    { id: 'hair-brown-3', label: 'Wave brown', src: '/assets/avatar/hair/hair_3%201.svg' },
+    { id: 'hair-brown-4', label: 'Crop brown', src: '/assets/avatar/hair/hair_4%201.svg' },
+    { id: 'hair-brown-1-back', label: 'Bob brown back', src: '/assets/avatar/hair/hair_1_back%201.svg' },
+    { id: 'hair-brown-2-back', label: 'Side brown back', src: '/assets/avatar/hair/hair_2_back%201.svg' },
+    { id: 'hair-brown-3-back', label: 'Wave brown back', src: '/assets/avatar/hair/hair_3_back%201.svg' },
+    { id: 'hair-brown-4-back', label: 'Crop brown back', src: '/assets/avatar/hair/hair_4_back%201.svg' },
+  ],
+  blonde: [
+    { id: 'hair-blonde-1', label: 'Bob blonde', src: '/assets/avatar/hair/hair_1%203.svg' },
+    { id: 'hair-blonde-2', label: 'Side blonde', src: '/assets/avatar/hair/hair_2%203.svg' },
+    { id: 'hair-blonde-3', label: 'Wave blonde', src: '/assets/avatar/hair/hair_3%203.svg' },
+    { id: 'hair-blonde-4', label: 'Crop blonde', src: '/assets/avatar/hair/hair_4%203.svg' },
+    { id: 'hair-blonde-1-back', label: 'Bob blonde back', src: '/assets/avatar/hair/hair_1_back%203.svg' },
+    { id: 'hair-blonde-2-back', label: 'Side blonde back', src: '/assets/avatar/hair/hair_2_back%203.svg' },
+    { id: 'hair-blonde-3-back', label: 'Wave blonde back', src: '/assets/avatar/hair/hair_3_back%203.svg' },
+    { id: 'hair-blonde-4-back', label: 'Crop blonde back', src: '/assets/avatar/hair/hair_4_back%203.svg' },
+  ],
+};
+
+const outfitOptions: AvatarOption[] = [
+  { id: 'outfit-1', label: 'Studio', src: '/assets/avatar/outfit/outfit1_idle.png' },
+  { id: 'outfit-2', label: 'Casual', src: '/assets/avatar/outfit/outfit2_idle.png' },
+  { id: 'outfit-3', label: 'Classic', src: '/assets/avatar/outfit/outfit3_idle.png' },
+  { id: 'outfit-4', label: 'Smart', src: '/assets/avatar/outfit/outfit4_idle.png' },
+];
+
+const hairColors: HairColorOption[] = [
+  { id: 'dark', label: 'Dark hair', value: '#241B1B' },
+  { id: 'brown', label: 'Brown hair', value: '#8F5A3C' },
+  { id: 'blonde', label: 'Blonde hair', value: '#DDBA72' },
+];
+
+const defaultInterests: string[] = [];
+const interestPool = ['UI/UX', 'Product', 'Frontend', 'Backend', 'Branding', 'Research', 'Motion', 'DevOps'];
 
 function StepIndicator() {
   const steps = [
@@ -36,13 +104,13 @@ function StepIndicator() {
   ];
 
   return (
-    <div className="flex items-center justify-center gap-4 xl:justify-start">
+    <div className="flex items-center justify-center gap-[12px]">
       {steps.map((step, index) => (
-        <div key={step.label} className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+        <div key={step.label} className="flex items-center gap-[12px]">
+          <div className="flex items-center gap-[8px]">
             <span
               className={cn(
-                'flex h-7 w-7 items-center justify-center rounded-[14px] text-sm font-medium',
+                'flex h-[28px] w-[28px] items-center justify-center rounded-[14px] text-[14px] font-medium',
                 step.state === 'done' && 'bg-[#56EFC4] text-white',
                 step.state === 'active' && 'border-[3px] border-[#A29BFC75] bg-[#685EEB] text-white',
                 step.state === 'upcoming' && 'border border-[#DFDFDF] bg-[#DFDFDF] text-[#858585]'
@@ -61,7 +129,6 @@ function StepIndicator() {
               {step.label}
             </span>
           </div>
-
           {index < steps.length - 1 ? (
             <div className={cn('h-px w-[54px]', step.state === 'done' ? 'bg-[#56EFC4]' : 'bg-[#DFDFDF]')} />
           ) : null}
@@ -71,263 +138,361 @@ function StepIndicator() {
   );
 }
 
-function AvatarPreviewPlaceholder() {
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-6">
-      <div className="relative flex h-[360px] w-[270px] items-center justify-center rounded-[36px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.7)_0%,rgba(236,244,255,0.92)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
-        <div className="absolute inset-x-[48px] bottom-[26px] h-[18px] rounded-full bg-[#685EEB]/10 blur-md" />
-        <div className="relative h-full w-full px-[10px] pt-[10px]">
-          <Image
-            src={AVATAR_PREVIEW_ASSET}
-            alt="Avatar preview"
-            fill
-            sizes="270px"
-            className="object-contain object-center scale-[1.08]"
-            priority
-          />
-        </div>
-      </div>
-
-      <div className="text-center">
-        <p className="text-[14px] font-semibold text-[#5C5780]">Avatar preview</p>
-        <p className="mt-1 text-[12px] text-[#858585]">Using local reference avatar art until final customization assets are ready</p>
-      </div>
-    </div>
-  );
-}
-
-function OptionGrid({
-  tab,
-  options,
+function ColorSwatches({
+  colors,
+  selectedId,
+  onSelect,
 }: {
-  tab: AvatarTab;
-  options: OptionCard[];
+  colors: ColorOption[];
+  selectedId: string;
+  onSelect: (color: ColorOption) => void;
 }) {
   return (
-    <div className="grid grid-cols-3 gap-[12px]">
-      {options.map((option) => (
+    <div className="flex items-center justify-center gap-[11px]">
+      {colors.map((color) => (
         <button
-          key={option.id}
+          key={color.id}
           type="button"
-          onClick={option.onSelect}
+          aria-label={color.label}
+          onClick={() => onSelect(color)}
           className={cn(
-            'flex h-[108px] flex-col items-center justify-center rounded-[9px] border bg-[#f0f0f0] p-4 transition',
-            option.active ? 'border-2 border-[#685EEB] bg-white shadow-[0_8px_20px_rgba(104,94,235,0.12)]' : 'border-[#DFDFDF] hover:border-[#CFCBEB]'
+            'h-[30px] w-[30px] rounded-full border-2 transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB] focus-visible:ring-offset-2',
+            selectedId === color.id ? 'border-[#A29BFC] shadow-[0_0_0_2px_rgba(104,94,235,0.16)]' : 'border-transparent'
           )}
-        >
-          {tab === 'Face' ? (
-            option.imageSrc ? (
-              <div className="relative h-[60px] w-[76px]">
-                <Image
-                  src={option.imageSrc}
-                  alt={option.label}
-                  fill
-                  sizes="76px"
-                  className="object-contain"
-                />
-              </div>
-            ) : (
-              <div className="h-[60px] w-[76px] rounded-[12px] bg-[linear-gradient(180deg,#F3F3F3_0%,#ECECEC_100%)]" />
-            )
-          ) : (
-            <div className="flex flex-col items-center gap-3">
-              <div className="h-[46px] w-[64px] rounded-[14px] bg-[linear-gradient(180deg,#F3F3F3_0%,#ECECEC_100%)]" />
-              {option.label ? <span className="text-[12px] font-medium text-[#5C5780]">{option.label}</span> : null}
-            </div>
-          )}
-        </button>
+          style={{ backgroundColor: color.value }}
+        />
       ))}
     </div>
   );
 }
 
-export function AvatarCreationPage() {
-  const router = useRouter();
-  const config = useAvatarStore((state) => state.config);
-  const profile = useAvatarStore((state) => state.profile);
-  const updateConfig = useAvatarStore((state) => state.updateConfig);
-  const updateProfile = useAvatarStore((state) => state.updateProfile);
-
-  const [activeTab, setActiveTab] = useState<AvatarTab>('Face');
-
-  const options = useMemo<OptionCard[]>(() => {
-    if (activeTab === 'Face') {
-      return Array.from({ length: 9 }, (_, index) => ({
-        id: `face-${index + 1}`,
-        label: index === 0 ? 'Face 1' : '',
-        imageSrc: index === 0 ? FACE_OPTION_ASSET : undefined,
-        active: index === 0,
-        onSelect: () => {
-          if (index === 0) updateConfig({ facePreset: FACE_PRESETS[0]?.id ?? config.facePreset });
-        },
-      }));
-    }
-
-    return Array.from({ length: 9 }, (_, index) => ({
-      id: `${activeTab.toLowerCase()}-${index + 1}`,
-      label: '',
-      active: false,
-      onSelect: () => undefined,
-    }));
-  }, [activeTab, config.facePreset, updateConfig]);
+function AvatarOptionCard({
+  option,
+  selected,
+  onSelect,
+  compact = false,
+}: {
+  option?: AvatarOption;
+  selected?: boolean;
+  onSelect?: () => void;
+  compact?: boolean;
+}) {
+  if (!option) {
+    return <div className="h-[110px] rounded-[10px] border-2 border-[#DFDFDF] bg-[#F0F0F0] sm:h-[155px]" />;
+  }
 
   return (
-    <div className="warp-font-ui min-h-screen bg-[linear-gradient(108deg,#d5d2ff_2%,#f5f3ee_48%,#d9fff4_108%)] px-[42px] py-[52px] text-[#111111]">
-      <div className="mx-auto flex max-w-[1390px] flex-col gap-[30px]">
-        <div className="flex justify-center pt-[6px]">
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        'group flex items-center justify-center rounded-[10px] border-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB] focus-visible:ring-offset-2',
+        compact ? 'h-[104px] p-[7px] sm:h-[122px]' : 'h-[110px] p-[10px] sm:h-[155px]',
+        selected
+          ? 'border-[#685EEB] bg-white shadow-[0_9px_20px_rgba(104,94,235,0.14)]'
+          : 'border-[#DFDFDF] bg-[#F0F0F0] hover:border-[#B9B4FF] hover:bg-white/80'
+      )}
+      aria-pressed={selected}
+    >
+      <span className="sr-only">{option.label}</span>
+      <span className={cn('relative', compact ? 'h-[78px] w-[86px] sm:h-[92px] sm:w-[102px]' : 'h-[78px] w-[78px] sm:h-[115px] sm:w-[115px]')}>
+        <Image src={option.src} alt="" fill sizes={compact ? '102px' : '115px'} className="object-contain" />
+      </span>
+    </button>
+  );
+}
+
+function AvatarPreview() {
+  return (
+    <section className="relative min-h-[440px] overflow-hidden rounded-[51px] border-2 border-white bg-white/10 shadow-[0_2px_17.7px_rgba(104,94,235,0.31)] backdrop-blur-[4px] lg:min-h-[539px]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_26%_18%,rgba(217,255,244,0.95),rgba(255,255,255,0.46)_43%,rgba(213,210,255,0.74)_100%)]" />
+      <div className="relative flex h-full min-h-[440px] items-center justify-center lg:min-h-[539px]">
+        <div className="relative h-[360px] w-[260px] lg:h-[430px] lg:w-[318px]">
+          {/* Full layered avatar compositing is intentionally deferred because the current prototype assets are not a complete aligned compositing system. */}
+          <Image src={avatarPreviewAsset} alt="Avatar preview" fill sizes="318px" className="object-contain" priority />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AvatarOptionsPanel({
+  activeTab,
+  setActiveTab,
+  selectedFace,
+  setSelectedFace,
+  selectedHair,
+  setSelectedHair,
+  selectedOutfit,
+  setSelectedOutfit,
+  selectedHairColorId,
+  setSelectedHairColorId,
+}: {
+  activeTab: AvatarTab;
+  setActiveTab: (tab: AvatarTab) => void;
+  selectedFace: AvatarOption;
+  setSelectedFace: (option: AvatarOption) => void;
+  selectedHair: AvatarOption;
+  setSelectedHair: (option: AvatarOption) => void;
+  selectedOutfit: AvatarOption;
+  setSelectedOutfit: (option: AvatarOption) => void;
+  selectedHairColorId: HairColorId;
+  setSelectedHairColorId: (color: HairColorId) => void;
+}) {
+  const visibleOptions = useMemo(() => {
+    if (activeTab === 'face') return faceOptions;
+    if (activeTab === 'hair') return hairOptionsByColor[selectedHairColorId];
+    return outfitOptions;
+  }, [activeTab, selectedHairColorId]);
+
+  const gridSlots = [...visibleOptions, ...Array.from<undefined>({ length: Math.max(0, 6 - visibleOptions.length) })];
+  const optionCards = activeTab === 'outfit' ? gridSlots.slice(0, 6) : visibleOptions;
+
+  return (
+    <section className="min-h-[440px] overflow-hidden rounded-[51px] border-2 border-white bg-white/50 shadow-[0_2px_17.7px_rgba(104,94,235,0.31)] backdrop-blur-[4px] lg:min-h-[539px]">
+      <div className="border-b border-[#DFDFDF] px-[34px] pt-[25px]">
+        <div className="flex items-center justify-center gap-[74px] pb-[25px]">
+          {avatarTabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                'text-[16px] font-semibold transition hover:text-[#685EEB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB] focus-visible:ring-offset-4',
+                activeTab === tab.id ? 'text-[#685EEB]' : 'text-[#A5A4A4]'
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="px-[16px] py-[18px] sm:py-[20px]">
+        {activeTab === 'hair' ? (
+          <ColorSwatches colors={hairColors} selectedId={selectedHairColorId} onSelect={(color) => setSelectedHairColorId(color.id as HairColorId)} />
+        ) : null}
+        <div className={cn(activeTab === 'hair' && 'max-h-[356px] overflow-y-auto pr-[4px]')}>
+          <div
+            className={cn(
+              'grid grid-cols-3',
+              activeTab === 'face' ? 'mt-[4px] gap-[7px] sm:gap-[8px]' : 'gap-[10px] sm:gap-[12px]',
+              activeTab === 'outfit' ? 'mt-[42px]' : activeTab === 'face' ? '' : 'mt-[20px]'
+            )}
+          >
+            {optionCards.map((option, index) => {
+              const selected =
+                (activeTab === 'face' && option?.id === selectedFace.id) ||
+                (activeTab === 'hair' && option?.id === selectedHair.id) ||
+                (activeTab === 'outfit' && option?.id === selectedOutfit.id);
+              const handleSelect = () => {
+                if (!option) return;
+                if (activeTab === 'face') setSelectedFace(option);
+                if (activeTab === 'hair') setSelectedHair(option);
+                if (activeTab === 'outfit') setSelectedOutfit(option);
+              };
+
+              return (
+                <AvatarOptionCard
+                  key={option?.id ?? `placeholder-${index}`}
+                  option={option}
+                  selected={selected}
+                  onSelect={handleSelect}
+                  compact={activeTab === 'face' || activeTab === 'hair'}
+                />
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProfileInfoCard({
+  displayName,
+  setDisplayName,
+  position,
+  setPosition,
+  interests,
+  setInterests,
+  bio,
+  setBio,
+}: {
+  displayName: string;
+  setDisplayName: (value: string) => void;
+  position: string;
+  setPosition: (value: string) => void;
+  interests: string[];
+  setInterests: (value: string[]) => void;
+  bio: string;
+  setBio: (value: string) => void;
+}) {
+  const addRandomInterest = () => {
+    const remainingInterests = interestPool.filter((interest) => !interests.includes(interest));
+    if (remainingInterests.length === 0) return;
+
+    const nextInterest = remainingInterests[Math.floor(Math.random() * remainingInterests.length)];
+    setInterests([...interests, nextInterest]);
+  };
+
+  return (
+    <section className="min-h-[440px] overflow-hidden rounded-[51px] border-2 border-white bg-white/50 shadow-[0_2px_17.7px_rgba(104,94,235,0.31)] backdrop-blur-[4px] lg:min-h-[539px]">
+      <div className="space-y-[21px] px-[18px] py-[26px]">
+        <label className="block">
+          <span className="warp-font-display text-[14px] font-extrabold uppercase text-[#685EEB]">Display Name</span>
+          <div className="mt-[13px] flex items-center gap-3 border-b border-[#A5A4A4] pb-[7px]">
+            <input
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              placeholder="Enter your name"
+              className="min-w-0 flex-1 bg-transparent text-[16px] text-[#656565] placeholder:text-[#858585] outline-none"
+            />
+            <Pencil className="h-5 w-5 shrink-0 text-[#A5A4A4]" strokeWidth={2.4} />
+          </div>
+        </label>
+
+        <label className="block">
+          <span className="warp-font-display text-[14px] font-extrabold uppercase text-[#685EEB]">Position</span>
+          <div className="mt-[13px] flex items-center gap-3 border-b border-[#A5A4A4] pb-[7px]">
+            <input
+              value={position}
+              onChange={(event) => setPosition(event.target.value)}
+              placeholder="Position"
+              className="min-w-0 flex-1 bg-transparent text-[16px] text-[#656565] placeholder:text-[#858585] outline-none"
+            />
+            <Pencil className="h-5 w-5 shrink-0 text-[#A5A4A4]" strokeWidth={2.4} />
+          </div>
+        </label>
+
+        <div>
+          <span className="warp-font-display text-[14px] font-extrabold uppercase text-[#685EEB]">Interests &amp; Skills</span>
+          <div className="mt-[12px] flex flex-wrap gap-[6px]">
+            {interests.map((interest, index) => (
+              <button
+                key={`${interest}-${index}`}
+                type="button"
+                onClick={() => setInterests(interests.filter((_, currentIndex) => currentIndex !== index))}
+                className="inline-flex h-[30px] items-center gap-[8px] rounded-[22px] border-2 border-[#685EEB] bg-[#DFDCFF] px-[12px] text-[12px] text-[#685EEB] transition hover:bg-[#E9E6FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB] focus-visible:ring-offset-2"
+              >
+                <span>{interest}</span>
+                <X className="h-[10px] w-[10px]" strokeWidth={2.4} />
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={addRandomInterest}
+              className="inline-flex h-[30px] w-[30px] items-center justify-center rounded-full border-2 border-dashed border-[#A29BFC] text-[#685EEB] transition hover:border-[#685EEB] hover:bg-[#DFDCFF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB] focus-visible:ring-offset-2"
+              aria-label="Add random interest"
+            >
+              <Plus className="h-[14px] w-[14px]" strokeWidth={2.4} />
+            </button>
+          </div>
+        </div>
+
+        <label className="block">
+          <span className="warp-font-display text-[14px] font-extrabold uppercase text-[#685EEB]">Bio</span>
+          <textarea
+            value={bio}
+            onChange={(event) => setBio(event.target.value)}
+            rows={5}
+            className="mt-[12px] min-h-[126px] w-full resize-none rounded-[28px] border border-[#A5A4A4] bg-white/60 px-[16px] py-[14px] text-[15px] text-[#656565] outline-none transition focus:border-[#685EEB] focus:ring-2 focus:ring-[#685EEB]/20 sm:rounded-[33px]"
+          />
+        </label>
+      </div>
+    </section>
+  );
+}
+
+export function AvatarCreationPage() {
+  const router = useRouter();
+  const avatarProfile = useAvatarStore((state) => state.profile);
+  const updateAvatarProfile = useAvatarStore((state) => state.updateProfile);
+  const [activeTab, setActiveTab] = useState<AvatarTab>('face');
+  const [selectedFace, setSelectedFace] = useState(faceOptions[0]);
+  const [selectedHairColorId, setSelectedHairColorId] = useState<HairColorId>('brown');
+  const [selectedHair, setSelectedHair] = useState(hairOptionsByColor.brown[0]);
+  const [selectedOutfit, setSelectedOutfit] = useState(outfitOptions[2]);
+  const [displayName, setDisplayName] = useState('');
+  const [position, setPosition] = useState('');
+  const [interests, setInterests] = useState<string[]>(() => avatarProfile.interests.length > 0 ? avatarProfile.interests : defaultInterests);
+  const [bio, setBio] = useState('');
+
+  const handleInterestsChange = (nextInterests: string[]) => {
+    setInterests(nextInterests);
+    updateAvatarProfile({ interests: nextInterests });
+  };
+
+  const handleHairColorSelect = (colorId: HairColorId) => {
+    const nextHairOptions = hairOptionsByColor[colorId];
+    setSelectedHairColorId(colorId);
+    if (!nextHairOptions.some((option) => option.id === selectedHair.id)) {
+      setSelectedHair(nextHairOptions[0]);
+    }
+  };
+
+  return (
+    <main className="warp-font-ui min-h-screen overflow-x-hidden bg-[linear-gradient(108deg,#D5D2FF_2%,#F5F3EE_48%,#D9FFF4_108%)] px-[24px] py-[48px] text-[#050505] sm:px-[42px] sm:py-[52px]">
+      <div className="mx-auto max-w-[1324px]">
+        <div className="flex justify-center">
           <StepIndicator />
         </div>
 
-        <div className="pl-[6px]">
-          <h1 className="warp-font-display text-[40px] font-extrabold leading-none tracking-[-0.04em] text-black">
-            Create your <span className="bg-[linear-gradient(90deg,#685EEB_15%,#46D2D2_100%)] bg-clip-text text-transparent">Avatar</span>
+        <header className="mt-[18px] sm:mt-[10px]">
+          <h1 className="warp-font-display text-[34px] font-black leading-none text-black sm:text-[40px]">
+            Create your <span className="bg-[linear-gradient(90deg,#685EEB_18%,#46D2D2_100%)] bg-clip-text text-transparent">Avatar</span>
           </h1>
-          <p className="mt-3 text-[20px] font-light text-[#656565]">
+          <p className="mt-[8px] text-[17px] font-light text-[#656565] sm:text-[20px]">
             Customize how you appear in your virtual workspace - make it you!
           </p>
+        </header>
+
+        <div className="mt-[48px] grid items-stretch gap-[12px] lg:grid-cols-[436px_minmax(430px,522px)_338px]">
+          <AvatarPreview />
+
+          <AvatarOptionsPanel
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            selectedFace={selectedFace}
+            setSelectedFace={setSelectedFace}
+            selectedHair={selectedHair}
+            setSelectedHair={setSelectedHair}
+            selectedOutfit={selectedOutfit}
+            setSelectedOutfit={setSelectedOutfit}
+            selectedHairColorId={selectedHairColorId}
+            setSelectedHairColorId={handleHairColorSelect}
+          />
+
+          <ProfileInfoCard
+            displayName={displayName}
+            setDisplayName={setDisplayName}
+            position={position}
+            setPosition={setPosition}
+            interests={interests}
+            setInterests={handleInterestsChange}
+            bio={bio}
+            setBio={setBio}
+          />
         </div>
 
-        <div className="mx-auto grid min-h-[539px] w-full max-w-[1324px] items-stretch justify-center gap-[16px] xl:grid-cols-[436px_522px_338px]">
-          <section className="overflow-hidden rounded-[51px] border-2 border-white bg-white/10 shadow-[0_2px_17.7px_rgba(104,94,235,0.31)] backdrop-blur-[4px]">
-            <div className="h-full rounded-[49px] bg-[radial-gradient(circle_at_20%_20%,rgba(217,255,244,0.95),rgba(255,255,255,0.6)_45%,rgba(213,210,255,0.85)_100%)] px-[26px] py-[20px]">
-              <AvatarPreviewPlaceholder />
-            </div>
-          </section>
-
-          <section className="overflow-hidden rounded-[51px] border-2 border-white bg-white/48 shadow-[0_2px_17.7px_rgba(104,94,235,0.31)] backdrop-blur-[4px]">
-            <div className="border-b border-[#E2E0F0] px-[28px] pt-[24px]">
-              <div className="flex items-center gap-[30px] overflow-x-auto pb-[18px]">
-                {AVATAR_TABS.map((tab) => (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => setActiveTab(tab)}
-                    className={cn(
-                      'shrink-0 pb-[2px] text-[16px] font-semibold transition',
-                      activeTab === tab ? 'text-[#685EEB]' : 'text-[#A5A4A4]'
-                    )}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="p-[16px] pt-[18px]">
-              <OptionGrid tab={activeTab} options={options} />
-            </div>
-          </section>
-
-          <section className="overflow-hidden rounded-[51px] border-2 border-white bg-white/48 shadow-[0_2px_17.7px_rgba(104,94,235,0.31)] backdrop-blur-[4px]">
-            <div className="px-[18px] py-[26px]">
-              <div className="space-y-5">
-                <label className="block">
-                  <span className="warp-font-display text-[14px] font-extrabold uppercase tracking-[0.04em] text-[#685EEB]">
-                    Display Name
-                  </span>
-                  <div className="mt-3 flex items-center gap-3 border-b border-[#A5A4A4] pb-2">
-                    <input
-                      value={profile.displayName}
-                      onChange={(event) => updateProfile({ displayName: event.target.value })}
-                      placeholder="Enter your name"
-                      className="flex-1 bg-transparent text-[16px] text-[#5C5780] placeholder:text-[#858585] outline-none"
-                    />
-                    <Pencil className="h-4 w-4 text-[#858585]" strokeWidth={2} />
-                  </div>
-                </label>
-
-                <label className="block">
-                  <span className="warp-font-display text-[14px] font-extrabold uppercase tracking-[0.04em] text-[#685EEB]">
-                    Position
-                  </span>
-                  <div className="mt-3 flex items-center gap-3 border-b border-[#A5A4A4] pb-2">
-                    <input
-                      value={profile.position}
-                      onChange={(event) => updateProfile({ position: event.target.value })}
-                      placeholder="Position"
-                      className="flex-1 bg-transparent text-[16px] text-[#5C5780] placeholder:text-[#858585] outline-none"
-                    />
-                    <Pencil className="h-4 w-4 text-[#858585]" strokeWidth={2} />
-                  </div>
-                </label>
-
-                <div>
-                  <span className="warp-font-display text-[14px] font-extrabold uppercase tracking-[0.04em] text-[#685EEB]">
-                    Interests &amp; Skills
-                  </span>
-                  <div className="mt-4 flex flex-wrap gap-[8px]">
-                    {profile.interests.map((interest, index) => (
-                      <button
-                        key={`${interest}-${index}`}
-                        type="button"
-                        onClick={() =>
-                          updateProfile({
-                            interests: profile.interests.filter((_, currentIndex) => currentIndex !== index),
-                          })
-                        }
-                        className="inline-flex items-center gap-[9px] rounded-[22px] border-2 border-[#685EEB] bg-[#DFDCFF] px-[14px] py-[8px] text-[13px] text-[#685EEB]"
-                      >
-                        <span>{interest}</span>
-                        <X className="h-3 w-3" strokeWidth={2.2} />
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const remainingInterests = DEMO_INTERESTS.filter(
-                          (interest) => !profile.interests.includes(interest)
-                        );
-                        if (remainingInterests.length === 0) return;
-
-                        updateProfile({
-                          interests: [
-                            ...profile.interests,
-                            remainingInterests[Math.floor(Math.random() * remainingInterests.length)],
-                          ],
-                        });
-                      }}
-                      className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-full border-2 border-dashed border-[#A29BFC] text-[#685EEB]"
-                    >
-                      <Plus className="h-4 w-4" strokeWidth={2.2} />
-                    </button>
-                  </div>
-                </div>
-
-                <label className="block">
-                  <span className="warp-font-display text-[14px] font-extrabold uppercase tracking-[0.04em] text-[#685EEB]">
-                    Bio
-                  </span>
-                  <textarea
-                    value={profile.bio}
-                    onChange={(event) => updateProfile({ bio: event.target.value })}
-                    rows={5}
-                    placeholder="Tell your team a bit about yourself..."
-                    className="mt-3 min-h-[124px] w-full resize-none rounded-[33px] border border-[#A5A4A4] bg-white/64 px-4 py-4 text-[15px] text-[#5C5780] placeholder:text-[#9B96B8] outline-none"
-                  />
-                </label>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <div className="mx-auto flex w-full max-w-[1324px] items-center justify-end gap-[10px] pr-[18px]">
+        <div className="mt-[14px] flex items-center justify-end gap-[10px] pr-[16px]">
           <button
             type="button"
             onClick={() => router.back()}
-            className="inline-flex h-[46px] items-center justify-center rounded-[10px] border border-[#A5A4A4] bg-[#F9FBFD] px-[23px] text-[16px] font-semibold text-[#050505]"
+            className="inline-flex h-[38px] items-center justify-center rounded-[10px] border border-[#A5A4A4] bg-[#F9FBFD] px-[23px] text-[16px] font-semibold text-[#050505] transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB] focus-visible:ring-offset-2"
           >
             Back
           </button>
           <button
             type="button"
             onClick={() => router.push('/employer')}
-            className="inline-flex h-[46px] items-center justify-center gap-2 rounded-[10px] bg-[#685EEB] px-[23px] text-[16px] font-semibold text-white shadow-[0_12px_24px_rgba(104,94,235,0.2)]"
+            className="inline-flex h-[38px] items-center justify-center gap-2 rounded-[10px] bg-[#685EEB] px-[23px] text-[16px] font-semibold text-white shadow-[0_12px_24px_rgba(104,94,235,0.2)] transition hover:bg-[#5E54D8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB] focus-visible:ring-offset-2"
           >
             Continue
             <ChevronRight className="h-4 w-4" strokeWidth={2.4} />
           </button>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
