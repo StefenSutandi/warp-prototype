@@ -155,7 +155,9 @@ const VIRTUAL_ROOM_ASSETS = {
 type AvatarDirection = 'FR' | 'FL' | 'BR' | 'BL';
 
 const AVATAR_BODY_BASE_PATH = '/assets/avatar/walk/body/light';
+const AVATAR_OUTFIT_BASE_PATH = '/assets/avatar/walk/outfit/short';
 const AVATAR_DEPTH_OFFSET = 16;
+const AVATAR_IDLE_FRAME_INDEX = 7;
 const AVATAR_DIRECTIONS: AvatarDirection[] = ['FR', 'FL', 'BR', 'BL'];
 const AVATAR_BODY_IDLE_FILES: Record<AvatarDirection, string> = {
   FR: 'base_light_idle_FR.png',
@@ -169,6 +171,18 @@ const AVATAR_BODY_WALK_FILES: Record<AvatarDirection, string[]> = {
   BR: Array.from({ length: 13 }, (_, index) => `walkcycle_back_${String(index + 1).padStart(4, '0')} 1.png`),
   BL: Array.from({ length: 13 }, (_, index) => `walkcycle_back_${String(index + 1).padStart(4, '0')} 1.png`),
 };
+const AVATAR_OUTFIT_IDLE_FILES: Record<AvatarDirection, string> = {
+  FR: 'outfit3_idle.png',
+  FL: 'outfit3_idle.png',
+  BR: 'outfit3_idle_back.png',
+  BL: 'outfit3_idle_back.png',
+};
+const AVATAR_OUTFIT_WALK_FILES: Record<AvatarDirection, string[]> = {
+  FR: Array.from({ length: 13 }, (_, index) => `outfit_3_front_${String(index + 1).padStart(4, '0')} 1.png`),
+  FL: Array.from({ length: 13 }, (_, index) => `outfit_3_front_${String(index + 1).padStart(4, '0')} 1.png`),
+  BR: Array.from({ length: 13 }, (_, index) => `OUTFIT_3_back_${String(index + 1).padStart(4, '0')} 1.png`),
+  BL: Array.from({ length: 13 }, (_, index) => `OUTFIT_3_back_${String(index + 1).padStart(4, '0')} 1.png`),
+};
 
 function avatarBodyTextureKey(direction: AvatarDirection, frame: 'idle' | number): string {
   return `avatar-body-light-${direction}-${frame}`;
@@ -176,6 +190,15 @@ function avatarBodyTextureKey(direction: AvatarDirection, frame: 'idle' | number
 
 function avatarBodyAssetPath(direction: AvatarDirection, fileName: string): string {
   return `${AVATAR_BODY_BASE_PATH}/${direction}/${encodeURIComponent(fileName)}`;
+}
+
+function avatarOutfitTextureKey(direction: AvatarDirection, frame: 'idle' | number): string {
+  return `avatar-outfit-short-${direction}-${frame}`;
+}
+
+function avatarOutfitAssetPath(direction: AvatarDirection, fileName: string): string {
+  const isIdle = fileName === AVATAR_OUTFIT_IDLE_FILES[direction];
+  return `${AVATAR_OUTFIT_BASE_PATH}${isIdle ? '' : `/${direction}`}/${encodeURIComponent(fileName)}`;
 }
 
 const FIGMA_MAIN_ROOM = {
@@ -213,6 +236,7 @@ export default class MainOfficeScene extends Phaser.Scene {
   private static readonly VISUAL_CAMERA_Y_OFFSET = 70;
 
   private player!: Phaser.Physics.Arcade.Sprite;
+  private playerOutfit!: Phaser.GameObjects.Sprite;
   private playerLabel!: Phaser.GameObjects.Text;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
@@ -328,6 +352,18 @@ export default class MainOfficeScene extends Phaser.Scene {
           avatarBodyAssetPath(direction, fileName),
         );
       });
+
+      this.load.image(
+        avatarOutfitTextureKey(direction, 'idle'),
+        avatarOutfitAssetPath(direction, AVATAR_OUTFIT_IDLE_FILES[direction]),
+      );
+
+      AVATAR_OUTFIT_WALK_FILES[direction].forEach((fileName, index) => {
+        this.load.image(
+          avatarOutfitTextureKey(direction, index + 1),
+          avatarOutfitAssetPath(direction, fileName),
+        );
+      });
     });
   }
 
@@ -349,10 +385,15 @@ export default class MainOfficeScene extends Phaser.Scene {
     // --- Player Avatar (persistent across rooms) ---
     this.player = this.physics.add.sprite(400, 300, avatarBodyTextureKey(this.lastAvatarDirection, 'idle'));
     this.player.setOrigin(0.5, 0.88);
-    this.player.setDisplaySize(112, 112);
+    this.player.setDisplaySize(180, 180);
     this.player.setCollideWorldBounds(true);
     this.player.body?.setSize(26, 20, true);
     this.updatePlayerDepth();
+
+    this.playerOutfit = this.add.sprite(400, 300, avatarOutfitTextureKey(this.lastAvatarDirection, 'idle'));
+    this.playerOutfit.setOrigin(0.5, 0.88);
+    this.playerOutfit.setDisplaySize(180, 180);
+    this.syncOutfitLayer();
 
     this.playerLabel = this.add.text(400, 270, 'You', {
       fontSize: '11px', color: '#6366f1', fontStyle: 'bold'
@@ -360,7 +401,7 @@ export default class MainOfficeScene extends Phaser.Scene {
 
     this.events.on('update', () => {
       this.playerLabel.setPosition(this.player.x, this.player.y - 22);
-      this.playerLabel.setDepth(this.player.depth + 1);
+      this.playerLabel.setDepth(this.player.depth + 2);
     });
 
     // --- Keyboard Input ---
@@ -423,18 +464,28 @@ export default class MainOfficeScene extends Phaser.Scene {
   private createAvatarAnimations() {
     AVATAR_DIRECTIONS.forEach((direction) => {
       const key = `avatar-walk-${direction}`;
-      if (this.anims.exists(key)) {
-        return;
+      if (!this.anims.exists(key)) {
+        this.anims.create({
+          key,
+          frames: AVATAR_BODY_WALK_FILES[direction].map((_, index) => ({
+            key: avatarBodyTextureKey(direction, index + 1),
+          })),
+          frameRate: 11,
+          repeat: -1,
+        });
       }
 
-      this.anims.create({
-        key,
-        frames: AVATAR_BODY_WALK_FILES[direction].map((_, index) => ({
-          key: avatarBodyTextureKey(direction, index + 1),
-        })),
-        frameRate: 11,
-        repeat: -1,
-      });
+      const outfitKey = `avatar-outfit-walk-${direction}`;
+      if (!this.anims.exists(outfitKey)) {
+        this.anims.create({
+          key: outfitKey,
+          frames: AVATAR_OUTFIT_WALK_FILES[direction].map((_, index) => ({
+            key: avatarOutfitTextureKey(direction, index + 1),
+          })),
+          frameRate: 11,
+          repeat: -1,
+        });
+      }
     });
   }
 
@@ -465,17 +516,33 @@ export default class MainOfficeScene extends Phaser.Scene {
       this.lastAvatarDirection = this.getAvatarDirection(left, right, up, down);
       this.isPlayerWalking = true;
       this.player.anims.play(`avatar-walk-${this.lastAvatarDirection}`, true);
+      this.playerOutfit.anims.play(`avatar-outfit-walk-${this.lastAvatarDirection}`, true);
     } else {
       this.setAvatarIdle();
     }
 
     this.updatePlayerDepth();
+    this.syncOutfitLayer();
   }
 
   private updatePlayerDepth() {
     const footY = this.player.y + this.player.displayHeight * (1 - this.player.originY);
     this.player.setDepth(footY + AVATAR_DEPTH_OFFSET);
-    this.playerLabel?.setDepth(this.player.depth + 1);
+    this.playerOutfit?.setDepth(this.player.depth + 1);
+    this.playerLabel?.setDepth(this.player.depth + 2);
+  }
+
+  private syncOutfitLayer() {
+    this.playerOutfit.setPosition(this.player.x, this.player.y);
+    this.playerOutfit.setDepth(this.player.depth + 1);
+  }
+
+  private getBodyIdleTexture(direction: AvatarDirection): string {
+    return avatarBodyTextureKey(direction, AVATAR_IDLE_FRAME_INDEX);
+  }
+
+  private getOutfitIdleTexture(direction: AvatarDirection): string {
+    return avatarOutfitTextureKey(direction, AVATAR_IDLE_FRAME_INDEX);
   }
 
   private setAvatarIdle() {
@@ -485,7 +552,9 @@ export default class MainOfficeScene extends Phaser.Scene {
 
     this.isPlayerWalking = false;
     this.player.anims.stop();
-    this.player.setTexture(avatarBodyTextureKey(this.lastAvatarDirection, 'idle'));
+    this.playerOutfit.anims.stop();
+    this.player.setTexture(this.getBodyIdleTexture(this.lastAvatarDirection));
+    this.playerOutfit.setTexture(this.getOutfitIdleTexture(this.lastAvatarDirection));
   }
 
   private getAvatarDirection(left: boolean, right: boolean, up: boolean, down: boolean): AvatarDirection {
@@ -976,6 +1045,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       }
 
       this.updatePlayerDepth();
+      this.syncOutfitLayer();
       this.loadRoom(targetRoom);
     });
   }
