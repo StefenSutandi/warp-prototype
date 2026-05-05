@@ -153,12 +153,21 @@ const VIRTUAL_ROOM_ASSETS = {
 } as const;
 
 type AvatarDirection = 'FR' | 'FL' | 'BR' | 'BL';
+type HairLayerConfig = {
+  texture: string;
+  flipX: boolean;
+  offsetX: number;
+  offsetY: number;
+};
 
 const AVATAR_BODY_BASE_PATH = '/assets/avatar/walk/body/light';
 const AVATAR_OUTFIT_BASE_PATH = '/assets/avatar/walk/outfit/short';
+const AVATAR_HAIR_BASE_PATH = '/assets/avatar/walk/hair/source';
 const AVATAR_SHADOW_ASSET_PATH = '/assets/avatar/walk/shadow/SHADOW_BASE.png';
 const AVATAR_DEPTH_OFFSET = 16;
 const AVATAR_IDLE_FRAME_INDEX = 7;
+const AVATAR_HAIR_FRONT_FILE = 'hair_1.png';
+const AVATAR_HAIR_BACK_FILE = 'hair_1_back.png';
 const AVATAR_DIRECTIONS: AvatarDirection[] = ['FR', 'FL', 'BR', 'BL'];
 const AVATAR_BODY_IDLE_FILES: Record<AvatarDirection, string> = {
   FR: 'base_light_idle_FR.png',
@@ -202,6 +211,10 @@ function avatarOutfitAssetPath(direction: AvatarDirection, fileName: string): st
   return `${AVATAR_OUTFIT_BASE_PATH}${isIdle ? '' : `/${direction}`}/${encodeURIComponent(fileName)}`;
 }
 
+function avatarHairAssetPath(fileName: string): string {
+  return `${AVATAR_HAIR_BASE_PATH}/${encodeURIComponent(fileName)}`;
+}
+
 const FIGMA_MAIN_ROOM = {
   roomBase: { x: 8, y: 127, w: 1274.9627685546875, h: 779.8630981445312 },
   tv: { x: 232.869140625, y: 143.8271484375, w: 291.2351379394531, h: 372.7810363769531 },
@@ -239,6 +252,7 @@ export default class MainOfficeScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
   private playerShadow!: Phaser.GameObjects.Sprite;
   private playerOutfit!: Phaser.GameObjects.Sprite;
+  private playerHair!: Phaser.GameObjects.Sprite;
   private playerLabel!: Phaser.GameObjects.Text;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
@@ -342,6 +356,8 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.load.image('chair_back_hover_blue', VIRTUAL_ROOM_ASSETS.chairBackHoverBlue);
     this.load.image('sit_popup_primary', VIRTUAL_ROOM_ASSETS.sitPopupPrimary);
     this.load.image('avatar-shadow', AVATAR_SHADOW_ASSET_PATH);
+    this.load.image('avatar-hair-front', avatarHairAssetPath(AVATAR_HAIR_FRONT_FILE));
+    this.load.image('avatar-hair-back', avatarHairAssetPath(AVATAR_HAIR_BACK_FILE));
 
     AVATAR_DIRECTIONS.forEach((direction) => {
       this.load.image(
@@ -400,6 +416,11 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.playerOutfit = this.add.sprite(400, 300, avatarOutfitTextureKey(this.lastAvatarDirection, 'idle'));
     this.playerOutfit.setOrigin(0.5, 0.88);
     this.playerOutfit.setDisplaySize(180, 180);
+
+    this.playerHair = this.add.sprite(400, 300, this.getHairLayerConfig(this.lastAvatarDirection).texture);
+    this.playerHair.setOrigin(0.5, 0.88);
+    this.playerHair.setDisplaySize(180, 180);
+    this.applyHairLayerConfig();
     this.syncAvatarLayers();
 
     this.playerLabel = this.add.text(400, 270, 'You', {
@@ -408,7 +429,7 @@ export default class MainOfficeScene extends Phaser.Scene {
 
     this.events.on('update', () => {
       this.playerLabel.setPosition(this.player.x, this.player.y - 22);
-      this.playerLabel.setDepth(this.player.depth + 2);
+      this.playerLabel.setDepth(this.player.depth + 3);
     });
 
     // --- Keyboard Input ---
@@ -523,6 +544,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     if (isMoving) {
       this.lastAvatarDirection = this.getAvatarDirection(left, right, up, down);
       this.isPlayerWalking = true;
+      this.applyHairLayerConfig();
       this.player.anims.play(`avatar-walk-${this.lastAvatarDirection}`, true);
       this.playerOutfit.anims.play(`avatar-outfit-walk-${this.lastAvatarDirection}`, true);
     } else {
@@ -538,7 +560,8 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.player.setDepth(footY + AVATAR_DEPTH_OFFSET);
     this.playerShadow?.setDepth(this.player.depth - 1);
     this.playerOutfit?.setDepth(this.player.depth + 1);
-    this.playerLabel?.setDepth(this.player.depth + 2);
+    this.playerHair?.setDepth(this.player.depth + 2);
+    this.playerLabel?.setDepth(this.player.depth + 3);
   }
 
   private syncAvatarLayers() {
@@ -546,7 +569,10 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.playerShadow.setDepth(this.player.depth - 1);
     this.playerOutfit.setPosition(this.player.x, this.player.y);
     this.playerOutfit.setDepth(this.player.depth + 1);
-    this.playerLabel?.setDepth(this.player.depth + 2);
+    const hairConfig = this.getHairLayerConfig(this.lastAvatarDirection);
+    this.playerHair.setPosition(this.player.x + hairConfig.offsetX, this.player.y + hairConfig.offsetY);
+    this.playerHair.setDepth(this.player.depth + 2);
+    this.playerLabel?.setDepth(this.player.depth + 3);
   }
 
   private getBodyIdleTexture(direction: AvatarDirection): string {
@@ -555,6 +581,25 @@ export default class MainOfficeScene extends Phaser.Scene {
 
   private getOutfitIdleTexture(direction: AvatarDirection): string {
     return avatarOutfitTextureKey(direction, AVATAR_IDLE_FRAME_INDEX);
+  }
+
+  private getHairLayerConfig(direction: AvatarDirection): HairLayerConfig {
+    switch (direction) {
+      case 'FR':
+        return { texture: 'avatar-hair-front', flipX: false, offsetX: 0, offsetY: 0 };
+      case 'FL':
+        return { texture: 'avatar-hair-front', flipX: true, offsetX: 0, offsetY: 0 };
+      case 'BR':
+        return { texture: 'avatar-hair-back', flipX: false, offsetX: 8, offsetY: 6 };
+      case 'BL':
+        return { texture: 'avatar-hair-back', flipX: true, offsetX: -8, offsetY: 6 };
+    }
+  }
+
+  private applyHairLayerConfig() {
+    const hairConfig = this.getHairLayerConfig(this.lastAvatarDirection);
+    this.playerHair.setTexture(hairConfig.texture);
+    this.playerHair.setFlipX(hairConfig.flipX);
   }
 
   private setAvatarIdle() {
