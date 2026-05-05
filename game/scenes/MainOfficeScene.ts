@@ -177,6 +177,9 @@ const AVATAR_IDLE_FRAME_INDEX = 7;
 const AVATAR_HAIR_FRONT_FILE = 'hair_1.png';
 const AVATAR_HAIR_BACK_FILE = 'hair_1_back.png';
 const AVATAR_FACE_DEFAULT_FILE = 'face_1_default.png';
+const AVATAR_FACE_BLINK_FILE = 'face_1_blink.png';
+const AVATAR_FACE_BLINK_INTERVAL_MS = 3500;
+const AVATAR_FACE_BLINK_DURATION_MS = 140;
 const AVATAR_DIRECTIONS: AvatarDirection[] = ['FR', 'FL', 'BR', 'BL'];
 const AVATAR_BODY_IDLE_FILES: Record<AvatarDirection, string> = {
   FR: 'base_light_idle_FR.png',
@@ -273,6 +276,8 @@ export default class MainOfficeScene extends Phaser.Scene {
   private speed: number = 250;
   private lastAvatarDirection: AvatarDirection = 'FR';
   private isPlayerWalking = false;
+  private isFaceBlinking = false;
+  private blinkEvent?: Phaser.Time.TimerEvent;
 
   private currentRoomId: string = 'main';
   private teammates: TeammateData[] = [];
@@ -373,6 +378,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.load.image('avatar-hair-front', avatarHairAssetPath(AVATAR_HAIR_FRONT_FILE));
     this.load.image('avatar-hair-back', avatarHairAssetPath(AVATAR_HAIR_BACK_FILE));
     this.load.image('avatar-face-default', avatarFaceAssetPath(AVATAR_FACE_DEFAULT_FILE));
+    this.load.image('avatar-face-blink', avatarFaceAssetPath(AVATAR_FACE_BLINK_FILE));
 
     AVATAR_DIRECTIONS.forEach((direction) => {
       this.load.image(
@@ -452,6 +458,12 @@ export default class MainOfficeScene extends Phaser.Scene {
       this.playerLabel.setDepth(this.player.depth + 4);
     });
 
+    this.blinkEvent = this.time.addEvent({
+      delay: AVATAR_FACE_BLINK_INTERVAL_MS,
+      loop: true,
+      callback: () => this.triggerFaceBlink(),
+    });
+
     // --- Keyboard Input ---
     if (this.input.keyboard) {
       this.cursors = this.input.keyboard.createCursorKeys();
@@ -495,6 +507,8 @@ export default class MainOfficeScene extends Phaser.Scene {
           window.clearTimeout(this.focusSyncTimeout);
           this.focusSyncTimeout = null;
         }
+        this.blinkEvent?.remove(false);
+        this.blinkEvent = undefined;
       });
     }
     this.scale.on(Phaser.Scale.Events.RESIZE, this.handleScaleResize, this);
@@ -642,9 +656,25 @@ export default class MainOfficeScene extends Phaser.Scene {
 
   private applyFaceLayerConfig() {
     const faceConfig = this.getFaceLayerConfig(this.lastAvatarDirection);
-    this.playerFace.setTexture(faceConfig.texture);
+    const texture = faceConfig.visible && this.isFaceBlinking ? 'avatar-face-blink' : faceConfig.texture;
+    this.playerFace.setTexture(texture);
     this.playerFace.setFlipX(faceConfig.flipX);
     this.playerFace.setVisible(faceConfig.visible);
+  }
+
+  private triggerFaceBlink() {
+    const faceConfig = this.getFaceLayerConfig(this.lastAvatarDirection);
+    if (!faceConfig.visible || this.isFaceBlinking) {
+      return;
+    }
+
+    this.isFaceBlinking = true;
+    this.applyFaceLayerConfig();
+
+    this.time.delayedCall(AVATAR_FACE_BLINK_DURATION_MS, () => {
+      this.isFaceBlinking = false;
+      this.applyFaceLayerConfig();
+    });
   }
 
   private setAvatarIdle() {
