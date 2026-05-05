@@ -156,6 +156,7 @@ type AvatarDirection = 'FR' | 'FL' | 'BR' | 'BL';
 
 const AVATAR_BODY_BASE_PATH = '/assets/avatar/walk/body/light';
 const AVATAR_OUTFIT_BASE_PATH = '/assets/avatar/walk/outfit/short';
+const AVATAR_SHADOW_ASSET_PATH = '/assets/avatar/walk/shadow/SHADOW_BASE.png';
 const AVATAR_DEPTH_OFFSET = 16;
 const AVATAR_IDLE_FRAME_INDEX = 7;
 const AVATAR_DIRECTIONS: AvatarDirection[] = ['FR', 'FL', 'BR', 'BL'];
@@ -236,6 +237,7 @@ export default class MainOfficeScene extends Phaser.Scene {
   private static readonly VISUAL_CAMERA_Y_OFFSET = 70;
 
   private player!: Phaser.Physics.Arcade.Sprite;
+  private playerShadow!: Phaser.GameObjects.Sprite;
   private playerOutfit!: Phaser.GameObjects.Sprite;
   private playerLabel!: Phaser.GameObjects.Text;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -339,6 +341,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.load.image('chair_back_hover_green', VIRTUAL_ROOM_ASSETS.chairBackHoverGreen);
     this.load.image('chair_back_hover_blue', VIRTUAL_ROOM_ASSETS.chairBackHoverBlue);
     this.load.image('sit_popup_primary', VIRTUAL_ROOM_ASSETS.sitPopupPrimary);
+    this.load.image('avatar-shadow', AVATAR_SHADOW_ASSET_PATH);
 
     AVATAR_DIRECTIONS.forEach((direction) => {
       this.load.image(
@@ -390,10 +393,14 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.player.body?.setSize(26, 20, true);
     this.updatePlayerDepth();
 
+    this.playerShadow = this.add.sprite(400, 300, 'avatar-shadow');
+    this.playerShadow.setOrigin(0.5, 0.88);
+    this.playerShadow.setDisplaySize(180, 180);
+
     this.playerOutfit = this.add.sprite(400, 300, avatarOutfitTextureKey(this.lastAvatarDirection, 'idle'));
     this.playerOutfit.setOrigin(0.5, 0.88);
     this.playerOutfit.setDisplaySize(180, 180);
-    this.syncOutfitLayer();
+    this.syncAvatarLayers();
 
     this.playerLabel = this.add.text(400, 270, 'You', {
       fontSize: '11px', color: '#6366f1', fontStyle: 'bold'
@@ -498,6 +505,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     if (this.movementInputBlocked || this.isEditableElementFocused()) {
       this.setAvatarIdle();
       this.updatePlayerDepth();
+      this.syncAvatarLayers();
       return;
     }
 
@@ -522,19 +530,23 @@ export default class MainOfficeScene extends Phaser.Scene {
     }
 
     this.updatePlayerDepth();
-    this.syncOutfitLayer();
+    this.syncAvatarLayers();
   }
 
   private updatePlayerDepth() {
     const footY = this.player.y + this.player.displayHeight * (1 - this.player.originY);
     this.player.setDepth(footY + AVATAR_DEPTH_OFFSET);
+    this.playerShadow?.setDepth(this.player.depth - 1);
     this.playerOutfit?.setDepth(this.player.depth + 1);
     this.playerLabel?.setDepth(this.player.depth + 2);
   }
 
-  private syncOutfitLayer() {
+  private syncAvatarLayers() {
+    this.playerShadow.setPosition(this.player.x, this.player.y);
+    this.playerShadow.setDepth(this.player.depth - 1);
     this.playerOutfit.setPosition(this.player.x, this.player.y);
     this.playerOutfit.setDepth(this.player.depth + 1);
+    this.playerLabel?.setDepth(this.player.depth + 2);
   }
 
   private getBodyIdleTexture(direction: AvatarDirection): string {
@@ -1045,7 +1057,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       }
 
       this.updatePlayerDepth();
-      this.syncOutfitLayer();
+      this.syncAvatarLayers();
       this.loadRoom(targetRoom);
     });
   }
