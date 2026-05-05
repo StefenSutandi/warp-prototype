@@ -159,15 +159,24 @@ type HairLayerConfig = {
   offsetX: number;
   offsetY: number;
 };
+type FaceLayerConfig = {
+  visible: boolean;
+  texture: string;
+  flipX: boolean;
+  offsetX: number;
+  offsetY: number;
+};
 
 const AVATAR_BODY_BASE_PATH = '/assets/avatar/walk/body/light';
 const AVATAR_OUTFIT_BASE_PATH = '/assets/avatar/walk/outfit/short';
 const AVATAR_HAIR_BASE_PATH = '/assets/avatar/walk/hair/source';
+const AVATAR_FACE_BASE_PATH = '/assets/avatar/walk/face/source';
 const AVATAR_SHADOW_ASSET_PATH = '/assets/avatar/walk/shadow/SHADOW_BASE.png';
 const AVATAR_DEPTH_OFFSET = 16;
 const AVATAR_IDLE_FRAME_INDEX = 7;
 const AVATAR_HAIR_FRONT_FILE = 'hair_1.png';
 const AVATAR_HAIR_BACK_FILE = 'hair_1_back.png';
+const AVATAR_FACE_DEFAULT_FILE = 'face_1_default.png';
 const AVATAR_DIRECTIONS: AvatarDirection[] = ['FR', 'FL', 'BR', 'BL'];
 const AVATAR_BODY_IDLE_FILES: Record<AvatarDirection, string> = {
   FR: 'base_light_idle_FR.png',
@@ -215,6 +224,10 @@ function avatarHairAssetPath(fileName: string): string {
   return `${AVATAR_HAIR_BASE_PATH}/${encodeURIComponent(fileName)}`;
 }
 
+function avatarFaceAssetPath(fileName: string): string {
+  return `${AVATAR_FACE_BASE_PATH}/${encodeURIComponent(fileName)}`;
+}
+
 const FIGMA_MAIN_ROOM = {
   roomBase: { x: 8, y: 127, w: 1274.9627685546875, h: 779.8630981445312 },
   tv: { x: 232.869140625, y: 143.8271484375, w: 291.2351379394531, h: 372.7810363769531 },
@@ -253,6 +266,7 @@ export default class MainOfficeScene extends Phaser.Scene {
   private playerShadow!: Phaser.GameObjects.Sprite;
   private playerOutfit!: Phaser.GameObjects.Sprite;
   private playerHair!: Phaser.GameObjects.Sprite;
+  private playerFace!: Phaser.GameObjects.Sprite;
   private playerLabel!: Phaser.GameObjects.Text;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
@@ -358,6 +372,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.load.image('avatar-shadow', AVATAR_SHADOW_ASSET_PATH);
     this.load.image('avatar-hair-front', avatarHairAssetPath(AVATAR_HAIR_FRONT_FILE));
     this.load.image('avatar-hair-back', avatarHairAssetPath(AVATAR_HAIR_BACK_FILE));
+    this.load.image('avatar-face-default', avatarFaceAssetPath(AVATAR_FACE_DEFAULT_FILE));
 
     AVATAR_DIRECTIONS.forEach((direction) => {
       this.load.image(
@@ -421,6 +436,11 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.playerHair.setOrigin(0.5, 0.88);
     this.playerHair.setDisplaySize(180, 180);
     this.applyHairLayerConfig();
+
+    this.playerFace = this.add.sprite(400, 300, this.getFaceLayerConfig(this.lastAvatarDirection).texture);
+    this.playerFace.setOrigin(0.5, 0.88);
+    this.playerFace.setDisplaySize(180, 180);
+    this.applyFaceLayerConfig();
     this.syncAvatarLayers();
 
     this.playerLabel = this.add.text(400, 270, 'You', {
@@ -429,7 +449,7 @@ export default class MainOfficeScene extends Phaser.Scene {
 
     this.events.on('update', () => {
       this.playerLabel.setPosition(this.player.x, this.player.y - 22);
-      this.playerLabel.setDepth(this.player.depth + 3);
+      this.playerLabel.setDepth(this.player.depth + 4);
     });
 
     // --- Keyboard Input ---
@@ -545,6 +565,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       this.lastAvatarDirection = this.getAvatarDirection(left, right, up, down);
       this.isPlayerWalking = true;
       this.applyHairLayerConfig();
+      this.applyFaceLayerConfig();
       this.player.anims.play(`avatar-walk-${this.lastAvatarDirection}`, true);
       this.playerOutfit.anims.play(`avatar-outfit-walk-${this.lastAvatarDirection}`, true);
     } else {
@@ -561,7 +582,8 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.playerShadow?.setDepth(this.player.depth - 1);
     this.playerOutfit?.setDepth(this.player.depth + 1);
     this.playerHair?.setDepth(this.player.depth + 2);
-    this.playerLabel?.setDepth(this.player.depth + 3);
+    this.playerFace?.setDepth(this.player.depth + 3);
+    this.playerLabel?.setDepth(this.player.depth + 4);
   }
 
   private syncAvatarLayers() {
@@ -572,7 +594,10 @@ export default class MainOfficeScene extends Phaser.Scene {
     const hairConfig = this.getHairLayerConfig(this.lastAvatarDirection);
     this.playerHair.setPosition(this.player.x + hairConfig.offsetX, this.player.y + hairConfig.offsetY);
     this.playerHair.setDepth(this.player.depth + 2);
-    this.playerLabel?.setDepth(this.player.depth + 3);
+    const faceConfig = this.getFaceLayerConfig(this.lastAvatarDirection);
+    this.playerFace.setPosition(this.player.x + faceConfig.offsetX, this.player.y + faceConfig.offsetY);
+    this.playerFace.setDepth(this.player.depth + 3);
+    this.playerLabel?.setDepth(this.player.depth + 4);
   }
 
   private getBodyIdleTexture(direction: AvatarDirection): string {
@@ -600,6 +625,26 @@ export default class MainOfficeScene extends Phaser.Scene {
     const hairConfig = this.getHairLayerConfig(this.lastAvatarDirection);
     this.playerHair.setTexture(hairConfig.texture);
     this.playerHair.setFlipX(hairConfig.flipX);
+  }
+
+  private getFaceLayerConfig(direction: AvatarDirection): FaceLayerConfig {
+    switch (direction) {
+      case 'FR':
+        return { visible: true, texture: 'avatar-face-default', flipX: false, offsetX: 0, offsetY: 0 };
+      case 'FL':
+        return { visible: true, texture: 'avatar-face-default', flipX: true, offsetX: 0, offsetY: 0 };
+      case 'BR':
+        return { visible: false, texture: 'avatar-face-default', flipX: false, offsetX: 0, offsetY: 0 };
+      case 'BL':
+        return { visible: false, texture: 'avatar-face-default', flipX: true, offsetX: 0, offsetY: 0 };
+    }
+  }
+
+  private applyFaceLayerConfig() {
+    const faceConfig = this.getFaceLayerConfig(this.lastAvatarDirection);
+    this.playerFace.setTexture(faceConfig.texture);
+    this.playerFace.setFlipX(faceConfig.flipX);
+    this.playerFace.setVisible(faceConfig.visible);
   }
 
   private setAvatarIdle() {
