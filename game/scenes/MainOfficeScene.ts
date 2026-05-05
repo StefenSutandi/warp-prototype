@@ -11,7 +11,16 @@ interface RoomDef {
   gridColor: number;
   zones: { x: number; y: number; label: string }[];
   desks: { x: number; y: number; w: number; h: number; label: string; desc: string }[];
-  teammates: { x: number; y: number; color: number; name: string; role: string }[];
+  teammates: {
+    x: number;
+    y: number;
+    color: number;
+    name: string;
+    role: string;
+    assetKey?: string;
+    flipX?: boolean;
+    displayRect?: FigmaRect;
+  }[];
   doors: { x: number; y: number; w: number; h: number; label: string; targetRoom: string }[];
 }
 
@@ -79,6 +88,7 @@ const ROOMS: Record<string, RoomDef> = {
 
 interface TeammateData {
   circle: Phaser.GameObjects.Arc;
+  sprite?: Phaser.GameObjects.Image;
   name: string;
   role: string;
   color: number;
@@ -113,6 +123,20 @@ interface FigmaRect {
   y: number;
   w: number;
   h: number;
+}
+
+interface FigmaPoint {
+  x: number;
+  y: number;
+}
+
+interface WalkBlockZone {
+  id: string;
+  rect: Phaser.Geom.Rectangle;
+}
+
+interface FigmaWalkBlockZone extends FigmaRect {
+  id: string;
 }
 
 interface SeatData {
@@ -150,6 +174,9 @@ const VIRTUAL_ROOM_ASSETS = {
   chairBackHoverGreen: '/assets/virtual-room/chairs/hover/chair_back_hover_green.png',
   chairBackHoverBlue: '/assets/virtual-room/chairs/hover/chair_back_hover_blue.png',
   sitPopupPrimary: '/assets/virtual-room/overlays/sit_popup_primary.png',
+  characterBlack: '/assets/virtual-room/characters/Property 1=Group 1258.png',
+  characterBrown: '/assets/virtual-room/characters/Property 1=Group 1257.png',
+  characterBlonde: '/assets/virtual-room/characters/Property 1=Group 1253.png',
 } as const;
 
 type AvatarDirection = 'FR' | 'FL' | 'BR' | 'BL';
@@ -181,6 +208,39 @@ const AVATAR_FACE_BLINK_FILE = 'face_1_blink.png';
 const AVATAR_FACE_BLINK_INTERVAL_MS = 3500;
 const AVATAR_FACE_BLINK_DURATION_MS = 140;
 const AVATAR_DIRECTIONS: AvatarDirection[] = ['FR', 'FL', 'BR', 'BL'];
+const PLAYER_MAIN_ROOM_BOUNDS_RATIO = {
+  left: 0.1,
+  right: 0.86,
+  top: 0.35,
+  bottom: 0.84,
+} as const;
+const ENABLE_STRICT_ROOM_WALK_BOUNDS = false;
+const DEBUG_WALK_ZONES = false;
+const ROOM_CHARACTER_DISPLAY_SCALE = 0.82;
+const MAIN_ROOM_SAFE_SPAWN_FOOT: FigmaPoint = { x: 800, y: 730 };
+const MAIN_ROOM_WALKABLE_FLOOR_POLYGON: FigmaPoint[] = [
+  { x: 88, y: 505 },
+  { x: 390, y: 288 },
+  { x: 923, y: 405 },
+  { x: 1088, y: 526 },
+  { x: 693, y: 877 },
+  { x: 115, y: 610 },
+];
+const MAIN_ROOM_BLOCK_ZONES: FigmaWalkBlockZone[] = [
+  { id: 'left-drawer-cabinet', x: 92, y: 403, w: 222, h: 151 },
+  { id: 'tv-console-and-wall', x: 185, y: 222, w: 362, h: 158 },
+  { id: 'bookshelf-plant-wall', x: 438, y: 164, w: 248, h: 204 },
+  { id: 'door-and-right-wall', x: 879, y: 249, w: 253, h: 270 },
+  { id: 'table-center', x: 432, y: 441, w: 335, h: 141 },
+  { id: 'front-chair-orange', x: 570, y: 448, w: 95, h: 76 },
+  { id: 'front-chair-green', x: 652, y: 485, w: 96, h: 78 },
+  { id: 'front-chair-blue', x: 736, y: 522, w: 96, h: 82 },
+  { id: 'back-chair-orange', x: 355, y: 542, w: 96, h: 80 },
+  { id: 'back-chair-green', x: 436, y: 581, w: 96, h: 82 },
+  { id: 'back-chair-blue', x: 516, y: 616, w: 98, h: 84 },
+  { id: 'right-chair-person-zone', x: 815, y: 560, w: 154, h: 150 },
+  { id: 'lower-left-platform-lip', x: 74, y: 585, w: 198, h: 88 },
+];
 const AVATAR_BODY_IDLE_FILES: Record<AvatarDirection, string> = {
   FR: 'base_light_idle_FR.png',
   FL: 'base_light_idle_FL.png',
@@ -236,6 +296,11 @@ const FIGMA_MAIN_ROOM = {
   tv: { x: 232.869140625, y: 143.8271484375, w: 291.2351379394531, h: 372.7810363769531 },
   table: { x: 402.1380920410156, y: 389.75921630859375, w: 387.66632080078125, h: 269.8779296875 },
   door: { x: 974.2535400390625, y: 272.61749267578125, w: 135.90972900390625, h: 300.29583740234375 },
+  characters: [
+    { assetKey: 'room-character-black', x: 186, y: 440, w: 180, h: 180, flipX: false },
+    { assetKey: 'room-character-brown', x: 714, y: 552, w: 180, h: 180, flipX: true },
+    { assetKey: 'room-character-blonde', x: 852, y: 479.91, w: 180, h: 180, flipX: false },
+  ] as Array<FigmaRect & { assetKey: string; flipX: boolean }>,
   seats: [
     { id: 'front-orange', row: 'top', variant: 'front', color: 'orange', x: 565.2298583984375, y: 352.8690185546875, w: 120.377197265625, h: 146.91197204589844 },
     { id: 'front-green', row: 'top', variant: 'front', color: 'green', x: 647.423095703125, y: 389.1114501953125, w: 120.377197265625, h: 146.91197204589844 },
@@ -296,6 +361,11 @@ export default class MainOfficeScene extends Phaser.Scene {
   private focusSyncTimeout: number | null = null;
   private sceneZoom = MainOfficeScene.DEFAULT_ZOOM;
   private mainRoomBounds: Phaser.Geom.Rectangle | null = null;
+  private playerMovementBounds: Phaser.Geom.Rectangle | null = null;
+  private playerWalkablePolygon: Phaser.Geom.Polygon | null = null;
+  private playerBlockZones: WalkBlockZone[] = [];
+  private lastValidPlayerPosition = new Phaser.Math.Vector2(400, 300);
+  private debugWalkZoneGraphics?: Phaser.GameObjects.Graphics;
   private isSceneReady = false;
   private isSceneShuttingDown = false;
   private handleExternalRoomSwitch = (event: Event) => {
@@ -324,6 +394,9 @@ export default class MainOfficeScene extends Phaser.Scene {
   };
   private handleWindowBlur = () => {
     this.syncMovementKeyboardState(true);
+  };
+  private handleWindowFocus = () => {
+    this.focusGameInput();
   };
   private handleViewportControl = (event: Event) => {
     if (!this.canApplySceneViewport()) {
@@ -374,6 +447,9 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.load.image('chair_back_hover_green', VIRTUAL_ROOM_ASSETS.chairBackHoverGreen);
     this.load.image('chair_back_hover_blue', VIRTUAL_ROOM_ASSETS.chairBackHoverBlue);
     this.load.image('sit_popup_primary', VIRTUAL_ROOM_ASSETS.sitPopupPrimary);
+    this.load.image('room-character-black', VIRTUAL_ROOM_ASSETS.characterBlack);
+    this.load.image('room-character-brown', VIRTUAL_ROOM_ASSETS.characterBrown);
+    this.load.image('room-character-blonde', VIRTUAL_ROOM_ASSETS.characterBlonde);
     this.load.image('avatar-shadow', AVATAR_SHADOW_ASSET_PATH);
     this.load.image('avatar-hair-front', avatarHairAssetPath(AVATAR_HAIR_FRONT_FILE));
     this.load.image('avatar-hair-back', avatarHairAssetPath(AVATAR_HAIR_BACK_FILE));
@@ -485,6 +561,7 @@ export default class MainOfficeScene extends Phaser.Scene {
 
     // --- Click-away to dismiss menus ---
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      this.focusGameInput();
       const hitObjects = this.input.hitTestPointer(pointer);
       if (hitObjects.length === 0) this.dismissAllOverlays();
     });
@@ -493,6 +570,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       window.addEventListener('warp:switch-room', this.handleExternalRoomSwitch as EventListener);
       window.addEventListener('warp:viewport-control', this.handleViewportControl as EventListener);
       window.addEventListener('blur', this.handleWindowBlur);
+      window.addEventListener('focus', this.handleWindowFocus);
       document.addEventListener('focusin', this.handleDocumentFocusChange);
       document.addEventListener('focusout', this.handleDocumentFocusChange);
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -501,6 +579,7 @@ export default class MainOfficeScene extends Phaser.Scene {
         window.removeEventListener('warp:switch-room', this.handleExternalRoomSwitch as EventListener);
         window.removeEventListener('warp:viewport-control', this.handleViewportControl as EventListener);
         window.removeEventListener('blur', this.handleWindowBlur);
+        window.removeEventListener('focus', this.handleWindowFocus);
         document.removeEventListener('focusin', this.handleDocumentFocusChange);
         document.removeEventListener('focusout', this.handleDocumentFocusChange);
         if (this.focusSyncTimeout !== null) {
@@ -520,6 +599,7 @@ export default class MainOfficeScene extends Phaser.Scene {
 
     // --- Load initial room ---
     this.loadRoom('main');
+    this.placePlayerAtSafeSpawn('main');
     this.isSceneReady = true;
   }
 
@@ -559,6 +639,8 @@ export default class MainOfficeScene extends Phaser.Scene {
 
     if (this.movementInputBlocked || this.isEditableElementFocused()) {
       this.setAvatarIdle();
+      this.clampPlayerToRoomBounds();
+      this.resolvePlayerObstacleCollisions();
       this.updatePlayerDepth();
       this.syncAvatarLayers();
       return;
@@ -586,8 +668,84 @@ export default class MainOfficeScene extends Phaser.Scene {
       this.setAvatarIdle();
     }
 
+    this.clampPlayerToRoomBounds();
+    this.resolvePlayerObstacleCollisions();
     this.updatePlayerDepth();
     this.syncAvatarLayers();
+  }
+
+  private getPlayerFootYOffset(): number {
+    return this.player.displayHeight * (1 - this.player.originY);
+  }
+
+  private getPlayerFootPoint(): Phaser.Math.Vector2 {
+    return new Phaser.Math.Vector2(this.player.x, this.player.y + this.getPlayerFootYOffset());
+  }
+
+  private clampPlayerToRoomBounds() {
+    if (!ENABLE_STRICT_ROOM_WALK_BOUNDS) {
+      return;
+    }
+
+    if (!this.playerMovementBounds) {
+      return;
+    }
+
+    const footYOffset = this.getPlayerFootYOffset();
+    const footPoint = this.getPlayerFootPoint();
+    const clampedFootX = Phaser.Math.Clamp(footPoint.x, this.playerMovementBounds.left, this.playerMovementBounds.right);
+    const clampedFootY = Phaser.Math.Clamp(
+      footPoint.y,
+      this.playerMovementBounds.top,
+      this.playerMovementBounds.bottom,
+    );
+
+    this.player.setPosition(clampedFootX, clampedFootY - footYOffset);
+  }
+
+  private isPlayerFootInWalkableArea(): boolean {
+    if (!ENABLE_STRICT_ROOM_WALK_BOUNDS) {
+      return true;
+    }
+
+    const footPoint = this.getPlayerFootPoint();
+
+    if (this.playerMovementBounds && !this.playerMovementBounds.contains(footPoint.x, footPoint.y)) {
+      return false;
+    }
+
+    if (this.playerWalkablePolygon && !Phaser.Geom.Polygon.Contains(this.playerWalkablePolygon, footPoint.x, footPoint.y)) {
+      return false;
+    }
+
+    return !this.playerBlockZones.some((zone) => zone.rect.contains(footPoint.x, footPoint.y));
+  }
+
+  private resolvePlayerObstacleCollisions() {
+    if (!ENABLE_STRICT_ROOM_WALK_BOUNDS) {
+      this.lastValidPlayerPosition.set(this.player.x, this.player.y);
+      return;
+    }
+
+    if (!this.playerMovementBounds) {
+      this.lastValidPlayerPosition.set(this.player.x, this.player.y);
+      return;
+    }
+
+    if (this.isPlayerFootInWalkableArea()) {
+      this.lastValidPlayerPosition.set(this.player.x, this.player.y);
+      return;
+    }
+
+    this.player.setPosition(this.lastValidPlayerPosition.x, this.lastValidPlayerPosition.y);
+    this.clampPlayerToRoomBounds();
+
+    if (!this.isPlayerFootInWalkableArea()) {
+      const fallback = this.getRoomSafeSpawnPosition(this.currentRoomId);
+      this.player.setPosition(fallback.x, fallback.y);
+    }
+
+    this.lastValidPlayerPosition.set(this.player.x, this.player.y);
   }
 
   private updatePlayerDepth() {
@@ -747,6 +905,26 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.setAvatarIdle();
   }
 
+  private focusGameInput() {
+    if (this.isEditableElementFocused()) {
+      this.syncMovementKeyboardState(true);
+      return;
+    }
+
+    const canvas = this.sys.game.canvas;
+    if (canvas.tabIndex < 0) {
+      canvas.tabIndex = 0;
+    }
+
+    try {
+      canvas.focus({ preventScroll: true });
+    } catch {
+      canvas.focus();
+    }
+
+    this.syncMovementKeyboardState(false);
+  }
+
   // =============================================
   //  ROOM SWITCHING
   // =============================================
@@ -780,6 +958,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       this.loadMainOfficeAssets(width, height, room);
     } else {
       this.mainRoomBounds = new Phaser.Geom.Rectangle(0, 0, width, height);
+      this.playerMovementBounds = new Phaser.Geom.Rectangle(0, 0, width, height);
       this.applySceneViewport();
     }
 
@@ -791,7 +970,7 @@ export default class MainOfficeScene extends Phaser.Scene {
 
       // Teammates
       for (const tm of room.teammates) {
-        this.spawnTeammate(tm.x, tm.y, tm.color, tm.name, tm.role);
+        this.spawnTeammate(tm.x, tm.y, tm.color, tm.name, tm.role, tm.assetKey, tm.flipX, tm.displayRect);
       }
 
       // Doors
@@ -824,6 +1003,23 @@ export default class MainOfficeScene extends Phaser.Scene {
     const roomCenterY = roomBaseTop + roomBaseHeight / 2;
     const layoutScale = roomBaseWidth / FIGMA_MAIN_ROOM.roomBase.w;
     this.mainRoomBounds = new Phaser.Geom.Rectangle(roomBaseLeft, roomBaseTop, roomBaseWidth, roomBaseHeight);
+    const movementLeft = roomBaseLeft + roomBaseWidth * PLAYER_MAIN_ROOM_BOUNDS_RATIO.left;
+    const movementTop = roomBaseTop + roomBaseHeight * PLAYER_MAIN_ROOM_BOUNDS_RATIO.top;
+    const movementRight = roomBaseLeft + roomBaseWidth * PLAYER_MAIN_ROOM_BOUNDS_RATIO.right;
+    const movementBottom = roomBaseTop + roomBaseHeight * PLAYER_MAIN_ROOM_BOUNDS_RATIO.bottom;
+    this.playerMovementBounds = new Phaser.Geom.Rectangle(
+      movementLeft,
+      movementTop,
+      movementRight - movementLeft,
+      movementBottom - movementTop,
+    );
+    this.playerWalkablePolygon = new Phaser.Geom.Polygon(
+      MAIN_ROOM_WALKABLE_FLOOR_POLYGON.map((point) => this.mapMainRoomPoint(point)),
+    );
+    this.playerBlockZones = MAIN_ROOM_BLOCK_ZONES.map((zone) => ({
+      id: zone.id,
+      rect: this.mapMainRoomRect(zone),
+    }));
     const roomBase = this.add.image(roomCenterX, roomCenterY, 'room_base')
       .setScale(baseScale)
       .setDepth(0);
@@ -868,23 +1064,81 @@ export default class MainOfficeScene extends Phaser.Scene {
       });
     });
 
+    this.drawDebugWalkZones();
+
     room.desks[0].x = tableRect.x + tableRect.w / 2;
     room.desks[0].y = tableRect.y + tableRect.h / 2;
     room.desks[0].w = tableRect.w * 0.62;
     room.desks[0].h = tableRect.h * 0.46;
 
-    room.teammates[0].x = mapRect(FIGMA_MAIN_ROOM.seats[3]).x + mapRect(FIGMA_MAIN_ROOM.seats[3]).w * 0.5;
-    room.teammates[0].y = mapRect(FIGMA_MAIN_ROOM.seats[3]).y + mapRect(FIGMA_MAIN_ROOM.seats[3]).h * 0.46;
-    room.teammates[1].x = mapRect(FIGMA_MAIN_ROOM.seats[1]).x + mapRect(FIGMA_MAIN_ROOM.seats[1]).w * 0.52;
-    room.teammates[1].y = mapRect(FIGMA_MAIN_ROOM.seats[1]).y + mapRect(FIGMA_MAIN_ROOM.seats[1]).h * 0.44;
-    room.teammates[2].x = mapRect(FIGMA_MAIN_ROOM.seats[5]).x + mapRect(FIGMA_MAIN_ROOM.seats[5]).w * 0.48;
-    room.teammates[2].y = mapRect(FIGMA_MAIN_ROOM.seats[5]).y + mapRect(FIGMA_MAIN_ROOM.seats[5]).h * 0.42;
+    FIGMA_MAIN_ROOM.characters.forEach((character, index) => {
+      const mappedCharacter = mapRect(character);
+      const teammate = room.teammates[index];
+      if (!teammate) {
+        return;
+      }
+
+      teammate.x = mappedCharacter.x + mappedCharacter.w / 2;
+      teammate.y = mappedCharacter.y + mappedCharacter.h * 0.88;
+      teammate.assetKey = character.assetKey;
+      teammate.flipX = character.flipX;
+      teammate.displayRect = {
+        x: mappedCharacter.x + (mappedCharacter.w * (1 - ROOM_CHARACTER_DISPLAY_SCALE)) / 2,
+        y: mappedCharacter.y + mappedCharacter.h * (1 - ROOM_CHARACTER_DISPLAY_SCALE),
+        w: mappedCharacter.w * ROOM_CHARACTER_DISPLAY_SCALE,
+        h: mappedCharacter.h * ROOM_CHARACTER_DISPLAY_SCALE,
+      };
+    });
 
     const doorRect = mapRect(FIGMA_MAIN_ROOM.door);
     room.doors[0].x = doorRect.x;
     room.doors[0].y = doorRect.y;
     room.doors[0].w = doorRect.w;
     room.doors[0].h = doorRect.h;
+  }
+
+  private mapMainRoomPoint(point: FigmaPoint): Phaser.Math.Vector2 {
+    if (!this.mainRoomBounds) {
+      return new Phaser.Math.Vector2(point.x, point.y);
+    }
+
+    const layoutScale = this.mainRoomBounds.width / FIGMA_MAIN_ROOM.roomBase.w;
+    return new Phaser.Math.Vector2(
+      this.mainRoomBounds.left + (point.x - FIGMA_MAIN_ROOM.roomBase.x) * layoutScale,
+      this.mainRoomBounds.top + (point.y - FIGMA_MAIN_ROOM.roomBase.y) * layoutScale,
+    );
+  }
+
+  private mapMainRoomRect(rect: FigmaRect): Phaser.Geom.Rectangle {
+    const topLeft = this.mapMainRoomPoint({ x: rect.x, y: rect.y });
+    if (!this.mainRoomBounds) {
+      return new Phaser.Geom.Rectangle(topLeft.x, topLeft.y, rect.w, rect.h);
+    }
+
+    const layoutScale = this.mainRoomBounds.width / FIGMA_MAIN_ROOM.roomBase.w;
+    return new Phaser.Geom.Rectangle(topLeft.x, topLeft.y, rect.w * layoutScale, rect.h * layoutScale);
+  }
+
+  private drawDebugWalkZones() {
+    this.debugWalkZoneGraphics?.destroy();
+    this.debugWalkZoneGraphics = undefined;
+
+    if (!DEBUG_WALK_ZONES) {
+      return;
+    }
+
+    const graphics = this.add.graphics().setDepth(2000);
+    graphics.lineStyle(2, 0x22c55e, 0.9);
+    if (this.playerMovementBounds) {
+      graphics.strokeRectShape(this.playerMovementBounds);
+    }
+    if (this.playerWalkablePolygon) {
+      graphics.strokePoints(this.playerWalkablePolygon.points, true);
+    }
+    graphics.fillStyle(0xef4444, 0.22);
+    this.playerBlockZones.forEach((zone) => graphics.fillRectShape(zone.rect));
+    this.debugWalkZoneGraphics = graphics;
+    this.roomObjects.push(graphics);
   }
 
   private getSeatTextureKey(variant: SeatVariant, color: SeatColor, state: SeatState): string {
@@ -1123,6 +1377,10 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.teammates = [];
     this.desks = [];
     this.mainRoomBounds = null;
+    this.playerMovementBounds = null;
+    this.playerWalkablePolygon = null;
+    this.playerBlockZones = [];
+    this.debugWalkZoneGraphics = undefined;
   }
 
   private canApplySceneViewport() {
@@ -1157,28 +1415,42 @@ export default class MainOfficeScene extends Phaser.Scene {
     camera.centerOn(this.mainRoomBounds.centerX, this.mainRoomBounds.centerY - MainOfficeScene.VISUAL_CAMERA_Y_OFFSET);
   }
 
+  private getRoomSafeSpawnPosition(roomId: string): Phaser.Math.Vector2 {
+    if (roomId === 'main') {
+      const footPoint = this.mapMainRoomPoint(MAIN_ROOM_SAFE_SPAWN_FOOT);
+      return new Phaser.Math.Vector2(footPoint.x, footPoint.y - this.getPlayerFootYOffset());
+    }
+
+    const width = this.cameras.main.width;
+    const target = ROOMS[roomId];
+    const door = target?.doors[0];
+    const x = door && door.x < width / 2 ? width - 100 : 100;
+    return new Phaser.Math.Vector2(x, 300);
+  }
+
+  private placePlayerAtSafeSpawn(roomId: string) {
+    const spawn = this.getRoomSafeSpawnPosition(roomId);
+    this.player.setPosition(spawn.x, spawn.y);
+    this.clampPlayerToRoomBounds();
+
+    if (!this.isPlayerFootInWalkableArea()) {
+      this.player.setPosition(spawn.x, spawn.y);
+    }
+
+    this.lastValidPlayerPosition.set(this.player.x, this.player.y);
+    this.updatePlayerDepth();
+    this.syncAvatarLayers();
+  }
+
   private switchRoom(targetRoom: string) {
     // Fade out then rebuild
     this.cameras.main.fadeOut(250, 0, 0, 0);
     this.time.delayedCall(260, () => {
-      // Reposition player on the opposite side
-      const width = this.cameras.main.width;
       const target = ROOMS[targetRoom];
       if (!target) return;
 
-      // If the door we entered from is on the left, spawn player on the right and vice versa
-      const door = target.doors[0];
-      if (door) {
-        if (door.x < width / 2) {
-          this.player.setPosition(width - 100, 300);
-        } else {
-          this.player.setPosition(100, 300);
-        }
-      }
-
-      this.updatePlayerDepth();
-      this.syncAvatarLayers();
       this.loadRoom(targetRoom);
+      this.placePlayerAtSafeSpawn(targetRoom);
     });
   }
 
@@ -1315,19 +1587,39 @@ export default class MainOfficeScene extends Phaser.Scene {
   //  TEAMMATE CREATION + INTERACTION MENU
   // =============================================
 
-  private spawnTeammate(x: number, y: number, color: number, name: string, role: string) {
+  private spawnTeammate(
+    x: number,
+    y: number,
+    color: number,
+    name: string,
+    role: string,
+    assetKey?: string,
+    flipX: boolean = false,
+    displayRect?: FigmaRect,
+  ) {
     const teammate = this.add.circle(x, y, 12, color);
-    teammate.setStrokeStyle(2, 0xffffff, 0.5);
+    teammate.setStrokeStyle(2, 0xffffff, assetKey ? 0 : 0.5);
+    teammate.setAlpha(assetKey ? 0.001 : 1);
     teammate.setInteractive({ useHandCursor: true });
-    teammate.setDepth(y + 18);
+    teammate.setDepth(y + 22);
     this.roomObjects.push(teammate);
 
-    const shadow = this.add.ellipse(x, y + 14, 26, 10, 0x312e81, 0.14)
-      .setDepth(y - 3);
-    this.roomObjects.push(shadow);
+    let sprite: Phaser.GameObjects.Image | undefined;
+    if (assetKey && displayRect) {
+      sprite = this.add.image(displayRect.x, displayRect.y, assetKey)
+        .setOrigin(0, 0)
+        .setDisplaySize(displayRect.w, displayRect.h)
+        .setFlipX(flipX)
+        .setDepth(y + 18);
+      this.roomObjects.push(sprite);
+    } else {
+      const shadow = this.add.ellipse(x, y + 14, 26, 10, 0x312e81, 0.14)
+        .setDepth(y - 3);
+      this.roomObjects.push(shadow);
+    }
 
     const tmData: TeammateData = {
-      circle: teammate, name, role, color, x, y,
+      circle: teammate, sprite, name, role, color, x, y,
       inCall: false, playerJoined: false,
     };
     this.teammates.push(tmData);
@@ -1400,7 +1692,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     });
 
     this.activeMenu = this.add.container(0, 0, children);
-    this.activeMenu.setDepth(25);
+    this.activeMenu.setDepth(2000);
     this.activeMenu.setAlpha(0).setScale(0.85);
     this.tweens.add({ targets: this.activeMenu, alpha: 1, scale: 1, duration: 140, ease: 'Back.easeOut' });
   }
@@ -1439,7 +1731,7 @@ export default class MainOfficeScene extends Phaser.Scene {
 
       // Pulsing ring
       tm.callRing = this.add.circle(tm.x, tm.y, 20, 0x22c55e, 0)
-        .setStrokeStyle(2, 0x22c55e, 0.7).setDepth(2);
+        .setStrokeStyle(2, 0x22c55e, 0.7).setDepth(tm.y + 19);
       this.tweens.add({
         targets: tm.callRing,
         scaleX: 1.8, scaleY: 1.8, alpha: 0,
@@ -1449,7 +1741,7 @@ export default class MainOfficeScene extends Phaser.Scene {
 
       // Call domain (green transparent area)
       tm.callDomain = this.add.circle(tm.x, tm.y, 55, 0x22c55e, 0.08)
-        .setStrokeStyle(1, 0x22c55e, 0.3).setDepth(1)
+        .setStrokeStyle(1, 0x22c55e, 0.3).setDepth(tm.y + 17)
         .setInteractive({ useHandCursor: true });
       tm.callDomain.on('pointerdown', (p: Phaser.Input.Pointer) => {
         p.event.stopPropagation();
@@ -1462,7 +1754,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       const labelText = this.add.text(tm.x, tm.y + 28, '📞 In a Call', {
         fontSize: '9px', color: '#bbf7d0', fontStyle: 'bold'
       }).setOrigin(0.5);
-      tm.callLabel = this.add.container(0, 0, [labelBg, labelText]).setDepth(10);
+      tm.callLabel = this.add.container(0, 0, [labelBg, labelText]).setDepth(tm.y + 35);
       this.roomObjects.push(tm.callLabel);
 
       this.showNotification(`Call started with ${tm.name}`);
@@ -1496,7 +1788,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       const jText = this.add.text(tm.x, tm.y + 48, `🔗 You + ${tm.name}`, {
         fontSize: '9px', color: '#16a34a', fontStyle: 'bold'
       }).setOrigin(0.5);
-      tm.joinLabel = this.add.container(0, 0, [jBg, jText]).setDepth(10);
+      tm.joinLabel = this.add.container(0, 0, [jBg, jText]).setDepth(tm.y + 40);
       this.roomObjects.push(tm.joinLabel);
 
       // Confirmation burst
