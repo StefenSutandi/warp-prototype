@@ -2,16 +2,23 @@
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   Bell,
   ChartColumnBig,
   ClipboardCheck,
+  Hash,
   LayoutGrid,
   MessageCircle,
+  MessageSquarePlus,
+  MoreVertical,
+  Paperclip,
   PenLine,
+  Phone,
   Plus,
+  Search,
+  Send,
   Settings2,
   UsersRound,
 } from 'lucide-react';
@@ -61,6 +68,122 @@ const activityAvatarGradients = [
   'from-[#69D5CF] to-[#B6F3DA]',
   'from-[#A8B7FF] to-[#C7F3FF]',
 ] as const;
+
+type EmployerChatMessage = {
+  id: string;
+  author: 'me' | 'them';
+  text: string;
+  time: string;
+};
+
+type EmployerChatThread = {
+  id: string;
+  name: string;
+  role: string;
+  time: string;
+  unread?: number;
+  avatarGradient: string;
+  messages: EmployerChatMessage[];
+};
+
+const dummyReplyCycle = [
+  'Got it, I will take a look and send an update.',
+  'That makes sense. I can adjust it from here.',
+  'Thanks for clarifying, I will sync with the team.',
+  'Okay, I will share a revised version shortly.',
+] as const;
+
+const employerChatThreads: EmployerChatThread[] = [
+  {
+    id: 'baskara-putra',
+    name: 'Baskara Putra',
+    role: 'Visual Designer',
+    time: '14.12',
+    avatarGradient: 'from-[#9e97ff] to-[#a8eee8]',
+    messages: [
+      {
+        id: 'baskara-1',
+        author: 'me',
+        text: 'Hey, about the revision.. you said "make it feel lighter" but I am not sure what you meant',
+        time: '14.12',
+      },
+      {
+        id: 'baskara-2',
+        author: 'them',
+        text: 'Yeah, it feels a bit heavy right now, mostly in the shadows and color balance',
+        time: '14.12',
+      },
+      {
+        id: 'baskara-3',
+        author: 'me',
+        text: 'Do you mean lighter as in brightness, or more like mood? Because I can push the highlights, but I am worried it will lose depth',
+        time: '14.12',
+      },
+      {
+        id: 'baskara-4',
+        author: 'them',
+        text: 'More about the mood, try softer contrast and let the colors breathe a bit more',
+        time: '14.12',
+      },
+      {
+        id: 'baskara-5',
+        author: 'me',
+        text: 'Ahh okay, I think I get it now, I will explore a few versions and send them over later',
+        time: '14.12',
+      },
+    ],
+  },
+  {
+    id: 'maya-chen',
+    name: 'Maya Chen',
+    role: 'Product Lead',
+    time: '13.58',
+    unread: 2,
+    avatarGradient: 'from-[#8b84f9] to-[#7fe6dc]',
+    messages: [
+      { id: 'maya-1', author: 'them', text: 'The sprint board is cleaned up now.', time: '13.51' },
+      { id: 'maya-2', author: 'me', text: 'Great, I will review the blockers next.', time: '13.54' },
+      { id: 'maya-3', author: 'them', text: 'I left two notes on the onboarding task.', time: '13.58' },
+    ],
+  },
+  {
+    id: 'alex-rivera',
+    name: 'Alex Rivera',
+    role: 'Frontend Engineer',
+    time: '12.44',
+    avatarGradient: 'from-[#84a9ff] to-[#96e8f2]',
+    messages: [
+      { id: 'alex-1', author: 'them', text: 'The chat prototype is ready for QA.', time: '12.41' },
+      { id: 'alex-2', author: 'me', text: 'Nice, please keep the interaction notes in the task.', time: '12.44' },
+    ],
+  },
+  {
+    id: 'jordan-lee',
+    name: 'Jordan Lee',
+    role: 'Researcher',
+    time: '11.32',
+    unread: 1,
+    avatarGradient: 'from-[#b5a8ff] to-[#97e9d9]',
+    messages: [
+      { id: 'jordan-1', author: 'them', text: 'User interview notes are in the doc.', time: '11.32' },
+    ],
+  },
+  {
+    id: 'casey-park',
+    name: 'Casey Park',
+    role: 'Motion Designer',
+    time: '09.18',
+    avatarGradient: 'from-[#9e97ff] to-[#b6f4e3]',
+    messages: [
+      { id: 'casey-1', author: 'me', text: 'Can you send the softer transition pass?', time: '09.12' },
+      { id: 'casey-2', author: 'them', text: 'Yes, exporting it after lunch.', time: '09.18' },
+    ],
+  },
+];
+
+function formatEmployerChatTime() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }).replace(':', '.');
+}
 
 function WarpMark() {
   return (
@@ -124,22 +247,33 @@ function SidebarNav({
 function TopBar({
   displayName,
   rewardBalance,
+  title,
 }: {
   displayName: string;
   rewardBalance: number;
+  title?: string;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#e2e0f0] bg-white px-[22px] py-[16px] lg:px-[23px]">
       <h1 className="warp-font-display text-[24px] font-extrabold tracking-[-0.03em] text-[#111111]">
-        Good Morning,{' '}
-        <span className="bg-[linear-gradient(90deg,#685eeb_15%,#46d2d2_100%)] bg-clip-text text-transparent">
-          {displayName}
-        </span>
+        {title ? (
+          title
+        ) : (
+          <>
+            Good Morning,{' '}
+            <span className="bg-[linear-gradient(90deg,#685eeb_15%,#46d2d2_100%)] bg-clip-text text-transparent">
+              {displayName}
+            </span>
+          </>
+        )}
       </h1>
 
       <div className="flex items-center gap-[11px]">
+        <div className="hidden h-[40px] w-[151px] items-center justify-end rounded-[13px] border border-[#e2e0f0] bg-[#f0eff8] px-[12px] text-[#5c5780] md:flex">
+          <Search className="h-5 w-5" strokeWidth={1.8} />
+        </div>
         <div className="flex h-[40px] items-center gap-2 rounded-[13px] border border-[#e2e0f0] bg-[#f0eff8] px-[14px] text-[#5c5780]">
-          <span className="font-['Azeret_Mono',_monospace] text-[18px] font-medium text-[#685eeb]">#</span>
+          <Hash className="h-5 w-5 text-[#685eeb]" strokeWidth={2.4} />
           <span className="text-[20px] font-medium">{rewardBalance}</span>
         </div>
 
@@ -322,36 +456,38 @@ function ProfilePanel({
   teammates: Array<{ id: string; name: string; role: string }>;
   onEditProfile: () => void;
 }) {
+  const visibleInterests = interests.length > 0 ? interests : ['Add interests'];
+
   return (
     <aside className="border-t border-[#e2e0f0] bg-white px-[15px] py-[17px] lg:border-l lg:border-t-0">
-      <div className="rounded-[34px] border border-white bg-[linear-gradient(295deg,#d5d2ff_11%,#f5f3ee_28%,#f1f5ef_63%,#d9fff4_107%)] px-[22px] py-[22px] shadow-[0_18px_30px_rgba(124,92,252,0.08)]">
-        <div className="flex items-start gap-[14px]">
-          <div className="relative h-[82px] w-[82px] shrink-0">
-            <Image
-              src={EMPLOYER_DASHBOARD_ASSETS.profileMain}
-              alt={displayName}
-              fill
-              sizes="82px"
-              className="object-contain"
-            />
-            <span className="absolute bottom-[6px] right-[8px] h-[12px] w-[12px] rounded-full border-2 border-white bg-[#56efc4]" />
+      <div className="rounded-[34px] border border-[#f3f1ff] bg-white px-[22px] py-[24px] shadow-[0_18px_30px_rgba(124,92,252,0.08)]">
+        <div className="flex flex-col items-center text-center">
+          <div className="relative h-[132px] w-[132px] rounded-full bg-[radial-gradient(circle_at_32%_24%,#f4f1ff_0%,#d5d2ff_38%,#a29bfc_66%,#74e7dd_100%)] shadow-[0_18px_34px_rgba(124,92,252,0.18)]">
+            <div className="absolute inset-[9px] overflow-hidden rounded-full bg-[linear-gradient(145deg,#f4f1ff_0%,#d6f8f2_100%)]">
+              <Image
+                src={EMPLOYER_DASHBOARD_ASSETS.profileMain}
+                alt={displayName}
+                fill
+                sizes="114px"
+                className="scale-[1.08] object-contain object-bottom"
+              />
+            </div>
+            <span className="absolute bottom-[15px] right-[14px] h-[17px] w-[17px] rounded-full border-[3px] border-white bg-[#56efc4] shadow-[0_4px_10px_rgba(86,239,196,0.35)]" />
           </div>
 
-          <div className="min-w-0 flex-1 pt-[8px]">
-            <p className="text-[20px] font-bold leading-none tracking-[-0.03em] text-[#111111]">{displayName}</p>
-            <p className="mt-[8px] text-[11px] text-[#5c5780]">{roleLabel}</p>
-          </div>
+          <p className="mt-[18px] text-[20px] font-bold leading-none tracking-[-0.03em] text-[#111111]">{displayName}</p>
+          <p className="mt-[8px] text-[11px] text-[#5c5780]">{roleLabel}</p>
         </div>
 
-        <div className="mt-[18px] min-h-[78px] rounded-[20px] bg-white/55 px-[12px] py-[12px] backdrop-blur-[2px]">
+        <div className="mt-[20px] min-h-[78px] rounded-[20px] bg-[linear-gradient(136deg,#f4f2ff_0%,#f4fbff_54%,#effdf9_100%)] px-[12px] py-[12px]">
           <p className="warp-font-display text-[11px] font-bold uppercase tracking-[0.04em] text-[#9b96b8]">
             Interests
           </p>
           <div className="mt-[10px] flex flex-wrap gap-[8px]">
-            {interests.map((interest, index) => (
+            {visibleInterests.map((interest, index) => (
               <span
                 key={`${interest}-${index}`}
-                className="inline-flex items-center rounded-full bg-white/80 px-[12px] py-[6px] text-[11px] font-medium text-[#5c5780] shadow-[0_6px_14px_rgba(124,92,252,0.08)]"
+                className="inline-flex items-center rounded-full bg-white px-[12px] py-[6px] text-[11px] font-medium text-[#5c5780] shadow-[0_6px_14px_rgba(124,92,252,0.08)]"
               >
                 {interest}
               </span>
@@ -415,6 +551,208 @@ function EmployerDashboardHome({
             <RoomCard key={room.id} title={room.title} level={room.level} />
           ))}
         </div>
+      </section>
+    </div>
+  );
+}
+
+function EmployerChatPage() {
+  const [threads, setThreads] = useState<EmployerChatThread[]>(employerChatThreads);
+  const [activeThreadId, setActiveThreadId] = useState(employerChatThreads[0].id);
+  const [chatInput, setChatInput] = useState('');
+  const [replyIndex, setReplyIndex] = useState(0);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const activeThread = threads.find((thread) => thread.id === activeThreadId) ?? threads[0];
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ block: 'end' });
+  }, [activeThread.messages]);
+
+  const updateActiveThread = (updater: (thread: EmployerChatThread) => EmployerChatThread) => {
+    setThreads((current) => current.map((thread) => (thread.id === activeThreadId ? updater(thread) : thread)));
+  };
+
+  const sendMessage = () => {
+    const nextText = chatInput.trim();
+    if (!nextText) return;
+
+    const threadId = activeThreadId;
+    const sentTime = formatEmployerChatTime();
+    const replyText = dummyReplyCycle[replyIndex % dummyReplyCycle.length];
+    setReplyIndex((current) => current + 1);
+
+    updateActiveThread((thread) => ({
+      ...thread,
+      time: sentTime,
+      unread: 0,
+      messages: [
+        ...thread.messages,
+        { id: `me-${Date.now()}`, author: 'me', text: nextText, time: sentTime },
+      ],
+    }));
+    setChatInput('');
+
+    window.setTimeout(() => {
+      const replyTime = formatEmployerChatTime();
+      setThreads((current) =>
+        current.map((thread) =>
+          thread.id === threadId
+            ? {
+                ...thread,
+                time: replyTime,
+                unread: activeThreadId === threadId ? 0 : (thread.unread ?? 0) + 1,
+                messages: [
+                  ...thread.messages,
+                  { id: `reply-${Date.now()}`, author: 'them', text: replyText, time: replyTime },
+                ],
+              }
+            : thread
+        )
+      );
+    }, 1000);
+  };
+
+  const selectThread = (threadId: string) => {
+    setActiveThreadId(threadId);
+    setThreads((current) => current.map((thread) => (thread.id === threadId ? { ...thread, unread: 0 } : thread)));
+  };
+
+  return (
+    <div className="flex h-[calc(100vh-73px)] min-h-[640px] px-[25px] py-[20px]">
+      <section className="flex min-w-0 flex-1 overflow-hidden rounded-[22px] border border-[#d4d0e8] bg-white shadow-[0_18px_36px_rgba(124,92,252,0.08)]">
+        <aside className="flex w-[456px] shrink-0 flex-col border-r border-[#d4d0e8] bg-white">
+          <div className="flex h-[64px] items-center gap-[22px] px-[24px] text-[#111111]">
+            <button
+              type="button"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-[#111111] transition hover:bg-[#f0eff8]"
+              aria-label="New chat"
+            >
+              <MessageSquarePlus className="h-5 w-5" strokeWidth={1.8} />
+            </button>
+            <button
+              type="button"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-[#111111] transition hover:bg-[#f0eff8]"
+              aria-label="Search conversations"
+            >
+              <Search className="h-5 w-5" strokeWidth={1.8} />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-[16px] pb-[18px]">
+            {threads.map((thread) => {
+              const isActive = thread.id === activeThread.id;
+              const lastMessage = thread.messages[thread.messages.length - 1];
+              const previewPrefix = lastMessage?.author === 'me' ? 'You: ' : '';
+
+              return (
+                <button
+                  key={thread.id}
+                  type="button"
+                  onClick={() => selectThread(thread.id)}
+                  className={cn(
+                    'flex w-full items-center gap-[16px] rounded-[10px] p-[10px] text-left transition',
+                    isActive ? 'bg-[rgba(226,224,240,0.45)]' : 'hover:bg-[#f7f5ff]'
+                  )}
+                >
+                  <div className={cn('h-[53px] w-[53px] shrink-0 rounded-full bg-gradient-to-br shadow-[0_8px_18px_rgba(124,92,252,0.16)]', thread.avatarGradient)} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="truncate text-[16px] font-semibold text-black">{thread.name}</p>
+                      <span className="shrink-0 text-[11px] font-light text-[#5c5780]">{thread.time}</span>
+                    </div>
+                    <div className="mt-[3px] flex items-center gap-[6px]">
+                      {lastMessage?.author === 'me' ? (
+                        <span className="text-[14px] leading-none text-[#685eeb]">✓✓</span>
+                      ) : null}
+                      <p className={cn('truncate text-[14px] text-[#9b96b8]', thread.unread ? 'font-bold' : 'font-medium')}>
+                        {previewPrefix}
+                        {lastMessage?.text ?? 'Start a conversation'}
+                      </p>
+                      {thread.unread ? (
+                        <span className="ml-auto flex h-[16px] min-w-[16px] shrink-0 items-center justify-center rounded-full bg-[#685eeb] px-[4px] text-[10px] font-semibold text-white">
+                          {thread.unread}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </aside>
+
+        <section className="flex min-w-0 flex-1 flex-col bg-[#e2e0f0]">
+          <header className="flex h-[88px] shrink-0 items-center justify-between border-b border-[#d4d0e8] bg-white px-[34px]">
+            <div className="flex items-center gap-[16px]">
+              <div className={cn('h-[53px] w-[53px] rounded-full bg-gradient-to-br shadow-[0_8px_18px_rgba(124,92,252,0.16)]', activeThread.avatarGradient)} />
+              <div>
+                <p className="text-[16px] font-semibold text-black">{activeThread.name}</p>
+                <div className="mt-[3px] flex items-center gap-[5px]">
+                  <span className="h-[6px] w-[6px] rounded-full bg-[#3abf38]" />
+                  <span className="text-[11px] font-medium text-[#3abf38]">Online</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-[16px] text-black">
+              <button type="button" className="flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#f0eff8]" aria-label="Call">
+                <Phone className="h-[24px] w-[24px]" strokeWidth={2} />
+              </button>
+              <button type="button" className="flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#f0eff8]" aria-label="More options">
+                <MoreVertical className="h-[24px] w-[24px]" strokeWidth={2} />
+              </button>
+            </div>
+          </header>
+
+          <div className="flex-1 overflow-y-auto px-[42px] py-[32px]">
+            <div className="space-y-[34px]">
+              {activeThread.messages.map((message) => (
+                <div key={message.id} className={cn('flex', message.author === 'me' ? 'justify-end' : 'justify-start')}>
+                  <div
+                    className={cn(
+                      'relative max-w-[360px] px-[20px] py-[13px] text-[13px] font-bold leading-[1.28] shadow-[0_6px_14px_rgba(84,86,106,0.05)]',
+                      message.author === 'me'
+                        ? 'rounded-bl-[25px] rounded-br-[25px] rounded-tl-[25px] bg-[#685eeb] text-white'
+                        : 'rounded-br-[25px] rounded-tl-[25px] rounded-tr-[25px] bg-white text-[#505050]'
+                    )}
+                  >
+                    <p>{message.text}</p>
+                    <span className={cn('mt-[4px] block text-right text-[10px] font-light', message.author === 'me' ? 'text-white/85' : 'text-[#9b96b8]')}>
+                      {message.time}
+                      {message.author === 'me' ? ' ✓✓' : ''}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+          </div>
+
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              sendMessage();
+            }}
+            className="shrink-0 px-[42px] pb-[28px]"
+          >
+            <div className="flex h-[56px] items-center gap-[12px] rounded-[30px] bg-white pl-[22px] pr-[12px] shadow-[5px_4px_10px_rgba(0,0,0,0.13)]">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(event) => setChatInput(event.target.value)}
+                placeholder="Write your message"
+                className="h-full min-w-0 flex-1 bg-transparent text-[13px] font-bold text-[#505050] outline-none placeholder:text-[#a1a1a1]"
+              />
+              <button type="button" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-black transition hover:bg-[#f0eff8]" aria-label="Attach file">
+                <Paperclip className="h-5 w-5" strokeWidth={2} />
+              </button>
+              <button type="submit" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#3369ff] transition hover:bg-[#eff3ff]" aria-label="Send message">
+                <Send className="h-[22px] w-[22px] fill-[#3369ff] stroke-[#3369ff]" strokeWidth={2} />
+              </button>
+            </div>
+          </form>
+        </section>
       </section>
     </div>
   );
@@ -659,14 +997,15 @@ export function EmployerDashboard() {
     [teammates]
   );
 
-  const displayName = avatarProfile.displayName || currentUser?.name || 'Your Name';
-  const roleLabel = avatarProfile.position || 'UI/UX Designer';
+  const displayName = avatarProfile.displayName.trim() || currentUser?.name || 'Your Name';
+  const roleLabel = avatarProfile.position.trim() || 'Your Position';
   const rewardBalance = Math.max(200, Math.round((currentUser?.xp ?? 5200) / 26));
   const isTaskPage = activeItem === 'tasks';
+  const isChatPage = activeItem === 'chat';
 
   return (
     <div className="warp-font-ui min-h-screen w-full bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)] text-[#111111]">
-      <div className={cn('grid min-h-screen w-full', isTaskPage ? 'grid-cols-[283px_minmax(0,1fr)]' : 'grid-cols-[283px_minmax(0,1fr)_285px]')}>
+      <div className={cn('grid min-h-screen w-full', isTaskPage || isChatPage ? 'grid-cols-[283px_minmax(0,1fr)]' : 'grid-cols-[283px_minmax(0,1fr)_285px]')}>
         <SidebarNav activeItem={activeItem} onSelect={setActiveItem} />
 
         <main
@@ -677,9 +1016,11 @@ export function EmployerDashboard() {
             <EmployerTaskManagementPage />
           ) : (
             <>
-              <TopBar displayName={displayName} rewardBalance={rewardBalance} />
+              <TopBar displayName={displayName} rewardBalance={rewardBalance} title={isChatPage ? 'Chat' : undefined} />
 
-              {stage === 'dashboard' ? (
+              {isChatPage ? (
+                <EmployerChatPage />
+              ) : stage === 'dashboard' ? (
                 <EmployerDashboardHome onCreateRoom={() => setStage('create-room')} />
               ) : (
                 <EmployerCreateRoomFlow onBack={() => setStage('dashboard')} />
@@ -688,7 +1029,7 @@ export function EmployerDashboard() {
           )}
         </main>
 
-        {!isTaskPage ? (
+        {!isTaskPage && !isChatPage ? (
           <ProfilePanel
             displayName={displayName}
             roleLabel={roleLabel}
