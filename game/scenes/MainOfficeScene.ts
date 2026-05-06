@@ -787,9 +787,9 @@ export default class MainOfficeScene extends Phaser.Scene {
       case 'FL':
         return { texture: 'avatar-hair-front', flipX: true, offsetX: 0, offsetY: 0 };
       case 'BR':
-        return { texture: 'avatar-hair-back', flipX: false, offsetX: 8, offsetY: 6 };
+        return { texture: 'avatar-hair-back', flipX: true, offsetX: 8, offsetY: 6 };
       case 'BL':
-        return { texture: 'avatar-hair-back', flipX: true, offsetX: -8, offsetY: 6 };
+        return { texture: 'avatar-hair-back', flipX: false, offsetX: -8, offsetY: 6 };
     }
   }
 
