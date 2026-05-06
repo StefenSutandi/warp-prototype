@@ -194,13 +194,19 @@ type FaceLayerConfig = {
   offsetY: number;
 };
 
+type OutfitIdleLayerConfig = {
+  texture: string;
+  flipX: boolean;
+};
+
 const AVATAR_BODY_BASE_PATH = '/assets/avatar/walk/body/light';
 const AVATAR_OUTFIT_BASE_PATH = '/assets/avatar/walk/outfit/short';
 const AVATAR_HAIR_BASE_PATH = '/assets/avatar/walk/hair/source';
 const AVATAR_FACE_BASE_PATH = '/assets/avatar/walk/face/source';
 const AVATAR_SHADOW_ASSET_PATH = '/assets/avatar/walk/shadow/SHADOW_BASE.png';
 const AVATAR_DEPTH_OFFSET = 16;
-const AVATAR_IDLE_FRAME_INDEX = 7;
+const AVATAR_DISPLAY_SIZE = 180;
+const AVATAR_WALK_FRAME_RATE = 14;
 const AVATAR_HAIR_FRONT_FILE = 'hair_1.png';
 const AVATAR_HAIR_BACK_FILE = 'hair_1_back.png';
 const AVATAR_FACE_DEFAULT_FILE = 'face_1_default.png';
@@ -254,16 +260,16 @@ const AVATAR_BODY_WALK_FILES: Record<AvatarDirection, string[]> = {
   BL: Array.from({ length: 13 }, (_, index) => `walkcycle_back_${String(index + 1).padStart(4, '0')} 1.png`),
 };
 const AVATAR_OUTFIT_IDLE_FILES: Record<AvatarDirection, string> = {
-  FR: 'outfit3_idle.png',
-  FL: 'outfit3_idle.png',
-  BR: 'outfit3_idle_back.png',
-  BL: 'outfit3_idle_back.png',
+  FR: 'outfit3_idle_front left.png',
+  FL: 'outfit3_idle_front left.png',
+  BR: 'outfit3_idle_back right.png',
+  BL: 'outfit3_idle_back right.png',
 };
 const AVATAR_OUTFIT_WALK_FILES: Record<AvatarDirection, string[]> = {
-  FR: Array.from({ length: 13 }, (_, index) => `outfit_3_front_${String(index + 1).padStart(4, '0')} 1.png`),
-  FL: Array.from({ length: 13 }, (_, index) => `outfit_3_front_${String(index + 1).padStart(4, '0')} 1.png`),
-  BR: Array.from({ length: 13 }, (_, index) => `OUTFIT_3_back_${String(index + 1).padStart(4, '0')} 1.png`),
-  BL: Array.from({ length: 13 }, (_, index) => `OUTFIT_3_back_${String(index + 1).padStart(4, '0')} 1.png`),
+  FR: Array.from({ length: 13 }, (_, index) => `outfit_3_front_${String(index + 1).padStart(4, '0')}.png`),
+  FL: Array.from({ length: 13 }, (_, index) => `outfit_3_front_${String(index + 1).padStart(4, '0')}.png`),
+  BR: Array.from({ length: 13 }, (_, index) => `OUTFIT_3_back_${String(index + 1).padStart(4, '0')}.png`),
+  BL: Array.from({ length: 13 }, (_, index) => `OUTFIT_3_back_${String(index + 1).padStart(4, '0')}.png`),
 };
 
 function avatarBodyTextureKey(direction: AvatarDirection, frame: 'idle' | number): string {
@@ -280,7 +286,7 @@ function avatarOutfitTextureKey(direction: AvatarDirection, frame: 'idle' | numb
 
 function avatarOutfitAssetPath(direction: AvatarDirection, fileName: string): string {
   const isIdle = fileName === AVATAR_OUTFIT_IDLE_FILES[direction];
-  return `${AVATAR_OUTFIT_BASE_PATH}${isIdle ? '' : `/${direction}`}/${encodeURIComponent(fileName)}`;
+  return `${AVATAR_OUTFIT_BASE_PATH}${isIdle ? '' : `/${direction}/source`}/${encodeURIComponent(fileName)}`;
 }
 
 function avatarHairAssetPath(fileName: string): string {
@@ -501,27 +507,27 @@ export default class MainOfficeScene extends Phaser.Scene {
     // --- Player Avatar (persistent across rooms) ---
     this.player = this.physics.add.sprite(400, 300, avatarBodyTextureKey(this.lastAvatarDirection, 'idle'));
     this.player.setOrigin(0.5, 0.88);
-    this.player.setDisplaySize(180, 180);
+    this.player.setDisplaySize(AVATAR_DISPLAY_SIZE, AVATAR_DISPLAY_SIZE);
     this.player.setCollideWorldBounds(true);
     this.player.body?.setSize(26, 20, true);
     this.updatePlayerDepth();
 
     this.playerShadow = this.add.sprite(400, 300, 'avatar-shadow');
     this.playerShadow.setOrigin(0.5, 0.88);
-    this.playerShadow.setDisplaySize(180, 180);
+    this.playerShadow.setDisplaySize(AVATAR_DISPLAY_SIZE, AVATAR_DISPLAY_SIZE);
 
     this.playerOutfit = this.add.sprite(400, 300, avatarOutfitTextureKey(this.lastAvatarDirection, 'idle'));
-    this.playerOutfit.setOrigin(0.5, 0.88);
-    this.playerOutfit.setDisplaySize(180, 180);
+    this.applyOutfitVisualTransform();
+    this.applyOutfitIdleLayerConfig();
 
     this.playerHair = this.add.sprite(400, 300, this.getHairLayerConfig(this.lastAvatarDirection).texture);
     this.playerHair.setOrigin(0.5, 0.88);
-    this.playerHair.setDisplaySize(180, 180);
+    this.playerHair.setDisplaySize(AVATAR_DISPLAY_SIZE, AVATAR_DISPLAY_SIZE);
     this.applyHairLayerConfig();
 
     this.playerFace = this.add.sprite(400, 300, this.getFaceLayerConfig(this.lastAvatarDirection).texture);
     this.playerFace.setOrigin(0.5, 0.88);
-    this.playerFace.setDisplaySize(180, 180);
+    this.playerFace.setDisplaySize(AVATAR_DISPLAY_SIZE, AVATAR_DISPLAY_SIZE);
     this.applyFaceLayerConfig();
     this.syncAvatarLayers();
 
@@ -612,7 +618,7 @@ export default class MainOfficeScene extends Phaser.Scene {
           frames: AVATAR_BODY_WALK_FILES[direction].map((_, index) => ({
             key: avatarBodyTextureKey(direction, index + 1),
           })),
-          frameRate: 11,
+          frameRate: AVATAR_WALK_FRAME_RATE,
           repeat: -1,
         });
       }
@@ -624,7 +630,7 @@ export default class MainOfficeScene extends Phaser.Scene {
           frames: AVATAR_OUTFIT_WALK_FILES[direction].map((_, index) => ({
             key: avatarOutfitTextureKey(direction, index + 1),
           })),
-          frameRate: 11,
+          frameRate: AVATAR_WALK_FRAME_RATE,
           repeat: -1,
         });
       }
@@ -662,8 +668,10 @@ export default class MainOfficeScene extends Phaser.Scene {
       this.isPlayerWalking = true;
       this.applyHairLayerConfig();
       this.applyFaceLayerConfig();
+      this.playerOutfit.setFlipX(false);
       this.player.anims.play(`avatar-walk-${this.lastAvatarDirection}`, true);
       this.playerOutfit.anims.play(`avatar-outfit-walk-${this.lastAvatarDirection}`, true);
+      this.applyOutfitVisualTransform();
     } else {
       this.setAvatarIdle();
     }
@@ -773,11 +781,36 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   private getBodyIdleTexture(direction: AvatarDirection): string {
-    return avatarBodyTextureKey(direction, AVATAR_IDLE_FRAME_INDEX);
+    return avatarBodyTextureKey(direction, 'idle');
   }
 
   private getOutfitIdleTexture(direction: AvatarDirection): string {
-    return avatarOutfitTextureKey(direction, AVATAR_IDLE_FRAME_INDEX);
+    return avatarOutfitTextureKey(direction, 'idle');
+  }
+
+  private getOutfitIdleLayerConfig(direction: AvatarDirection): OutfitIdleLayerConfig {
+    switch (direction) {
+      case 'FR':
+        return { texture: this.getOutfitIdleTexture(direction), flipX: true };
+      case 'FL':
+        return { texture: this.getOutfitIdleTexture(direction), flipX: false };
+      case 'BR':
+        return { texture: this.getOutfitIdleTexture(direction), flipX: true };
+      case 'BL':
+        return { texture: this.getOutfitIdleTexture(direction), flipX: true };
+    }
+  }
+
+  private applyOutfitVisualTransform() {
+    this.playerOutfit.setOrigin(0.5, 0.88);
+    this.playerOutfit.setDisplaySize(AVATAR_DISPLAY_SIZE, AVATAR_DISPLAY_SIZE);
+  }
+
+  private applyOutfitIdleLayerConfig() {
+    const outfitIdleConfig = this.getOutfitIdleLayerConfig(this.lastAvatarDirection);
+    this.playerOutfit.setTexture(outfitIdleConfig.texture);
+    this.playerOutfit.setFlipX(outfitIdleConfig.flipX);
+    this.applyOutfitVisualTransform();
   }
 
   private getHairLayerConfig(direction: AvatarDirection): HairLayerConfig {
@@ -844,7 +877,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.player.anims.stop();
     this.playerOutfit.anims.stop();
     this.player.setTexture(this.getBodyIdleTexture(this.lastAvatarDirection));
-    this.playerOutfit.setTexture(this.getOutfitIdleTexture(this.lastAvatarDirection));
+    this.applyOutfitIdleLayerConfig();
   }
 
   private getAvatarDirection(left: boolean, right: boolean, up: boolean, down: boolean): AvatarDirection {

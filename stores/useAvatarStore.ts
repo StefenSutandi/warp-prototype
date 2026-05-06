@@ -87,8 +87,8 @@ const defaultConfig: AvatarConfig = {
 };
 
 const defaultProfile: AvatarProfile = {
-  displayName: 'Jordan Quinn',
-  position: 'UI/UX Designer',
+  displayName: '',
+  position: '',
   interests: [],
   bio: '',
 };

@@ -36,15 +36,10 @@ const avatarTabs: { id: AvatarTab; label: string }[] = [
 const avatarPreviewAsset = '/assets/avatar/custom%20profile.svg';
 
 const faceOptions: AvatarOption[] = [
-  { id: 'face-detail', label: 'Face detail', src: '/assets/avatar/face/Group%201252.png' },
-  { id: 'face-layer-1', label: 'Face 1', src: '/assets/avatar/face/Layer_1.png' },
-  { id: 'face-layer-1-1', label: 'Face 2', src: '/assets/avatar/face/Layer_1-1.png' },
-  { id: 'face-layer-1-2', label: 'Face 3', src: '/assets/avatar/face/Layer_1-2.png' },
-  { id: 'face-layer-1-3', label: 'Face 4', src: '/assets/avatar/face/Layer_1-3.png' },
-  { id: 'face-layer-1-4', label: 'Face 5', src: '/assets/avatar/face/Layer_1-4.png' },
-  { id: 'face-layer-1-5', label: 'Face 6', src: '/assets/avatar/face/Layer_1-5.png' },
-  { id: 'face-layer-1-6', label: 'Face 7', src: '/assets/avatar/face/Layer_1-6.png' },
-  { id: 'face-layer-1-7', label: 'Face 8', src: '/assets/avatar/face/Layer_1-7.png' },
+  { id: 'face-1-default', label: 'Face 1 default', src: '/assets/avatar/face/Layer_1-2.png' },
+  { id: 'face-2-default', label: 'Face 2 default', src: '/assets/avatar/face/Layer_1-3.png' },
+  { id: 'face-3-default', label: 'Face 3 default', src: '/assets/avatar/face/Layer_1-5.png' },
+  { id: 'face-4-default', label: 'Face 4 default', src: '/assets/avatar/face/Layer_1-7.png' },
 ];
 
 const hairOptionsByColor: Record<HairColorId, AvatarOption[]> = {
@@ -78,6 +73,17 @@ const hairOptionsByColor: Record<HairColorId, AvatarOption[]> = {
     { id: 'hair-blonde-3-back', label: 'Wave blonde back', src: '/assets/avatar/hair/hair_3_back%203.svg' },
     { id: 'hair-blonde-4-back', label: 'Crop blonde back', src: '/assets/avatar/hair/hair_4_back%203.svg' },
   ],
+};
+
+const isFrontFacingHairOption = (option: AvatarOption) => {
+  const searchable = decodeURIComponent(`${option.id} ${option.label} ${option.src}`).toLowerCase();
+  return !searchable.includes('_back') && !searchable.includes('back');
+};
+
+const selectableHairOptionsByColor: Record<HairColorId, AvatarOption[]> = {
+  dark: hairOptionsByColor.dark.filter(isFrontFacingHairOption),
+  brown: hairOptionsByColor.brown.filter(isFrontFacingHairOption),
+  blonde: hairOptionsByColor.blonde.filter(isFrontFacingHairOption),
 };
 
 const outfitOptions: AvatarOption[] = [
@@ -177,8 +183,13 @@ function AvatarOptionCard({
   onSelect?: () => void;
   compact?: boolean;
 }) {
+  const cardClassName = cn(
+    'flex items-center justify-center rounded-[10px] border-2',
+    compact ? 'h-[104px] p-[7px] sm:h-[122px]' : 'h-[110px] p-[10px] sm:h-[155px]'
+  );
+
   if (!option) {
-    return <div className="h-[110px] rounded-[10px] border-2 border-[#DFDFDF] bg-[#F0F0F0] sm:h-[155px]" />;
+    return <div className={cn(cardClassName, 'border-[#DFDFDF] bg-[#F0F0F0]')} aria-hidden="true" />;
   }
 
   return (
@@ -186,8 +197,8 @@ function AvatarOptionCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        'group flex items-center justify-center rounded-[10px] border-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB] focus-visible:ring-offset-2',
-        compact ? 'h-[104px] p-[7px] sm:h-[122px]' : 'h-[110px] p-[10px] sm:h-[155px]',
+        cardClassName,
+        'group transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB] focus-visible:ring-offset-2',
         selected
           ? 'border-[#685EEB] bg-white shadow-[0_9px_20px_rgba(104,94,235,0.14)]'
           : 'border-[#DFDFDF] bg-[#F0F0F0] hover:border-[#B9B4FF] hover:bg-white/80'
@@ -241,12 +252,12 @@ function AvatarOptionsPanel({
 }) {
   const visibleOptions = useMemo(() => {
     if (activeTab === 'face') return faceOptions;
-    if (activeTab === 'hair') return hairOptionsByColor[selectedHairColorId];
+    if (activeTab === 'hair') return selectableHairOptionsByColor[selectedHairColorId];
     return outfitOptions;
   }, [activeTab, selectedHairColorId]);
 
   const gridSlots = [...visibleOptions, ...Array.from<undefined>({ length: Math.max(0, 6 - visibleOptions.length) })];
-  const optionCards = activeTab === 'outfit' ? gridSlots.slice(0, 6) : visibleOptions;
+  const optionCards = activeTab === 'outfit' || activeTab === 'face' ? gridSlots.slice(0, 6) : visibleOptions;
 
   return (
     <section className="min-h-[440px] overflow-hidden rounded-[51px] border-2 border-white bg-white/50 shadow-[0_2px_17.7px_rgba(104,94,235,0.31)] backdrop-blur-[4px] lg:min-h-[539px]">
@@ -411,20 +422,45 @@ export function AvatarCreationPage() {
   const [activeTab, setActiveTab] = useState<AvatarTab>('face');
   const [selectedFace, setSelectedFace] = useState(faceOptions[0]);
   const [selectedHairColorId, setSelectedHairColorId] = useState<HairColorId>('brown');
-  const [selectedHair, setSelectedHair] = useState(hairOptionsByColor.brown[0]);
+  const [selectedHair, setSelectedHair] = useState(selectableHairOptionsByColor.brown[0]);
   const [selectedOutfit, setSelectedOutfit] = useState(outfitOptions[2]);
-  const [displayName, setDisplayName] = useState('');
-  const [position, setPosition] = useState('');
+  const [displayName, setDisplayName] = useState(() => avatarProfile.displayName);
+  const [position, setPosition] = useState(() => avatarProfile.position);
   const [interests, setInterests] = useState<string[]>(() => avatarProfile.interests.length > 0 ? avatarProfile.interests : defaultInterests);
-  const [bio, setBio] = useState('');
+  const [bio, setBio] = useState(() => avatarProfile.bio);
+
+  const handleDisplayNameChange = (value: string) => {
+    setDisplayName(value);
+    updateAvatarProfile({ displayName: value });
+  };
+
+  const handlePositionChange = (value: string) => {
+    setPosition(value);
+    updateAvatarProfile({ position: value });
+  };
 
   const handleInterestsChange = (nextInterests: string[]) => {
     setInterests(nextInterests);
     updateAvatarProfile({ interests: nextInterests });
   };
 
+  const handleBioChange = (value: string) => {
+    setBio(value);
+    updateAvatarProfile({ bio: value });
+  };
+
+  const handleContinue = () => {
+    updateAvatarProfile({
+      displayName: displayName.trim(),
+      position: position.trim(),
+      interests,
+      bio: bio.trim(),
+    });
+    router.push('/employer');
+  };
+
   const handleHairColorSelect = (colorId: HairColorId) => {
-    const nextHairOptions = hairOptionsByColor[colorId];
+    const nextHairOptions = selectableHairOptionsByColor[colorId];
     setSelectedHairColorId(colorId);
     if (!nextHairOptions.some((option) => option.id === selectedHair.id)) {
       setSelectedHair(nextHairOptions[0]);
@@ -465,13 +501,13 @@ export function AvatarCreationPage() {
 
           <ProfileInfoCard
             displayName={displayName}
-            setDisplayName={setDisplayName}
+            setDisplayName={handleDisplayNameChange}
             position={position}
-            setPosition={setPosition}
+            setPosition={handlePositionChange}
             interests={interests}
             setInterests={handleInterestsChange}
             bio={bio}
-            setBio={setBio}
+            setBio={handleBioChange}
           />
         </div>
 
@@ -485,7 +521,7 @@ export function AvatarCreationPage() {
           </button>
           <button
             type="button"
-            onClick={() => router.push('/employer')}
+            onClick={handleContinue}
             className="inline-flex h-[38px] items-center justify-center gap-2 rounded-[10px] bg-[#685EEB] px-[23px] text-[16px] font-semibold text-white shadow-[0_12px_24px_rgba(104,94,235,0.2)] transition hover:bg-[#5E54D8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB] focus-visible:ring-offset-2"
           >
             Continue

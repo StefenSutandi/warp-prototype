@@ -5,6 +5,7 @@ import { PhaserGame } from '@/game/components/PhaserGame';
 import { CreateNewTaskModal as SharedCreateNewTaskModal } from '@/components/create-new-task-modal';
 import { useTaskStore } from '@/stores/useTaskStore';
 import { useUserStore } from '@/stores/useUserStore';
+import { useAvatarStore } from '@/stores/useAvatarStore';
 import { useOfficeStore } from '@/stores/useOfficeStore';
 import { type Task } from '@/lib/types';
 import { Pause, SkipForward, Smile } from 'lucide-react';
@@ -321,7 +322,7 @@ function TopRightHud() {
 // =============================================
 
 function UserCardOverlay() {
-  const user = useUserStore(s => s.currentUser);
+  const avatarProfile = useAvatarStore(s => s.profile);
   const [isExpanded, setIsExpanded] = useState(false);
   const activityOptions = [
     'Finalize login screen wireframe',
@@ -333,7 +334,10 @@ function UserCardOverlay() {
   const [selectedActivity, setSelectedActivity] = useState(activityOptions[0]);
   const cardRef = useRef<HTMLDivElement>(null);
   const activityPillStyles = ['bg-[#EEF2FF]', 'bg-[#FFEBEC]', 'bg-[#EAFBF3]'];
-  const subtitle = selectedActivity;
+  const displayName = avatarProfile.displayName.trim() || 'Your Name';
+  const position = avatarProfile.position.trim() || 'Your Position';
+  const bio = avatarProfile.bio.trim();
+  const interests = avatarProfile.interests;
 
   useEffect(() => {
     if (!isExpanded) return;
@@ -357,10 +361,10 @@ function UserCardOverlay() {
         <div className="h-[39px] w-[39px] shrink-0 rounded-full" style={{ background: 'linear-gradient(135deg, #9a7cff, #9ae4ff)' }} />
         <div className="min-w-0 flex-1">
           <p className="warp-font-ui truncate text-[16px] font-medium leading-none text-black">
-            {user?.name || 'Your Name'}
+            {displayName}
           </p>
           <p className="warp-font-ui mt-[5px] truncate text-[11px] font-medium leading-none text-[#9B96B8]">
-            {subtitle}
+            {position}
           </p>
         </div>
         <span
@@ -392,6 +396,35 @@ function UserCardOverlay() {
             : 'pointer-events-none -translate-y-[6px] opacity-0'
         }`}
       >
+        <div>
+          <p className="warp-font-ui text-[11px] font-semibold uppercase tracking-[0.08em] text-[#9B96B8]">
+            Profile
+          </p>
+          <p className="warp-font-ui mt-[6px] text-[14px] font-semibold leading-tight text-black">
+            {displayName}
+          </p>
+          <p className="warp-font-ui mt-[3px] text-[11px] font-medium leading-tight text-[#9B96B8]">
+            {position}
+          </p>
+          {bio ? (
+            <p className="warp-font-ui mt-[10px] text-[11px] leading-[1.35] text-[#5C5780]">
+              {bio}
+            </p>
+          ) : null}
+          {interests.length > 0 ? (
+            <div className="mt-[10px] flex flex-wrap gap-[6px]">
+              {interests.map((interest, index) => (
+                <span
+                  key={`${interest}-${index}`}
+                  className="warp-font-ui rounded-full bg-[#EEF2FF] px-[9px] py-[5px] text-[10px] font-medium text-[#5C5780]"
+                >
+                  {interest}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
         <div>
           <p className="warp-font-ui text-[11px] font-semibold uppercase tracking-[0.08em] text-[#9B96B8]">
             Current Activity
