@@ -89,6 +89,7 @@ const ROOMS: Record<string, RoomDef> = {
 interface TeammateData {
   circle: Phaser.GameObjects.Arc;
   sprite?: Phaser.GameObjects.Image;
+  coworkerLayers?: RoomCoworkerLayers;
   name: string;
   role: string;
   color: number;
@@ -174,9 +175,6 @@ const VIRTUAL_ROOM_ASSETS = {
   chairBackHoverGreen: '/assets/virtual-room/chairs/hover/chair_back_hover_green.png',
   chairBackHoverBlue: '/assets/virtual-room/chairs/hover/chair_back_hover_blue.png',
   sitPopupPrimary: '/assets/virtual-room/overlays/sit_popup_primary.png',
-  characterBlack: '/assets/virtual-room/characters/Property 1=Group 1258.png',
-  characterBrown: '/assets/virtual-room/characters/Property 1=Group 1257.png',
-  characterBlonde: '/assets/virtual-room/characters/Property 1=Group 1253.png',
 } as const;
 
 type AvatarDirection = 'FR' | 'FL' | 'BR' | 'BL';
@@ -206,12 +204,42 @@ type OutfitWalkLayerConfig = {
   offsetX: number;
   offsetY: number;
 };
+type BodyTone = 'light' | 'medium' | 'dark';
+type OutfitType = 'long' | 'hoodie' | 'short' | 'suit';
+type RoomCoworkerConfig = {
+  id: string;
+  x: number;
+  y: number;
+  direction: Extract<AvatarDirection, 'FR' | 'FL'>;
+  bodyTone: BodyTone;
+  bodyTextureKey?: string;
+  outfitType: OutfitType;
+  hairTextureKey: string;
+  faceDefaultTextureKey: string;
+  faceBlinkTextureKey: string;
+  faceVisible?: boolean;
+  faceFlipX?: boolean;
+  depthOffset?: number;
+};
+type RoomCoworkerLayers = {
+  id: string;
+  shadow?: Phaser.GameObjects.Sprite;
+  body: Phaser.GameObjects.Sprite;
+  outfit: Phaser.GameObjects.Sprite;
+  hair?: Phaser.GameObjects.Sprite;
+  face?: Phaser.GameObjects.Sprite;
+  faceDefaultTextureKey: string;
+  faceBlinkTextureKey: string;
+  blinkEvent?: Phaser.Time.TimerEvent;
+  hitArea?: Phaser.GameObjects.Arc;
+};
 
 const AVATAR_BODY_BASE_PATH = '/assets/avatar/walk/body/light';
 const AVATAR_OUTFIT_BASE_PATH = '/assets/avatar/walk/outfit/short';
 const AVATAR_HAIR_BASE_PATH = '/assets/avatar/walk/hair/source';
 const AVATAR_FACE_BASE_PATH = '/assets/avatar/walk/face/source';
 const AVATAR_SHADOW_ASSET_PATH = '/assets/avatar/walk/shadow/SHADOW_BASE.png';
+const COWORKER_SHADOW_ASSET_PATH = '/assets/avatar/walk/shadow/source/Frame%203852%20(3).png';
 const AVATAR_DEPTH_OFFSET = 16;
 const AVATAR_DISPLAY_SIZE = 180;
 const AVATAR_WALK_FRAME_RATE = 16;
@@ -222,6 +250,48 @@ const AVATAR_FACE_BLINK_FILE = 'face_1_blink.png';
 const AVATAR_FACE_BLINK_INTERVAL_MS = 3500;
 const AVATAR_FACE_BLINK_DURATION_MS = 140;
 const AVATAR_DIRECTIONS: AvatarDirection[] = ['FR', 'FL', 'BR', 'BL'];
+const COWORKER_IDLE_DIRECTIONS: Extract<AvatarDirection, 'FR' | 'FL'>[] = ['FR', 'FL'];
+const COWORKER_DISPLAY_SIZE = AVATAR_DISPLAY_SIZE;
+const COWORKER_BLINK_INTERVAL_MS = 3200;
+const COWORKER_BLINK_DURATION_MS = 130;
+const COWORKER_OUTFIT_IDLE_FILES: Record<OutfitType, string> = {
+  long: 'outfit1_idle.png',
+  hoodie: 'outfit2_idle.png',
+  short: 'outfit3_idle.png',
+  suit: 'outfit4_idle.png',
+};
+const MAIN_ROOM_COWORKER_CONFIGS: Omit<RoomCoworkerConfig, 'x' | 'y'>[] = [
+  {
+    id: 'coworker-left',
+    direction: 'FR',
+    bodyTone: 'medium',
+    outfitType: 'suit',
+    hairTextureKey: 'avatar-coworker-hair-4',
+    faceDefaultTextureKey: 'avatar-coworker-face-4-default',
+    faceBlinkTextureKey: 'avatar-coworker-face-4-blink',
+  },
+  {
+    id: 'coworker-middle',
+    direction: 'FL',
+    bodyTone: 'light',
+    outfitType: 'hoodie',
+    hairTextureKey: 'avatar-coworker-hair-2-1',
+    faceDefaultTextureKey: 'avatar-coworker-face-2-default-2',
+    faceBlinkTextureKey: 'avatar-coworker-face-2-blink-2',
+    faceFlipX: false,
+  },
+  {
+    id: 'coworker-right',
+    direction: 'FL',
+    bodyTone: 'dark',
+    bodyTextureKey: 'avatar-coworker-body-dark-FL-idle-tone',
+    outfitType: 'short',
+    hairTextureKey: 'avatar-coworker-hair-1-3',
+    faceDefaultTextureKey: 'avatar-coworker-face-1-default-2',
+    faceBlinkTextureKey: 'avatar-coworker-face-1-blink-2',
+    faceFlipX: false,
+  },
+];
 const PLAYER_MAIN_ROOM_BOUNDS_RATIO = {
   left: 0.1,
   right: 0.86,
@@ -231,7 +301,7 @@ const PLAYER_MAIN_ROOM_BOUNDS_RATIO = {
 const ENABLE_STRICT_ROOM_WALK_BOUNDS = false;
 const DEBUG_WALK_ZONES = false;
 const ROOM_CHARACTER_DISPLAY_SCALE = 0.82;
-const MAIN_ROOM_SAFE_SPAWN_FOOT: FigmaPoint = { x: 800, y: 730 };
+const MAIN_ROOM_SAFE_SPAWN_FOOT: FigmaPoint = { x: 590, y: 760 };
 const MAIN_ROOM_WALKABLE_FLOOR_POLYGON: FigmaPoint[] = [
   { x: 88, y: 505 },
   { x: 390, y: 288 },
@@ -288,6 +358,14 @@ function avatarBodyAssetPath(direction: AvatarDirection, fileName: string): stri
   return `${AVATAR_BODY_BASE_PATH}/${direction}/${encodeURIComponent(fileName)}`;
 }
 
+function coworkerBodyTextureKey(tone: BodyTone, direction: AvatarDirection): string {
+  return `avatar-coworker-body-${tone}-${direction}-idle`;
+}
+
+function coworkerBodyAssetPath(tone: BodyTone, direction: AvatarDirection): string {
+  return `/assets/avatar/walk/body/${tone}/source/${direction === 'FR' || direction === 'FL' ? 'base_idle.png' : 'base_idle_back.png'}`;
+}
+
 function avatarOutfitTextureKey(direction: AvatarDirection, frame: 'idle' | number): string {
   return `avatar-outfit-short-${direction}-${frame}`;
 }
@@ -297,12 +375,28 @@ function avatarOutfitAssetPath(direction: AvatarDirection, fileName: string): st
   return `${AVATAR_OUTFIT_BASE_PATH}${isIdle ? '' : `/${direction}`}/${encodeURIComponent(fileName)}`;
 }
 
+function coworkerOutfitTextureKey(outfitType: OutfitType): string {
+  return `avatar-coworker-outfit-${outfitType}-idle`;
+}
+
+function coworkerOutfitAssetPath(outfitType: OutfitType): string {
+  return `/assets/avatar/walk/outfit/${outfitType}/source/${encodeURIComponent(COWORKER_OUTFIT_IDLE_FILES[outfitType])}`;
+}
+
 function avatarHairAssetPath(fileName: string): string {
   return `${AVATAR_HAIR_BASE_PATH}/${encodeURIComponent(fileName)}`;
 }
 
+function avatarHairColorVariantAssetPath(fileName: string): string {
+  return `/assets/avatar/walk/hair/${encodeURIComponent(fileName)}`;
+}
+
 function avatarFaceAssetPath(fileName: string): string {
   return `${AVATAR_FACE_BASE_PATH}/${encodeURIComponent(fileName)}`;
+}
+
+function avatarFaceVariantAssetPath(fileName: string): string {
+  return `/assets/avatar/walk/face/${encodeURIComponent(fileName)}`;
 }
 
 const FIGMA_MAIN_ROOM = {
@@ -311,10 +405,10 @@ const FIGMA_MAIN_ROOM = {
   table: { x: 402.1380920410156, y: 389.75921630859375, w: 387.66632080078125, h: 269.8779296875 },
   door: { x: 974.2535400390625, y: 272.61749267578125, w: 135.90972900390625, h: 300.29583740234375 },
   characters: [
-    { assetKey: 'room-character-black', x: 186, y: 440, w: 180, h: 180, flipX: false },
-    { assetKey: 'room-character-brown', x: 714, y: 552, w: 180, h: 180, flipX: true },
-    { assetKey: 'room-character-blonde', x: 852, y: 479.91, w: 180, h: 180, flipX: false },
-  ] as Array<FigmaRect & { assetKey: string; flipX: boolean }>,
+    { id: 'coworker-left', x: 186, y: 440, w: 180, h: 180 },
+    { id: 'coworker-middle', x: 714, y: 552, w: 180, h: 180 },
+    { id: 'coworker-right', x: 852, y: 479.91, w: 180, h: 180 },
+  ] as Array<FigmaRect & { id: string }>,
   seats: [
     { id: 'front-orange', row: 'top', variant: 'front', color: 'orange', x: 565.2298583984375, y: 352.8690185546875, w: 120.377197265625, h: 146.91197204589844 },
     { id: 'front-green', row: 'top', variant: 'front', color: 'green', x: 647.423095703125, y: 389.1114501953125, w: 120.377197265625, h: 146.91197204589844 },
@@ -365,6 +459,7 @@ export default class MainOfficeScene extends Phaser.Scene {
   private teammates: TeammateData[] = [];
   private desks: DeskData[] = [];
   private seats: SeatData[] = [];
+  private roomCoworkers: RoomCoworkerLayers[] = [];
   private hoveredSeat: SeatData | null = null;
   private selectedSeat: SeatData | null = null;
   private roomObjects: Phaser.GameObjects.GameObject[] = [];
@@ -464,14 +559,40 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.load.image('chair_back_hover_green', VIRTUAL_ROOM_ASSETS.chairBackHoverGreen);
     this.load.image('chair_back_hover_blue', VIRTUAL_ROOM_ASSETS.chairBackHoverBlue);
     this.load.image('sit_popup_primary', VIRTUAL_ROOM_ASSETS.sitPopupPrimary);
-    this.load.image('room-character-black', VIRTUAL_ROOM_ASSETS.characterBlack);
-    this.load.image('room-character-brown', VIRTUAL_ROOM_ASSETS.characterBrown);
-    this.load.image('room-character-blonde', VIRTUAL_ROOM_ASSETS.characterBlonde);
     this.load.image('avatar-shadow', AVATAR_SHADOW_ASSET_PATH);
     this.load.image('avatar-hair-front', avatarHairAssetPath(AVATAR_HAIR_FRONT_FILE));
     this.load.image('avatar-hair-back', avatarHairAssetPath(AVATAR_HAIR_BACK_FILE));
     this.load.image('avatar-face-default', avatarFaceAssetPath(AVATAR_FACE_DEFAULT_FILE));
     this.load.image('avatar-face-blink', avatarFaceAssetPath(AVATAR_FACE_BLINK_FILE));
+    this.load.image('avatar-coworker-shadow', COWORKER_SHADOW_ASSET_PATH);
+    this.load.image('avatar-coworker-hair-1', avatarHairAssetPath('hair_1.png'));
+    this.load.image('avatar-coworker-hair-1-3', avatarHairColorVariantAssetPath('hair_1 3.png'));
+    this.load.image('avatar-coworker-hair-2', avatarHairAssetPath('hair_2.png'));
+    this.load.image('avatar-coworker-hair-2-1', avatarHairColorVariantAssetPath('hair_2 1.png'));
+    this.load.image('avatar-coworker-hair-3', avatarHairColorVariantAssetPath('hair_3 3.png'));
+    this.load.image('avatar-coworker-hair-4', avatarHairColorVariantAssetPath('hair_4 2.png'));
+    this.load.image('avatar-coworker-face-1-default', avatarFaceAssetPath('face_1_default.png'));
+    this.load.image('avatar-coworker-face-1-blink', avatarFaceAssetPath('face_1_blink.png'));
+    this.load.image('avatar-coworker-face-1-default-2', avatarFaceVariantAssetPath('face_1_default 2.png'));
+    this.load.image('avatar-coworker-face-1-blink-2', avatarFaceVariantAssetPath('face_1_blink 2.png'));
+    this.load.image('avatar-coworker-face-2-default-2', avatarFaceVariantAssetPath('face_2_default 2.png'));
+    this.load.image('avatar-coworker-face-2-blink-2', avatarFaceVariantAssetPath('face_2_blink 2.png'));
+    this.load.image('avatar-coworker-face-3-default', avatarFaceAssetPath('face_3_default.png'));
+    this.load.image('avatar-coworker-face-3-blink', avatarFaceAssetPath('face_3_blink.png'));
+    this.load.image('avatar-coworker-face-4-default', avatarFaceAssetPath('face_4_default.png'));
+    this.load.image('avatar-coworker-face-4-blink', avatarFaceAssetPath('face_4_blink.png'));
+    this.load.image('avatar-coworker-body-dark-FL-idle-tone', '/assets/avatar/walk/body/dark/FL/base_dark_idle_FL.png');
+    (['light', 'medium', 'dark'] as BodyTone[]).forEach((tone) => {
+      COWORKER_IDLE_DIRECTIONS.forEach((direction) => {
+        this.load.image(
+          coworkerBodyTextureKey(tone, direction),
+          coworkerBodyAssetPath(tone, direction),
+        );
+      });
+    });
+    (['long', 'hoodie', 'short', 'suit'] as OutfitType[]).forEach((outfitType) => {
+      this.load.image(coworkerOutfitTextureKey(outfitType), coworkerOutfitAssetPath(outfitType));
+    });
 
     AVATAR_DIRECTIONS.forEach((direction) => {
       this.load.image(
@@ -1062,8 +1183,12 @@ export default class MainOfficeScene extends Phaser.Scene {
       }
 
       // Teammates
-      for (const tm of room.teammates) {
-        this.spawnTeammate(tm.x, tm.y, tm.color, tm.name, tm.role, tm.assetKey, tm.flipX, tm.displayRect);
+      for (const [index, tm] of room.teammates.entries()) {
+        const coworkerBaseConfig = MAIN_ROOM_COWORKER_CONFIGS[index];
+        const coworkerConfig = coworkerBaseConfig
+          ? { ...coworkerBaseConfig, x: tm.x, y: tm.y }
+          : undefined;
+        this.spawnTeammate(tm.x, tm.y, tm.color, tm.name, tm.role, tm.assetKey, tm.flipX, tm.displayRect, coworkerConfig);
       }
 
       // Doors
@@ -1173,8 +1298,8 @@ export default class MainOfficeScene extends Phaser.Scene {
 
       teammate.x = mappedCharacter.x + mappedCharacter.w / 2;
       teammate.y = mappedCharacter.y + mappedCharacter.h * 0.88;
-      teammate.assetKey = character.assetKey;
-      teammate.flipX = character.flipX;
+      teammate.assetKey = undefined;
+      teammate.flipX = false;
       teammate.displayRect = {
         x: mappedCharacter.x + (mappedCharacter.w * (1 - ROOM_CHARACTER_DISPLAY_SCALE)) / 2,
         y: mappedCharacter.y + mappedCharacter.h * (1 - ROOM_CHARACTER_DISPLAY_SCALE),
@@ -1451,12 +1576,17 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   private clearRoom() {
+    for (const coworker of this.roomCoworkers) {
+      coworker.blinkEvent?.remove(false);
+    }
+
     // Destroy all room-specific objects
     for (const obj of this.roomObjects) {
       obj.destroy();
     }
     this.roomObjects = [];
     this.seats = [];
+    this.roomCoworkers = [];
     this.hoveredSeat = null;
     this.selectedSeat = null;
 
@@ -1685,6 +1815,87 @@ export default class MainOfficeScene extends Phaser.Scene {
   //  TEAMMATE CREATION + INTERACTION MENU
   // =============================================
 
+  private spawnLayeredCoworker(config: RoomCoworkerConfig, hitArea?: Phaser.GameObjects.Arc): RoomCoworkerLayers {
+    const shouldFlipFrontLayer = config.direction === 'FL';
+    const body = this.add.sprite(config.x, config.y, config.bodyTextureKey ?? this.getCoworkerBodyIdleTexture(config.bodyTone, config.direction));
+    const outfit = this.add.sprite(config.x, config.y, this.getCoworkerOutfitIdleTexture(config.outfitType));
+    const hair = this.add.sprite(config.x, config.y, config.hairTextureKey);
+    const face = this.add.sprite(config.x, config.y, config.faceDefaultTextureKey);
+    const shadow = this.add.sprite(config.x, config.y, 'avatar-coworker-shadow');
+
+    [shadow, body, outfit, hair, face].forEach((layer) => {
+      layer.setOrigin(0.5, 0.88);
+      layer.setDisplaySize(COWORKER_DISPLAY_SIZE, COWORKER_DISPLAY_SIZE);
+      this.roomObjects.push(layer);
+    });
+
+    body.setFlipX(config.bodyTextureKey ? false : shouldFlipFrontLayer);
+    outfit.setFlipX(shouldFlipFrontLayer);
+    hair.setFlipX(shouldFlipFrontLayer);
+    face.setFlipX(config.faceFlipX ?? shouldFlipFrontLayer);
+    face.setVisible(config.faceVisible ?? true);
+
+    const coworker: RoomCoworkerLayers = {
+      id: config.id,
+      shadow,
+      body,
+      outfit,
+      hair,
+      face,
+      faceDefaultTextureKey: config.faceDefaultTextureKey,
+      faceBlinkTextureKey: config.faceBlinkTextureKey,
+      hitArea,
+    };
+    this.startCoworkerBlink(coworker, config.faceVisible ?? true);
+    this.syncCoworkerLayers(coworker, config.x, config.y, config.depthOffset ?? 0);
+    this.roomCoworkers.push(coworker);
+
+    return coworker;
+  }
+
+  private syncCoworkerLayers(coworker: RoomCoworkerLayers, x: number, y: number, depthOffset: number = 0) {
+    const baseDepth = y + depthOffset + AVATAR_DEPTH_OFFSET;
+
+    coworker.shadow?.setPosition(x, y).setDepth(baseDepth - 1);
+    coworker.body.setPosition(x, y).setDepth(baseDepth);
+    coworker.outfit.setPosition(x, y).setDepth(baseDepth + 1);
+    coworker.hair?.setPosition(x, y).setDepth(baseDepth + 2);
+    coworker.face?.setPosition(x, y).setDepth(baseDepth + 3);
+    coworker.hitArea?.setPosition(x, y).setDepth(baseDepth + 4);
+  }
+
+  private getCoworkerBodyIdleTexture(tone: BodyTone, direction: Extract<AvatarDirection, 'FR' | 'FL'>): string {
+    return coworkerBodyTextureKey(tone, direction);
+  }
+
+  private getCoworkerOutfitIdleTexture(outfitType: OutfitType): string {
+    return coworkerOutfitTextureKey(outfitType);
+  }
+
+  private startCoworkerBlink(coworker: RoomCoworkerLayers, canBlink: boolean) {
+    if (!canBlink || !coworker.face) {
+      return;
+    }
+
+    const delay = COWORKER_BLINK_INTERVAL_MS + (this.roomCoworkers.length * 450);
+    coworker.blinkEvent = this.time.addEvent({
+      delay,
+      loop: true,
+      callback: () => {
+        if (!coworker.face?.active || !coworker.face.visible) {
+          return;
+        }
+
+        coworker.face.setTexture(coworker.faceBlinkTextureKey);
+        this.time.delayedCall(COWORKER_BLINK_DURATION_MS, () => {
+          if (coworker.face?.active) {
+            coworker.face.setTexture(coworker.faceDefaultTextureKey);
+          }
+        });
+      },
+    });
+  }
+
   private spawnTeammate(
     x: number,
     y: number,
@@ -1694,16 +1905,21 @@ export default class MainOfficeScene extends Phaser.Scene {
     assetKey?: string,
     flipX: boolean = false,
     displayRect?: FigmaRect,
+    coworkerConfig?: RoomCoworkerConfig,
   ) {
     const teammate = this.add.circle(x, y, 12, color);
-    teammate.setStrokeStyle(2, 0xffffff, assetKey ? 0 : 0.5);
-    teammate.setAlpha(assetKey ? 0.001 : 1);
+    const hasCustomVisual = Boolean(assetKey || coworkerConfig);
+    teammate.setStrokeStyle(2, 0xffffff, hasCustomVisual ? 0 : 0.5);
+    teammate.setAlpha(hasCustomVisual ? 0.001 : 1);
     teammate.setInteractive({ useHandCursor: true });
     teammate.setDepth(y + 22);
     this.roomObjects.push(teammate);
 
     let sprite: Phaser.GameObjects.Image | undefined;
-    if (assetKey && displayRect) {
+    let coworkerLayers: RoomCoworkerLayers | undefined;
+    if (coworkerConfig) {
+      coworkerLayers = this.spawnLayeredCoworker({ ...coworkerConfig, x, y }, teammate);
+    } else if (assetKey && displayRect) {
       sprite = this.add.image(displayRect.x, displayRect.y, assetKey)
         .setOrigin(0, 0)
         .setDisplaySize(displayRect.w, displayRect.h)
@@ -1717,7 +1933,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     }
 
     const tmData: TeammateData = {
-      circle: teammate, sprite, name, role, color, x, y,
+      circle: teammate, sprite, coworkerLayers, name, role, color, x, y,
       inCall: false, playerJoined: false,
     };
     this.teammates.push(tmData);
