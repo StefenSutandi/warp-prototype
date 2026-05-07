@@ -214,7 +214,7 @@ const AVATAR_FACE_BASE_PATH = '/assets/avatar/walk/face/source';
 const AVATAR_SHADOW_ASSET_PATH = '/assets/avatar/walk/shadow/SHADOW_BASE.png';
 const AVATAR_DEPTH_OFFSET = 16;
 const AVATAR_DISPLAY_SIZE = 180;
-const AVATAR_WALK_FRAME_RATE = 14;
+const AVATAR_WALK_FRAME_RATE = 16;
 const AVATAR_HAIR_FRONT_FILE = 'hair_1.png';
 const AVATAR_HAIR_BACK_FILE = 'hair_1_back.png';
 const AVATAR_FACE_DEFAULT_FILE = 'face_1_default.png';
@@ -685,7 +685,9 @@ export default class MainOfficeScene extends Phaser.Scene {
       const outfitAnimationKey = `avatar-outfit-walk-${outfitWalkConfig.sourceDirection}`;
       const shouldStartWalkAnimation = this.activeWalkDirection !== nextAvatarDirection
         || this.activeBodyWalkAnimationKey !== bodyAnimationKey
-        || this.activeOutfitWalkAnimationKey !== outfitAnimationKey;
+        || this.activeOutfitWalkAnimationKey !== outfitAnimationKey
+        || !this.player.anims.isPlaying
+        || !this.playerOutfit.anims.isPlaying;
       this.lastAvatarDirection = nextAvatarDirection;
       this.isPlayerWalking = true;
       this.applyHairLayerConfig();
@@ -849,7 +851,6 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.playerOutfit.setFlipX(outfitWalkConfig.flipX);
     this.player.anims.play(bodyAnimationKey);
     this.playerOutfit.anims.play(outfitAnimationKey);
-    this.playerOutfit.anims.setProgress(this.player.anims.getProgress());
     this.applyOutfitVisualTransform();
 
     this.activeWalkDirection = direction;
@@ -1503,8 +1504,13 @@ export default class MainOfficeScene extends Phaser.Scene {
       return;
     }
 
+    const mainRoomBounds = this.mainRoomBounds;
+    if (!mainRoomBounds) {
+      return;
+    }
+
     camera.setZoom(this.sceneZoom);
-    camera.centerOn(this.mainRoomBounds.centerX, this.mainRoomBounds.centerY - MainOfficeScene.VISUAL_CAMERA_Y_OFFSET);
+    camera.centerOn(mainRoomBounds.centerX, mainRoomBounds.centerY - MainOfficeScene.VISUAL_CAMERA_Y_OFFSET);
   }
 
   private getRoomSafeSpawnPosition(roomId: string): Phaser.Math.Vector2 {
