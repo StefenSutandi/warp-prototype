@@ -367,17 +367,15 @@ function HeroPanel({ onCreateRoom }: { onCreateRoom: () => void }) {
         </div>
       </div>
 
-      <div className="absolute bottom-[28px] right-[28px] top-[74px] hidden w-[44%] max-w-[430px] overflow-hidden rounded-[18px] border border-white/75 bg-white/50 p-[5px] shadow-[0_18px_36px_rgba(104,94,235,0.16)] backdrop-blur-[1px] lg:block">
-        <div className="relative h-full w-full overflow-hidden rounded-[14px] bg-[#f8f7fc]">
-          <Image
-            src={EMPLOYER_DASHBOARD_ASSETS.roomPreview}
-            alt=""
-            fill
-            sizes="430px"
-            className="object-cover object-center"
-            priority
-          />
-        </div>
+      <div className="pointer-events-none absolute bottom-[10px] right-[18px] top-[58px] hidden w-[48%] max-w-[470px] lg:block">
+        <Image
+          src={EMPLOYER_DASHBOARD_ASSETS.roomPreview}
+          alt=""
+          fill
+          sizes="470px"
+          className="object-contain object-bottom drop-shadow-[0_24px_34px_rgba(104,94,235,0.14)]"
+          priority
+        />
       </div>
 
       <FriendStack />
