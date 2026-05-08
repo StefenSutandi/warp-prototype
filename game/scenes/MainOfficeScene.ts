@@ -621,6 +621,22 @@ export default class MainOfficeScene extends Phaser.Scene {
     });
   }
 
+  private applyCoworkerTextureSmoothing() {
+    [
+      'avatar-coworker-body-dark-FL-idle-tone',
+      'avatar-coworker-hair-2-1',
+      'avatar-coworker-face-2-default-2',
+      'avatar-coworker-face-2-blink-2',
+      'avatar-coworker-hair-1-3',
+      'avatar-coworker-face-1-default-2',
+      'avatar-coworker-face-1-blink-2',
+    ].forEach((textureKey) => {
+      if (this.textures.exists(textureKey)) {
+        this.textures.get(textureKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+      }
+    });
+  }
+
   create() {
     this.isSceneShuttingDown = false;
     this.cameras.main.setBackgroundColor('rgba(0,0,0,0)');
@@ -635,6 +651,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     }).setOrigin(1, 0).setDepth(50).setScrollFactor(0).setVisible(false);
 
     this.createAvatarAnimations();
+    this.applyCoworkerTextureSmoothing();
 
     // --- Player Avatar (persistent across rooms) ---
     this.player = this.physics.add.sprite(400, 300, avatarBodyTextureKey(this.lastAvatarDirection, 'idle'));
