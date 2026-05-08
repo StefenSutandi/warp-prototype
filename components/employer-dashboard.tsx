@@ -13,12 +13,18 @@ import {
   DoorOpen,
   Flame,
   Hash,
+  KeyRound,
   LayoutGrid,
   Lock,
+  LogOut,
+  Mail,
   type LucideIcon,
   MessageCircle,
   MessageSquarePlus,
+  Monitor,
+  Moon,
   MoreVertical,
+  Palette,
   Paperclip,
   Phone,
   Plus,
@@ -28,9 +34,11 @@ import {
   ShieldCheck,
   Sparkles,
   Star,
+  Sun,
   Target,
   Timer,
   Trophy,
+  UserRound,
   UsersRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -1183,6 +1191,292 @@ function EmployerTeamPage() {
   );
 }
 
+function SettingsToggle({
+  label,
+  description,
+  enabled,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  enabled: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      className="group flex w-full items-center justify-between gap-4 rounded-[16px] px-[12px] py-[11px] text-left transition hover:bg-[#f8f7fc] active:scale-[0.99]"
+    >
+      <span>
+        <span className="block text-[13px] font-bold text-[#111111]">{label}</span>
+        <span className="mt-[3px] block text-[11px] font-medium text-[#858585]">{description}</span>
+      </span>
+      <span
+        className={cn(
+          'relative h-[28px] w-[50px] shrink-0 rounded-full transition-colors duration-200',
+          enabled ? 'bg-[#685eeb]' : 'bg-[#d8d4e8]'
+        )}
+      >
+        <span
+          className={cn(
+            'absolute top-[4px] h-[20px] w-[20px] rounded-full bg-white shadow-[0_4px_10px_rgba(59,52,120,0.18)] transition-transform duration-200',
+            enabled ? 'translate-x-[26px]' : 'translate-x-[4px]'
+          )}
+        />
+      </span>
+    </button>
+  );
+}
+
+function EmployerSettingsPage() {
+  const [workspaceName, setWorkspaceName] = useState('Paper Studio');
+  const [defaultRoom, setDefaultRoom] = useState('Paper Studio');
+  const [accentColor, setAccentColor] = useState<'purple' | 'mint' | 'blue'>('purple');
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('light');
+  const [notifications, setNotifications] = useState({
+    roomActivity: true,
+    taskReminders: true,
+    teamMessages: true,
+    weeklyRecap: false,
+    twoFactor: false,
+  });
+
+  const toggleSetting = (key: keyof typeof notifications) => {
+    setNotifications((current) => ({ ...current, [key]: !current[key] }));
+  };
+
+  const accentOptions = [
+    { id: 'purple', label: 'Purple', className: 'bg-[#685eeb]' },
+    { id: 'mint', label: 'Mint', className: 'bg-[#56efc4]' },
+    { id: 'blue', label: 'Blue', className: 'bg-[#5d8bff]' },
+  ] as const;
+
+  const themeOptions = [
+    { id: 'light', label: 'Light', icon: Sun },
+    { id: 'dark', label: 'Dark', icon: Moon },
+    { id: 'system', label: 'System', icon: Monitor },
+  ] as const;
+
+  return (
+    <div className="px-[30px] py-[27px]">
+      <section className="overflow-hidden rounded-[22px] border border-[#e2e0f0] bg-[linear-gradient(135deg,#ffffff_0%,#f4f1ff_48%,#eefdf9_112%)] px-[25px] py-[23px] shadow-[0_10px_28px_rgba(104,94,235,0.08)]">
+        <div className="flex flex-wrap items-center justify-between gap-5">
+          <div>
+            <h2 className="warp-font-display text-[30px] font-extrabold leading-none tracking-[-0.04em] text-[#111111]">
+              Settings
+            </h2>
+            <p className="mt-[9px] max-w-[590px] text-[13px] font-medium leading-[1.45] text-[#858585]">
+              Manage your workspace preferences and account configuration.
+            </p>
+          </div>
+          <div className="flex items-center gap-[10px] rounded-[16px] border border-[#e2e0f0] bg-white/80 px-[14px] py-[10px] shadow-[0_8px_22px_rgba(104,94,235,0.06)]">
+            <span className="flex h-[34px] w-[34px] items-center justify-center rounded-[12px] bg-[#ebe9fe] text-[#685eeb]">
+              <Settings2 className="h-[18px] w-[18px]" strokeWidth={2} />
+            </span>
+            <div>
+              <p className="text-[12px] font-bold text-[#111111]">Workspace controls</p>
+              <p className="text-[11px] font-medium text-[#858585]">Prototype settings</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="mt-[24px] grid gap-[18px] xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <section className="rounded-[22px] border border-[#e2e0f0] bg-white p-[20px] shadow-[0_10px_28px_rgba(104,94,235,0.07)]">
+          <div className="flex items-center gap-[10px]">
+            <span className="flex h-[36px] w-[36px] items-center justify-center rounded-[13px] bg-[#ebe9fe] text-[#685eeb]">
+              <UserRound className="h-[19px] w-[19px]" strokeWidth={2} />
+            </span>
+            <h3 className="warp-font-display text-[18px] font-extrabold tracking-[-0.03em] text-[#111111]">Account Profile</h3>
+          </div>
+
+          <div className="mt-[18px] rounded-[20px] border border-[#f0eff8] bg-[linear-gradient(135deg,#fbfaff,#f3f1ff)] p-[16px]">
+            <div className="flex items-center gap-[15px]">
+              <div className="relative h-[70px] w-[70px] overflow-hidden rounded-[22px] bg-[#f4f2ff] shadow-[0_10px_20px_rgba(104,94,235,0.1)]">
+                <Image src={PROFILE_THUMBNAILS[0]} alt="" fill sizes="70px" className="object-cover" />
+                <span className="absolute bottom-[5px] right-[5px] h-[11px] w-[11px] rounded-full border-2 border-white bg-[#56efc4]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[17px] font-extrabold text-[#111111]">Jordan Quinn</p>
+                <p className="mt-[3px] text-[13px] font-semibold text-[#685eeb]">UI/UX Designer</p>
+                <div className="mt-[8px] flex items-center gap-[6px] text-[12px] font-medium text-[#858585]">
+                  <Mail className="h-[14px] w-[14px]" strokeWidth={2} />
+                  <span className="truncate">jordan.quinn@warp.local</span>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              className={cn(
+                'mt-[16px] inline-flex h-[38px] items-center gap-[8px] rounded-[13px] bg-[#685eeb] px-[15px] text-[12px] font-bold text-white shadow-[0_10px_20px_rgba(104,94,235,0.18)] hover:bg-[#5d54df]',
+                purplePressClass
+              )}
+            >
+              <UserRound className="h-[15px] w-[15px]" strokeWidth={2} />
+              Edit Profile
+            </button>
+          </div>
+        </section>
+
+        <section className="rounded-[22px] border border-[#e2e0f0] bg-white p-[20px] shadow-[0_10px_28px_rgba(104,94,235,0.07)]">
+          <div className="flex items-center gap-[10px]">
+            <span className="flex h-[36px] w-[36px] items-center justify-center rounded-[13px] bg-[#effdf9] text-[#20a875]">
+              <Palette className="h-[19px] w-[19px]" strokeWidth={2} />
+            </span>
+            <h3 className="warp-font-display text-[18px] font-extrabold tracking-[-0.03em] text-[#111111]">Workspace Preferences</h3>
+          </div>
+
+          <div className="mt-[18px] grid gap-[13px] sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-[7px] block text-[12px] font-bold text-[#5c5780]">Workspace Name</span>
+              <input
+                value={workspaceName}
+                onChange={(event) => setWorkspaceName(event.target.value)}
+                className="h-[43px] w-full rounded-[14px] border border-[#ded9f2] bg-[#fbfaff] px-[13px] text-[13px] font-semibold text-[#111111] outline-none transition focus:border-[#685eeb] focus:bg-white"
+              />
+            </label>
+            <div>
+              <span className="mb-[7px] block text-[12px] font-bold text-[#5c5780]">Role</span>
+              <div className="flex h-[43px] items-center rounded-[14px] border border-[#d8d3f2] bg-[#f4f1ff] px-[13px] text-[13px] font-bold text-[#685eeb]">
+                Employer
+              </div>
+            </div>
+            <label className="block">
+              <span className="mb-[7px] block text-[12px] font-bold text-[#5c5780]">Default Room</span>
+              <select
+                value={defaultRoom}
+                onChange={(event) => setDefaultRoom(event.target.value)}
+                className="h-[43px] w-full rounded-[14px] border border-[#ded9f2] bg-[#fbfaff] px-[13px] text-[13px] font-semibold text-[#111111] outline-none transition focus:border-[#685eeb] focus:bg-white"
+              >
+                <option>Paper Studio</option>
+                <option>Pencil Studio</option>
+                <option>Eraser Studio</option>
+              </select>
+            </label>
+            <div>
+              <span className="mb-[7px] block text-[12px] font-bold text-[#5c5780]">Accent Color</span>
+              <div className="flex h-[43px] items-center gap-[8px]">
+                {accentOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setAccentColor(option.id)}
+                    className={cn(
+                      'flex h-[34px] items-center gap-[7px] rounded-full border bg-white px-[9px] text-[11px] font-bold text-[#5c5780] transition hover:-translate-y-[1px] hover:border-[#bfb8ff] active:translate-y-[1px]',
+                      accentColor === option.id ? 'border-[#bfb8ff] shadow-[0_8px_16px_rgba(104,94,235,0.11)]' : 'border-[#e2e0f0]'
+                    )}
+                  >
+                    <span className={cn('h-[14px] w-[14px] rounded-full', option.className)} />
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[22px] border border-[#e2e0f0] bg-white p-[20px] shadow-[0_10px_28px_rgba(104,94,235,0.07)]">
+          <div className="flex items-center gap-[10px]">
+            <span className="flex h-[36px] w-[36px] items-center justify-center rounded-[13px] bg-[#fff3ed] text-[#ff8b5f]">
+              <Bell className="h-[19px] w-[19px]" strokeWidth={2} />
+            </span>
+            <h3 className="warp-font-display text-[18px] font-extrabold tracking-[-0.03em] text-[#111111]">Notifications</h3>
+          </div>
+          <div className="mt-[12px] space-y-[3px]">
+            <SettingsToggle label="Room activity" description="Updates when teammates enter or leave rooms." enabled={notifications.roomActivity} onChange={() => toggleSetting('roomActivity')} />
+            <SettingsToggle label="Task reminders" description="Gentle nudges before deadlines." enabled={notifications.taskReminders} onChange={() => toggleSetting('taskReminders')} />
+            <SettingsToggle label="Team messages" description="New direct and room messages." enabled={notifications.teamMessages} onChange={() => toggleSetting('teamMessages')} />
+            <SettingsToggle label="Weekly recap" description="A short Friday workspace summary." enabled={notifications.weeklyRecap} onChange={() => toggleSetting('weeklyRecap')} />
+          </div>
+        </section>
+
+        <section className="rounded-[22px] border border-[#e2e0f0] bg-white p-[20px] shadow-[0_10px_28px_rgba(104,94,235,0.07)]">
+          <div className="flex items-center gap-[10px]">
+            <span className="flex h-[36px] w-[36px] items-center justify-center rounded-[13px] bg-[#eef3ff] text-[#5d8bff]">
+              <ShieldCheck className="h-[19px] w-[19px]" strokeWidth={2} />
+            </span>
+            <h3 className="warp-font-display text-[18px] font-extrabold tracking-[-0.03em] text-[#111111]">Privacy & Security</h3>
+          </div>
+          <div className="mt-[16px] space-y-[10px]">
+            <div className="flex items-center justify-between gap-4 rounded-[16px] bg-[#f8f7fc] px-[14px] py-[13px]">
+              <div className="flex items-center gap-[10px]">
+                <KeyRound className="h-[18px] w-[18px] text-[#685eeb]" strokeWidth={2} />
+                <div>
+                  <p className="text-[13px] font-bold text-[#111111]">Password</p>
+                  <p className="mt-[2px] text-[11px] font-medium text-[#858585]">Last changed 18 days ago</p>
+                </div>
+              </div>
+              <button type="button" className={cn('rounded-[12px] border border-[#d8d3f2] bg-white px-[12px] py-[8px] text-[11px] font-bold text-[#685eeb] hover:bg-[#f6f4ff]', purplePressClass)}>
+                Change Password
+              </button>
+            </div>
+            <SettingsToggle label="Two-factor authentication" description="Require a verification code on sign in." enabled={notifications.twoFactor} onChange={() => toggleSetting('twoFactor')} />
+            <div className="flex items-center justify-between rounded-[16px] bg-[#f8f7fc] px-[14px] py-[13px]">
+              <div>
+                <p className="text-[13px] font-bold text-[#111111]">Session status</p>
+                <p className="mt-[2px] text-[11px] font-medium text-[#858585]">Current browser session is active.</p>
+              </div>
+              <span className="rounded-full bg-[#edfdf7] px-[10px] py-[5px] text-[10px] font-bold text-[#20a875]">Secure</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[22px] border border-[#e2e0f0] bg-white p-[20px] shadow-[0_10px_28px_rgba(104,94,235,0.07)]">
+          <div className="flex items-center gap-[10px]">
+            <span className="flex h-[36px] w-[36px] items-center justify-center rounded-[13px] bg-[#ebe9fe] text-[#685eeb]">
+              <Sun className="h-[19px] w-[19px]" strokeWidth={2} />
+            </span>
+            <h3 className="warp-font-display text-[18px] font-extrabold tracking-[-0.03em] text-[#111111]">Appearance</h3>
+          </div>
+          <div className="mt-[17px] grid grid-cols-3 rounded-[16px] bg-[#f0eff8] p-[5px]">
+            {themeOptions.map((option) => {
+              const Icon = option.icon;
+
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setTheme(option.id)}
+                  className={cn(
+                    'flex h-[42px] items-center justify-center gap-[7px] rounded-[12px] text-[12px] font-bold transition active:scale-[0.98]',
+                    theme === option.id ? 'bg-white text-[#685eeb] shadow-[0_8px_16px_rgba(104,94,235,0.1)]' : 'text-[#858585] hover:text-[#5c5780]'
+                  )}
+                >
+                  <Icon className="h-[15px] w-[15px]" strokeWidth={2} />
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-[12px] text-[12px] font-medium text-[#858585]">Theme selection is local to this prototype view.</p>
+        </section>
+
+        <section className="rounded-[22px] border border-[#ffd7d7] bg-[#fffafa] p-[20px] shadow-[0_10px_28px_rgba(255,118,117,0.05)]">
+          <div className="flex items-center gap-[10px]">
+            <span className="flex h-[36px] w-[36px] items-center justify-center rounded-[13px] bg-[#fff0f0] text-[#ff7675]">
+              <LogOut className="h-[19px] w-[19px]" strokeWidth={2} />
+            </span>
+            <h3 className="warp-font-display text-[18px] font-extrabold tracking-[-0.03em] text-[#111111]">Danger Zone</h3>
+          </div>
+          <div className="mt-[15px] flex flex-wrap items-center justify-between gap-4 rounded-[16px] border border-[#ffd7d7] bg-white px-[14px] py-[13px]">
+            <div>
+              <p className="text-[13px] font-bold text-[#111111]">Leave Workspace</p>
+              <p className="mt-[2px] text-[11px] font-medium text-[#858585]">This is a mock action for the prototype.</p>
+            </div>
+            <button
+              type="button"
+              className="rounded-[12px] border border-[#ffb8b8] bg-[#fff0f0] px-[13px] py-[9px] text-[12px] font-bold text-[#e05757] transition hover:bg-[#ffe7e7] active:translate-y-[1px] active:scale-[0.98]"
+            >
+              Leave Workspace
+            </button>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
 function EmployerChatPage() {
   const [threads, setThreads] = useState<EmployerChatThread[]>(employerChatThreads);
   const [activeThreadId, setActiveThreadId] = useState(employerChatThreads[0].id);
@@ -1631,10 +1925,11 @@ export function EmployerDashboard() {
   const isChatPage = activeItem === 'chat';
   const isStatsPage = activeItem === 'stats';
   const isTeamPage = activeItem === 'team';
+  const isSettingsPage = activeItem === 'settings';
 
   return (
     <div className="warp-font-ui min-h-screen w-full bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)] text-[#111111]">
-      <div className={cn('grid min-h-screen w-full', isTaskPage || isChatPage || isStatsPage || isTeamPage ? 'grid-cols-[283px_minmax(0,1fr)]' : 'grid-cols-[283px_minmax(0,1fr)_285px]')}>
+      <div className={cn('grid min-h-screen w-full', isTaskPage || isChatPage || isStatsPage || isTeamPage || isSettingsPage ? 'grid-cols-[283px_minmax(0,1fr)]' : 'grid-cols-[283px_minmax(0,1fr)_285px]')}>
         <SidebarNav activeItem={activeItem} onSelect={setActiveItem} />
 
         <main
@@ -1645,7 +1940,7 @@ export function EmployerDashboard() {
             <EmployerTaskManagementPage />
           ) : (
             <>
-              <TopBar displayName={displayName} rewardBalance={rewardBalance} title={isChatPage ? 'Chat' : isStatsPage ? 'My Stats' : isTeamPage ? 'My Teams' : undefined} />
+              <TopBar displayName={displayName} rewardBalance={rewardBalance} title={isChatPage ? 'Chat' : isStatsPage ? 'My Stats' : isTeamPage ? 'My Teams' : isSettingsPage ? 'Settings' : undefined} />
 
               {isChatPage ? (
                 <EmployerChatPage />
@@ -1653,6 +1948,8 @@ export function EmployerDashboard() {
                 <EmployerStatsPage />
               ) : isTeamPage ? (
                 <EmployerTeamPage />
+              ) : isSettingsPage ? (
+                <EmployerSettingsPage />
               ) : stage === 'dashboard' ? (
                 <EmployerDashboardHome onCreateRoom={() => setStage('create-room')} />
               ) : (
@@ -1662,7 +1959,7 @@ export function EmployerDashboard() {
           )}
         </main>
 
-        {!isTaskPage && !isChatPage && !isStatsPage && !isTeamPage ? (
+        {!isTaskPage && !isChatPage && !isStatsPage && !isTeamPage && !isSettingsPage ? (
           <ProfilePanel
             displayName={displayName}
             roleLabel={roleLabel}
