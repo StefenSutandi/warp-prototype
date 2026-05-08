@@ -5,6 +5,6 @@ export const metadata = {
   description: 'Sign in to the WARP prototype workspace',
 };
 
-export default function Home() {
+export default function LoginRoute() {
   return <LoginPage />;
 }
