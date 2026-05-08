@@ -104,6 +104,63 @@ const achievementCards = [
   { id: 'social-warper', title: 'Social Warper', subtitle: 'Chat with your whole team', unlocked: false, icon: Star },
 ] as const;
 
+const teamRooms = [
+  {
+    id: 'paper-studio',
+    name: 'Paper Studio',
+    focus: 'Product sprint',
+    accent: '#685eeb',
+    members: [
+      { name: 'Jordan Quinn', role: 'UI/UX Designer', avatar: PROFILE_THUMBNAILS[0], status: 'Online', progress: 'Polishing mobile flows', tasks: 12, focus: '3h 10m', badge: 'Design' },
+      { name: 'Maya Chen', role: 'UI Designer', avatar: PROFILE_THUMBNAILS[1], status: 'Reviewing', progress: 'Finalizing component states', tasks: 9, focus: '2h 45m', badge: 'UI' },
+      { name: 'Alex Rivera', role: 'Product Manager', avatar: PROFILE_THUMBNAILS[2], status: 'Online', progress: 'Clearing sprint blockers', tasks: 15, focus: '1h 55m', badge: 'PM' },
+    ],
+    timeline: [
+      { label: 'Research', start: 4, width: 24, tone: 'purple', status: 'Done' },
+      { label: 'Wireframe', start: 22, width: 28, tone: 'cyan', status: 'In review' },
+      { label: 'Visual Design', start: 42, width: 34, tone: 'green', status: 'Active' },
+      { label: 'Prototype', start: 62, width: 26, tone: 'orange', status: 'Next' },
+      { label: 'Review', start: 79, width: 17, tone: 'muted', status: 'Queued' },
+    ],
+  },
+  {
+    id: 'pencil-studio',
+    name: 'Pencil Studio',
+    focus: 'Brand system',
+    accent: '#56cfd2',
+    members: [
+      { name: 'Casey Park', role: 'Brand Designer', avatar: PROFILE_THUMBNAILS[3], status: 'Online', progress: 'Exploring campaign marks', tasks: 8, focus: '2h 20m', badge: 'Brand' },
+      { name: 'Morgan Smith', role: 'Tech Lead', avatar: PROFILE_THUMBNAILS[4], status: 'Focused', progress: 'Preparing handoff notes', tasks: 11, focus: '3h 35m', badge: 'Lead' },
+      { name: 'Jordan Lee', role: 'Frontend Engineer', avatar: PROFILE_THUMBNAILS[5], status: 'Online', progress: 'Building token previews', tasks: 10, focus: '2h 05m', badge: 'FE' },
+    ],
+    timeline: [
+      { label: 'Research', start: 2, width: 20, tone: 'cyan', status: 'Done' },
+      { label: 'Wireframe', start: 18, width: 25, tone: 'purple', status: 'Done' },
+      { label: 'Visual Design', start: 36, width: 38, tone: 'orange', status: 'Active' },
+      { label: 'Prototype', start: 58, width: 30, tone: 'green', status: 'Starting' },
+      { label: 'Review', start: 82, width: 13, tone: 'muted', status: 'Queued' },
+    ],
+  },
+  {
+    id: 'eraser-studio',
+    name: 'Eraser Studio',
+    focus: 'Motion pack',
+    accent: '#ff9f6e',
+    members: [
+      { name: 'Baskara Putra', role: 'Illustrator', avatar: PROFILE_THUMBNAILS[6], status: 'Online', progress: 'Sketching room props', tasks: 7, focus: '2h 50m', badge: 'Art' },
+      { name: 'Rani Wijaya', role: 'Project Coordinator', avatar: PROFILE_THUMBNAILS[7], status: 'Planning', progress: 'Syncing milestone owners', tasks: 13, focus: '1h 40m', badge: 'Ops' },
+      { name: 'Naufal Ardi', role: 'Motion Designer', avatar: PROFILE_THUMBNAILS[0], status: 'Focused', progress: 'Animating feedback loops', tasks: 6, focus: '3h 00m', badge: 'Motion' },
+    ],
+    timeline: [
+      { label: 'Research', start: 6, width: 18, tone: 'orange', status: 'Done' },
+      { label: 'Wireframe', start: 20, width: 22, tone: 'green', status: 'Done' },
+      { label: 'Visual Design', start: 34, width: 31, tone: 'purple', status: 'Active' },
+      { label: 'Prototype', start: 55, width: 36, tone: 'cyan', status: 'Active' },
+      { label: 'Review', start: 80, width: 16, tone: 'muted', status: 'Queued' },
+    ],
+  },
+] as const;
+
 type EmployerChatMessage = {
   id: string;
   author: 'me' | 'them';
@@ -955,6 +1012,177 @@ function EmployerStatsPage() {
   );
 }
 
+function EmployerTeamPage() {
+  const [selectedTeamId, setSelectedTeamId] = useState<(typeof teamRooms)[number]['id']>('paper-studio');
+  const [selectedMember, setSelectedMember] = useState<string>('Jordan Quinn');
+  const selectedTeam = teamRooms.find((team) => team.id === selectedTeamId) ?? teamRooms[0];
+
+  return (
+    <div className="px-[30px] py-[27px]">
+      <section className="overflow-hidden rounded-[22px] border border-[#e2e0f0] bg-[linear-gradient(135deg,#ffffff_0%,#f4f1ff_50%,#eefdf9_112%)] px-[25px] py-[23px] shadow-[0_10px_28px_rgba(104,94,235,0.08)]">
+        <div className="flex flex-wrap items-center justify-between gap-5">
+          <div>
+            <h2 className="warp-font-display text-[30px] font-extrabold leading-none tracking-[-0.04em] text-[#111111]">
+              My Teams
+            </h2>
+            <p className="mt-[9px] max-w-[560px] text-[13px] font-medium leading-[1.45] text-[#858585]">
+              See who is active, what each room is moving through, and where the project timeline stands.
+            </p>
+          </div>
+          <div className="flex items-center gap-[10px] rounded-[16px] border border-[#e2e0f0] bg-white/80 px-[14px] py-[10px] shadow-[0_8px_22px_rgba(104,94,235,0.06)]">
+            <span className="flex h-[34px] w-[34px] items-center justify-center rounded-[12px] bg-[#ebe9fe] text-[#685eeb]">
+              <UsersRound className="h-[18px] w-[18px]" strokeWidth={2} />
+            </span>
+            <div>
+              <p className="text-[12px] font-bold text-[#111111]">{selectedTeam.members.length} active members</p>
+              <p className="text-[11px] font-medium text-[#858585]">{selectedTeam.focus}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-[22px] flex flex-wrap gap-[10px]">
+          {teamRooms.map((team) => {
+            const isActive = team.id === selectedTeam.id;
+
+            return (
+              <button
+                key={team.id}
+                type="button"
+                onClick={() => {
+                  setSelectedTeamId(team.id);
+                  setSelectedMember(team.members[0].name);
+                }}
+                className={cn(
+                  'rounded-[15px] border px-[16px] py-[10px] text-left transition-all duration-150 active:translate-y-[1px] active:scale-[0.98]',
+                  isActive
+                    ? 'border-[#bfb8ff] bg-white text-[#111111] shadow-[0_10px_22px_rgba(104,94,235,0.12)]'
+                    : 'border-[#e2e0f0] bg-white/60 text-[#858585] hover:-translate-y-[1px] hover:border-[#d0cbff] hover:bg-white'
+                )}
+              >
+                <span className="block text-[13px] font-bold">{team.name}</span>
+                <span className="mt-[2px] block text-[11px] font-medium text-[#858585]">{team.focus}</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="mt-[28px]">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h3 className="warp-font-display text-[20px] font-extrabold tracking-[-0.03em] text-[#111111]">Team Members</h3>
+            <p className="mt-[5px] text-[12px] font-medium text-[#858585]">{selectedTeam.name} workspace activity.</p>
+          </div>
+          <span className="rounded-full bg-white px-[13px] py-[7px] text-[12px] font-semibold text-[#5c5780] shadow-[0_6px_18px_rgba(104,94,235,0.05)]">
+            {selectedTeam.members.filter((member) => member.status === 'Online').length} online now
+          </span>
+        </div>
+
+        <div className="mt-[16px] grid gap-[16px] xl:grid-cols-3">
+          {selectedTeam.members.map((member) => {
+            const isSelected = selectedMember === member.name;
+
+            return (
+              <button
+                key={member.name}
+                type="button"
+                onClick={() => setSelectedMember(member.name)}
+                className={cn(
+                  'group rounded-[22px] border bg-white p-[18px] text-left shadow-[0_8px_22px_rgba(104,94,235,0.06)] transition-all duration-200 hover:-translate-y-[3px] hover:border-[#bfb8ff] hover:shadow-[0_18px_34px_rgba(104,94,235,0.13)] active:translate-y-[1px] active:scale-[0.99]',
+                  isSelected ? 'border-[#bfb8ff] ring-2 ring-[#685eeb]/18' : 'border-[#e2e0f0]'
+                )}
+              >
+                <div className="flex items-start gap-[14px]">
+                  <div className="relative h-[58px] w-[58px] shrink-0 overflow-hidden rounded-[19px] bg-[#f4f2ff] shadow-[0_8px_16px_rgba(104,94,235,0.08)]">
+                    <Image src={member.avatar} alt="" fill sizes="58px" className="object-cover" />
+                    <span className="absolute bottom-[4px] right-[4px] h-[10px] w-[10px] rounded-full border-2 border-white bg-[#56efc4]" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-[15px] font-extrabold text-[#111111]">{member.name}</p>
+                        <p className="mt-[3px] truncate text-[12px] font-medium text-[#858585]">{member.role}</p>
+                      </div>
+                      <span className="rounded-full bg-[#edfdf7] px-[9px] py-[4px] text-[10px] font-bold text-[#20a875]">
+                        {member.status}
+                      </span>
+                    </div>
+                    <p className="mt-[12px] text-[12px] font-medium leading-[1.35] text-[#5c5780]">{member.progress}</p>
+                  </div>
+                </div>
+
+                <div className="mt-[16px] grid grid-cols-3 gap-[8px]">
+                  {[
+                    ['Tasks', member.tasks],
+                    ['Focus', member.focus],
+                    ['Role', member.badge],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-[13px] bg-[#f8f7fc] px-[10px] py-[9px]">
+                      <p className="text-[10px] font-semibold text-[#9b96b8]">{label}</p>
+                      <p className="mt-[3px] truncate text-[12px] font-extrabold text-[#111111]">{value}</p>
+                    </div>
+                  ))}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="mt-[30px]">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h3 className="warp-font-display text-[20px] font-extrabold tracking-[-0.03em] text-[#111111]">Project Timeline</h3>
+            <p className="mt-[5px] text-[12px] font-medium text-[#858585]">Mock sprint pacing for {selectedTeam.name}.</p>
+          </div>
+          <span className="rounded-full border border-[#e2e0f0] bg-white px-[13px] py-[7px] text-[12px] font-semibold text-[#685eeb] shadow-[0_6px_18px_rgba(104,94,235,0.05)]">
+            May 2026
+          </span>
+        </div>
+
+        <div className="mt-[16px] overflow-hidden rounded-[22px] border border-[#e2e0f0] bg-white p-[18px] shadow-[0_10px_28px_rgba(104,94,235,0.07)]">
+          <div className="grid grid-cols-[132px_minmax(0,1fr)] border-b border-[#f0eff8] pb-[11px] text-[11px] font-bold uppercase tracking-[0.08em] text-[#9b96b8]">
+            <span>Phase</span>
+            <div className="grid grid-cols-4">
+              {['Week 1', 'Week 2', 'Week 3', 'Week 4'].map((week) => (
+                <span key={week}>{week}</span>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-[8px] space-y-[8px]">
+            {selectedTeam.timeline.map((item) => (
+              <div
+                key={item.label}
+                className="group grid min-h-[52px] grid-cols-[132px_minmax(0,1fr)] items-center rounded-[16px] px-[10px] transition hover:bg-[#f8f7fc]"
+              >
+                <div>
+                  <p className="text-[13px] font-bold text-[#111111]">{item.label}</p>
+                  <p className="mt-[2px] text-[10px] font-semibold text-[#9b96b8]">{item.status}</p>
+                </div>
+                <div className="relative h-[28px] overflow-hidden rounded-full bg-[repeating-linear-gradient(90deg,#f3f1fb_0,#f3f1fb_1px,transparent_1px,transparent_25%)]">
+                  <div className="absolute inset-y-[5px] left-0 right-0 rounded-full bg-[#f8f7fc]" />
+                  <div
+                    className={cn(
+                      'absolute top-[5px] h-[18px] rounded-full shadow-[0_6px_14px_rgba(104,94,235,0.16)] transition-all duration-200 group-hover:scale-y-[1.08]',
+                      item.tone === 'purple' && 'bg-[linear-gradient(90deg,#685eeb,#a29bfc)]',
+                      item.tone === 'cyan' && 'bg-[linear-gradient(90deg,#56cfd2,#9af1e7)]',
+                      item.tone === 'green' && 'bg-[linear-gradient(90deg,#56efc4,#a8f5dc)]',
+                      item.tone === 'orange' && 'bg-[linear-gradient(90deg,#ff9f6e,#ffd0a8)]',
+                      item.tone === 'muted' && 'bg-[#cfcbe1]'
+                    )}
+                    style={{ left: `${item.start}%`, width: `${item.width}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function EmployerChatPage() {
   const [threads, setThreads] = useState<EmployerChatThread[]>(employerChatThreads);
   const [activeThreadId, setActiveThreadId] = useState(employerChatThreads[0].id);
@@ -1402,10 +1630,11 @@ export function EmployerDashboard() {
   const isTaskPage = activeItem === 'tasks';
   const isChatPage = activeItem === 'chat';
   const isStatsPage = activeItem === 'stats';
+  const isTeamPage = activeItem === 'team';
 
   return (
     <div className="warp-font-ui min-h-screen w-full bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)] text-[#111111]">
-      <div className={cn('grid min-h-screen w-full', isTaskPage || isChatPage || isStatsPage ? 'grid-cols-[283px_minmax(0,1fr)]' : 'grid-cols-[283px_minmax(0,1fr)_285px]')}>
+      <div className={cn('grid min-h-screen w-full', isTaskPage || isChatPage || isStatsPage || isTeamPage ? 'grid-cols-[283px_minmax(0,1fr)]' : 'grid-cols-[283px_minmax(0,1fr)_285px]')}>
         <SidebarNav activeItem={activeItem} onSelect={setActiveItem} />
 
         <main
@@ -1416,12 +1645,14 @@ export function EmployerDashboard() {
             <EmployerTaskManagementPage />
           ) : (
             <>
-              <TopBar displayName={displayName} rewardBalance={rewardBalance} title={isChatPage ? 'Chat' : isStatsPage ? 'My Stats' : undefined} />
+              <TopBar displayName={displayName} rewardBalance={rewardBalance} title={isChatPage ? 'Chat' : isStatsPage ? 'My Stats' : isTeamPage ? 'My Teams' : undefined} />
 
               {isChatPage ? (
                 <EmployerChatPage />
               ) : isStatsPage ? (
                 <EmployerStatsPage />
+              ) : isTeamPage ? (
+                <EmployerTeamPage />
               ) : stage === 'dashboard' ? (
                 <EmployerDashboardHome onCreateRoom={() => setStage('create-room')} />
               ) : (
@@ -1431,7 +1662,7 @@ export function EmployerDashboard() {
           )}
         </main>
 
-        {!isTaskPage && !isChatPage && !isStatsPage ? (
+        {!isTaskPage && !isChatPage && !isStatsPage && !isTeamPage ? (
           <ProfilePanel
             displayName={displayName}
             roleLabel={roleLabel}
