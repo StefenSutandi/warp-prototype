@@ -8,11 +8,14 @@ import {
   Bell,
   CalendarClock,
   ChartColumnBig,
+  Check,
   ClipboardCheck,
   DoorOpen,
   Flame,
   Hash,
   LayoutGrid,
+  Lock,
+  type LucideIcon,
   MessageCircle,
   MessageSquarePlus,
   MoreVertical,
@@ -22,6 +25,12 @@ import {
   Search,
   Send,
   Settings2,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Target,
+  Timer,
+  Trophy,
   UsersRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -74,6 +83,25 @@ const upcomingDeadlines = [
   { id: 'landing-page', title: 'Landing Page Design', room: 'Paper Studio', date: '25/05/2026', time: '10:00', status: 'Due Soon', tone: 'red' },
   { id: 'brand-guidelines', title: 'Brand Guidelines', room: 'Eraser Studio', date: '25/05/2026', time: '10:00', status: '2 Days', tone: 'yellow' },
   { id: 'social-campaign', title: 'Social Media Campaign', room: 'Paper Studio', date: '25/05/2026', time: '10:00', status: '5 Days', tone: 'green' },
+] as const;
+
+const recapCards = [
+  { id: 'focus-time', label: 'Focus Time', value: '24h', detail: 'this month', meta: '+18% from April', progress: 78, icon: Timer, tone: 'purple' },
+  { id: 'rooms-joined', label: 'Rooms Joined', value: '18', detail: 'team sessions', meta: '5 active rooms', progress: 64, icon: UsersRound, tone: 'cyan' },
+  { id: 'tasks-done', label: 'Tasks Done', value: '42', detail: 'completed tasks', meta: '9 before deadline', progress: 86, icon: ShieldCheck, tone: 'green' },
+  { id: 'streak', label: 'Streak', value: '12', detail: 'active days', meta: 'best: 15 days', progress: 72, icon: Sparkles, tone: 'orange' },
+] as const;
+
+const achievementCards = [
+  { id: 'first-room', title: 'First Room', subtitle: 'Joined your first room', unlocked: true, icon: DoorOpen },
+  { id: 'focus-starter', title: 'Focus Starter', subtitle: 'Completed a focus session', unlocked: true, icon: Target },
+  { id: 'task-finisher', title: 'Task Finisher', subtitle: 'Finished your first task', unlocked: true, icon: ShieldCheck },
+  { id: 'seven-day-streak', title: '7-Day Streak', subtitle: 'Keep working for a week', unlocked: false, icon: Sparkles },
+  { id: 'team-player', title: 'Team Player', subtitle: 'Collaborate in five rooms', unlocked: false, icon: UsersRound },
+  { id: 'deep-work', title: 'Deep Work', subtitle: 'Reach 4 hours of focus', unlocked: false, icon: Timer },
+  { id: 'deadline-master', title: 'Deadline Master', subtitle: 'Beat three deadlines', unlocked: false, icon: Trophy },
+  { id: 'room-creator', title: 'Room Creator', subtitle: 'Create a workspace room', unlocked: false, icon: DoorOpen },
+  { id: 'social-warper', title: 'Social Warper', subtitle: 'Chat with your whole team', unlocked: false, icon: Star },
 ] as const;
 
 type EmployerChatMessage = {
@@ -715,6 +743,218 @@ function EmployerDashboardHome({
   );
 }
 
+function RecapCard({
+  label,
+  value,
+  detail,
+  meta,
+  progress,
+  tone,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  meta: string;
+  progress: number;
+  tone: 'purple' | 'cyan' | 'green' | 'orange';
+  icon: LucideIcon;
+}) {
+  const toneClass = {
+    purple: {
+      icon: 'bg-[#ebe9fe] text-[#685eeb]',
+      badge: 'bg-[#f2f0ff] text-[#685eeb]',
+      bar: 'from-[#685eeb] to-[#a29bfc]',
+    },
+    cyan: {
+      icon: 'bg-[#e9fbfb] text-[#35bfc4]',
+      badge: 'bg-[#effcfc] text-[#2aaeb4]',
+      bar: 'from-[#46d2d2] to-[#a8eee8]',
+    },
+    green: {
+      icon: 'bg-[#eafff4] text-[#35b982]',
+      badge: 'bg-[#effff7] text-[#2f9f72]',
+      bar: 'from-[#56efc4] to-[#9af4da]',
+    },
+    orange: {
+      icon: 'bg-[#fff3ed] text-[#ff8a5c]',
+      badge: 'bg-[#fff7f0] text-[#d97942]',
+      bar: 'from-[#ffb44f] to-[#ffd59a]',
+    },
+  }[tone];
+
+  return (
+    <article className="group min-h-[174px] rounded-[18px] border border-[#e2e0f0] bg-white px-[19px] py-[18px] shadow-[0_8px_22px_rgba(104,94,235,0.05)] transition-all duration-200 hover:-translate-y-[2px] hover:border-[#cfc9ff] hover:shadow-[0_16px_34px_rgba(104,94,235,0.12)]">
+      <div className="flex items-start justify-between gap-3">
+        <div className={cn('flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-[16px] transition-transform duration-200 group-hover:scale-[1.04]', toneClass.icon)}>
+          <Icon className="h-[23px] w-[23px]" strokeWidth={1.9} />
+        </div>
+        <span className={cn('rounded-full px-[9px] py-[5px] text-[10px] font-bold', toneClass.badge)}>
+          {meta}
+        </span>
+      </div>
+
+      <div className="mt-[20px]">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-[30px] font-extrabold leading-none tracking-[-0.03em] text-[#111111]">{value}</p>
+            <p className="mt-[7px] text-[13px] font-bold text-[#5c5780]">{label}</p>
+          </div>
+          <p className="pb-[3px] text-right text-[10px] font-medium text-[#9b96b8]">{detail}</p>
+        </div>
+
+        <div className="mt-[15px] h-[7px] overflow-hidden rounded-full bg-[#f0eff8]">
+          <div
+            className={cn('h-full rounded-full bg-gradient-to-r transition-all duration-300 group-hover:brightness-105', toneClass.bar)}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function AchievementCard({
+  id,
+  title,
+  subtitle,
+  unlocked,
+  selected,
+  onSelect,
+  icon: Icon,
+}: {
+  id: string;
+  title: string;
+  subtitle: string;
+  unlocked: boolean;
+  selected: boolean;
+  onSelect: (id: string) => void;
+  icon: LucideIcon;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(id)}
+      className={cn(
+        'group relative min-h-[160px] rounded-[18px] border px-[18px] py-[19px] text-left transition-all duration-200 active:translate-y-[1px] active:scale-[0.99]',
+        unlocked
+          ? 'border-[#e2e0f0] bg-white shadow-[0_8px_22px_rgba(104,94,235,0.05)] hover:-translate-y-[2px] hover:border-[#bfb8ff] hover:shadow-[0_16px_34px_rgba(104,94,235,0.13)]'
+          : 'border-[#e7e5f0] bg-[#f0eff8]/80 text-[#9b96b8] hover:-translate-y-[1px] hover:border-[#d7d2e8] hover:bg-[#f4f2fb]',
+        selected && 'ring-2 ring-[#685eeb]/25 ring-offset-2 ring-offset-[#f9fbfd]'
+      )}
+    >
+      {unlocked ? (
+        <span className="absolute right-[14px] top-[14px] flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[#56efc4] text-white shadow-[0_6px_12px_rgba(86,239,196,0.26)]">
+          <Check className="h-[13px] w-[13px]" strokeWidth={2.6} />
+        </span>
+      ) : (
+        <span className="absolute right-[14px] top-[14px] flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[#dedbea] text-[#9b96b8]">
+          <Lock className="h-[12px] w-[12px]" strokeWidth={2} />
+        </span>
+      )}
+
+      <div
+        className={cn(
+          'flex h-[54px] w-[54px] items-center justify-center rounded-[18px] transition-transform duration-200 group-hover:scale-[1.04]',
+          unlocked
+            ? 'bg-[linear-gradient(140deg,#ebe9fe_0%,#f8f7ff_100%)] text-[#685eeb] shadow-[inset_0_0_0_1px_rgba(104,94,235,0.08)]'
+            : 'bg-[#e5e2ef] text-[#a5a0bd]'
+        )}
+      >
+        <Icon className="h-[25px] w-[25px]" strokeWidth={1.8} />
+      </div>
+      <h3 className={cn('mt-[19px] text-[15px] font-bold leading-tight', unlocked ? 'text-[#111111]' : 'text-[#85809d]')}>
+        {title}
+      </h3>
+      <p className={cn('mt-[5px] text-[11px] font-medium leading-[1.35]', unlocked ? 'text-[#858585]' : 'text-[#aaa5bd]')}>
+        {subtitle}
+      </p>
+      <div className={cn('mt-[14px] h-[5px] w-full overflow-hidden rounded-full', unlocked ? 'bg-[#f0eff8]' : 'bg-[#e1deeb]')}>
+        <div className={cn('h-full rounded-full transition-all duration-200', unlocked ? 'w-[72%] bg-[linear-gradient(90deg,#685eeb,#a29bfc)]' : 'w-[28%] bg-[#c8c4db]')} />
+      </div>
+    </button>
+  );
+}
+
+function EmployerStatsPage() {
+  const [selectedAchievement, setSelectedAchievement] = useState<string>('first-room');
+
+  return (
+    <div className="px-[30px] py-[27px]">
+      <section className="mb-[27px] overflow-hidden rounded-[22px] border border-[#e2e0f0] bg-[linear-gradient(135deg,#ffffff_0%,#f3f1ff_49%,#effdf9_108%)] px-[25px] py-[23px] shadow-[0_10px_28px_rgba(104,94,235,0.08)]">
+        <div className="flex flex-wrap items-center justify-between gap-5">
+          <div>
+            <h2 className="warp-font-display text-[30px] font-extrabold leading-none tracking-[-0.04em] text-[#111111]">
+              My Stats
+            </h2>
+            <p className="mt-[9px] max-w-[560px] text-[13px] font-medium leading-[1.45] text-[#858585]">
+              Track your monthly WARP progress, focus momentum, and workspace milestones.
+            </p>
+          </div>
+          <button
+            type="button"
+            className={cn(
+              'rounded-[14px] border border-[#d8d3f2] bg-white px-[14px] py-[9px] text-[12px] font-semibold text-[#685eeb] shadow-[0_6px_18px_rgba(104,94,235,0.07)] hover:bg-[#f8f6ff]',
+              purplePressClass
+            )}
+          >
+            May 2026
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h3 className="warp-font-display text-[20px] font-extrabold tracking-[-0.03em] text-[#111111]">WARP Recap</h3>
+            <p className="mt-[5px] text-[12px] font-medium text-[#858585]">A snapshot of your latest workspace activity.</p>
+          </div>
+        </div>
+        <div className="mt-[16px] grid gap-[15px] sm:grid-cols-2 xl:grid-cols-4">
+          {recapCards.map((card) => (
+            <RecapCard
+              key={card.id}
+              label={card.label}
+              value={card.value}
+              detail={card.detail}
+              meta={card.meta}
+              progress={card.progress}
+              tone={card.tone}
+              icon={card.icon}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-[31px]">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h3 className="warp-font-display text-[20px] font-extrabold tracking-[-0.03em] text-[#111111]">Achievements</h3>
+            <p className="mt-[5px] text-[12px] font-medium text-[#858585]">Unlock badges as you keep warping with the team.</p>
+          </div>
+          <span className="rounded-full bg-white px-[13px] py-[7px] text-[12px] font-semibold text-[#5c5780] shadow-[0_6px_18px_rgba(104,94,235,0.05)]">
+            3 / 9 unlocked
+          </span>
+        </div>
+        <div className="mt-[17px] grid gap-[15px] sm:grid-cols-2 xl:grid-cols-3">
+          {achievementCards.map((achievement) => (
+            <AchievementCard
+              key={achievement.id}
+              id={achievement.id}
+              title={achievement.title}
+              subtitle={achievement.subtitle}
+              unlocked={achievement.unlocked}
+              selected={selectedAchievement === achievement.id}
+              onSelect={setSelectedAchievement}
+              icon={achievement.icon}
+            />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function EmployerChatPage() {
   const [threads, setThreads] = useState<EmployerChatThread[]>(employerChatThreads);
   const [activeThreadId, setActiveThreadId] = useState(employerChatThreads[0].id);
@@ -1161,10 +1401,11 @@ export function EmployerDashboard() {
   const rewardBalance = Math.max(200, Math.round((currentUser?.xp ?? 5200) / 26));
   const isTaskPage = activeItem === 'tasks';
   const isChatPage = activeItem === 'chat';
+  const isStatsPage = activeItem === 'stats';
 
   return (
     <div className="warp-font-ui min-h-screen w-full bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)] text-[#111111]">
-      <div className={cn('grid min-h-screen w-full', isTaskPage || isChatPage ? 'grid-cols-[283px_minmax(0,1fr)]' : 'grid-cols-[283px_minmax(0,1fr)_285px]')}>
+      <div className={cn('grid min-h-screen w-full', isTaskPage || isChatPage || isStatsPage ? 'grid-cols-[283px_minmax(0,1fr)]' : 'grid-cols-[283px_minmax(0,1fr)_285px]')}>
         <SidebarNav activeItem={activeItem} onSelect={setActiveItem} />
 
         <main
@@ -1175,10 +1416,12 @@ export function EmployerDashboard() {
             <EmployerTaskManagementPage />
           ) : (
             <>
-              <TopBar displayName={displayName} rewardBalance={rewardBalance} title={isChatPage ? 'Chat' : undefined} />
+              <TopBar displayName={displayName} rewardBalance={rewardBalance} title={isChatPage ? 'Chat' : isStatsPage ? 'My Stats' : undefined} />
 
               {isChatPage ? (
                 <EmployerChatPage />
+              ) : isStatsPage ? (
+                <EmployerStatsPage />
               ) : stage === 'dashboard' ? (
                 <EmployerDashboardHome onCreateRoom={() => setStage('create-room')} />
               ) : (
@@ -1188,7 +1431,7 @@ export function EmployerDashboard() {
           )}
         </main>
 
-        {!isTaskPage && !isChatPage ? (
+        {!isTaskPage && !isChatPage && !isStatsPage ? (
           <ProfilePanel
             displayName={displayName}
             roleLabel={roleLabel}
