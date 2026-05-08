@@ -367,14 +367,16 @@ function HeroPanel({ onCreateRoom }: { onCreateRoom: () => void }) {
         </div>
       </div>
 
-      <div className="pointer-events-none absolute bottom-[10px] right-[18px] top-[58px] hidden w-[48%] max-w-[470px] lg:block">
+      <div className="pointer-events-none absolute bottom-[-22px] right-[14px] hidden w-[46%] max-w-[457px] lg:block">
         <Image
           src={EMPLOYER_DASHBOARD_ASSETS.roomPreview}
           alt=""
-          fill
-          sizes="470px"
-          className="object-contain object-bottom drop-shadow-[0_24px_34px_rgba(104,94,235,0.14)]"
+          width={457}
+          height={308}
+          sizes="457px"
+          className="h-auto w-full drop-shadow-[0_24px_34px_rgba(104,94,235,0.14)]"
           priority
+          unoptimized
         />
       </div>
 
