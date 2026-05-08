@@ -2,19 +2,21 @@
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   Bell,
+  CalendarClock,
   ChartColumnBig,
   ClipboardCheck,
+  DoorOpen,
+  Flame,
   Hash,
   LayoutGrid,
   MessageCircle,
   MessageSquarePlus,
   MoreVertical,
   Paperclip,
-  PenLine,
   Phone,
   Plus,
   Search,
@@ -32,41 +34,46 @@ import { VirtualOfficePlaceholder } from './virtual-office-placeholder';
 
 const EMPLOYER_DASHBOARD_ASSETS = {
   logo: '/assets/dashboard-employer/branding/warp-logo.svg',
-  heroDecor: '/assets/dashboard-employer/hero/banner-decor.svg',
   joinRoom: '/assets/dashboard-employer/cards/join-room.png',
   createRoom: '/assets/dashboard-employer/cards/create-room.png',
-  roomPreview: '/assets/dashboard-employer/recents/room-preview.svg',
+  roomPreview: '/assets/dashboard-employer/hero/dashboard-room-preview.png',
   profileMain: '/assets/dashboard-employer/avatars/profile-main.svg',
+  focusTomato: '/assets/virtual-room/ui/tomato.png',
 } as const;
+
+const purplePressClass =
+  'transition-all duration-150 ease-out active:translate-y-[1px] active:scale-[0.98] active:shadow-[inset_0_2px_6px_rgba(63,53,190,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685eeb]/30 focus-visible:ring-offset-2';
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
   { id: 'stats', label: 'My Stats', icon: ChartColumnBig },
-  { id: 'tasks', label: 'Tasks', icon: ClipboardCheck },
+  { id: 'tasks', label: 'To-Do', icon: ClipboardCheck },
   { id: 'chat', label: 'Chat', icon: MessageCircle },
   { id: 'team', label: 'My Team', icon: UsersRound },
   { id: 'settings', label: 'Settings', icon: Settings2 },
 ] as const;
 
 const recentRooms = [
-  { id: 'lorem-studio-a', title: 'Lorem Studio', level: 'Lvl. 1' },
-  { id: 'lorem-studio-b', title: 'Lorem Studio', level: 'Lvl. 1' },
+  { id: 'paper-studio', title: 'Paper Studio', level: 'Level 1', membersOnline: 3 },
+  { id: 'pencil-studio', title: 'Pencil Studio', level: 'Level 1', membersOnline: 3 },
+  { id: 'eraser-studio', title: 'Eraser Studio', level: 'Level 1', membersOnline: 3 },
 ] as const;
 
-const avatarGradients = [
-  'from-[#9e97ff] to-[#56efc4]',
-  'from-[#a29bfc] to-[#6fe4e1]',
-  'from-[#8b84f9] to-[#8ddde8]',
-  'from-[#b0a7ff] to-[#7fefe0]',
-];
+const PROFILE_THUMBNAILS = [
+  '/assets/avatar/profile/Frame 3865.png',
+  '/assets/avatar/profile/Frame 3866.png',
+  '/assets/avatar/profile/Frame 3867.png',
+  '/assets/avatar/profile/Frame 3868.png',
+  '/assets/avatar/profile/Frame 3869.png',
+  '/assets/avatar/profile/Frame 3870.png',
+  '/assets/avatar/profile/Frame 3871.png',
+  '/assets/avatar/profile/Frame 3872.png',
+] as const;
 
-const activityAvatarGradients = [
-  'from-[#9E97FF] to-[#56EFC4]',
-  'from-[#8DBBFF] to-[#86E4F2]',
-  'from-[#B4A8FF] to-[#9BE7E1]',
-  'from-[#F2B7C9] to-[#FFCFA8]',
-  'from-[#69D5CF] to-[#B6F3DA]',
-  'from-[#A8B7FF] to-[#C7F3FF]',
+const upcomingDeadlines = [
+  { id: 'landing-page', title: 'Landing Page Design', room: 'Paper Studio', date: '25/05/2026', time: '10:00', status: 'Due Soon', tone: 'red' },
+  { id: 'brand-guidelines', title: 'Brand Guidelines', room: 'Eraser Studio', date: '25/05/2026', time: '10:00', status: '2 Days', tone: 'yellow' },
+  { id: 'social-campaign', title: 'Social Media Campaign', room: 'Paper Studio', date: '25/05/2026', time: '10:00', status: '5 Days', tone: 'green' },
 ] as const;
 
 type EmployerChatMessage = {
@@ -254,13 +261,13 @@ function TopBar({
   title?: string;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#e2e0f0] bg-white px-[22px] py-[16px] lg:px-[23px]">
+    <div className="flex h-[80px] flex-wrap items-center justify-between gap-4 border-b border-[#e2e0f0] bg-white px-[26px] py-[16px] lg:px-[27px]">
       <h1 className="warp-font-display text-[24px] font-extrabold tracking-[-0.03em] text-[#111111]">
         {title ? (
           title
         ) : (
           <>
-            Good Morning,{' '}
+            Welcome back,{' '}
             <span className="bg-[linear-gradient(90deg,#685eeb_15%,#46d2d2_100%)] bg-clip-text text-transparent">
               {displayName}
             </span>
@@ -290,130 +297,271 @@ function TopBar({
   );
 }
 
-function HeroPanel() {
+function HeroPanel({ onCreateRoom }: { onCreateRoom: () => void }) {
   return (
-    <section className="relative min-h-[198px] overflow-hidden rounded-[21px] bg-[linear-gradient(175deg,#1c1836_14%,#3c298d_88%)] px-[54px] py-[44px] text-white shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
-      <Image
-        src={EMPLOYER_DASHBOARD_ASSETS.heroDecor}
-        alt=""
-        fill
-        sizes="840px"
-        className="pointer-events-none object-cover object-center"
-      />
-
-      <div className="relative max-w-2xl space-y-3">
-        <h2 className="warp-font-display text-[40px] font-extrabold leading-none tracking-[-0.04em]">
-          Ready to Start <span className="text-[#56efc4]">Warping?</span>
+    <section className="relative min-h-[339px] overflow-hidden rounded-[17px] bg-[linear-gradient(145deg,#eeeaff_0%,#dfd7ff_42%,#fbf8ff_100%)] px-[42px] py-[40px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
+      <div className="relative z-10 max-w-[430px]">
+        <h2 className="warp-font-display text-[32px] font-extrabold leading-[0.99] tracking-[-0.04em] text-black">
+          Ready to Start <span className="text-[#685eeb]">Warping?</span>
         </h2>
-        <p className="max-w-xl text-[14px] text-[#a29bfc]">
-          Jump in and start collaborating with your team, from anywhere
+        <p className="mt-[18px] max-w-xl text-[14px] font-medium text-[#858585]">
+          Collaborate with your team from anywhere
         </p>
+
+        <div className="mt-[28px] grid max-w-[342px] grid-cols-2 gap-[12px]">
+          <MetricCard icon={<FocusMetricIcon variant="flame" />} label="Focus streak" value="12" suffix="day" detail="focus streak" />
+          <MetricCard icon={<FocusMetricIcon variant="timer" />} label="Today's focus" value="2h45m" detail="goal: 3h 00m" valueClassName="text-[#111111]" />
+        </div>
+
+        <div className="mt-[18px] flex flex-wrap items-center gap-[10px]">
+          <button
+            type="button"
+            className={cn(
+              'inline-flex h-[38px] items-center gap-[8px] rounded-[12px] bg-[linear-gradient(97deg,#685eeb_2%,#7970f0_56%,#a29bfc_111%)] px-[18px] text-[12px] font-extrabold text-white shadow-[0_12px_24px_rgba(104,94,235,0.22)] hover:brightness-[1.03] active:brightness-95',
+              purplePressClass
+            )}
+          >
+            <DoorOpen className="h-4 w-4" strokeWidth={1.8} />
+            Join Room
+            <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.2} />
+          </button>
+          <button
+            type="button"
+            onClick={onCreateRoom}
+            className={cn(
+              'inline-flex h-[38px] items-center gap-[7px] rounded-[12px] border border-[#d8d3f2] bg-white px-[14px] text-[12px] font-medium text-[#685eeb] shadow-[0_8px_16px_rgba(104,94,235,0.08)] hover:bg-[#f1eeff] active:bg-[#e4e0ff]',
+              purplePressClass
+            )}
+          >
+            <Plus className="h-4 w-4" strokeWidth={2} />
+            Create Room
+          </button>
+        </div>
       </div>
+
+      <div className="absolute bottom-[28px] right-[28px] top-[74px] hidden w-[44%] max-w-[430px] overflow-hidden rounded-[18px] border border-white/75 bg-white/50 p-[5px] shadow-[0_18px_36px_rgba(104,94,235,0.16)] backdrop-blur-[1px] lg:block">
+        <div className="relative h-full w-full overflow-hidden rounded-[14px] bg-[#f8f7fc]">
+          <Image
+            src={EMPLOYER_DASHBOARD_ASSETS.roomPreview}
+            alt=""
+            fill
+            sizes="430px"
+            className="object-cover object-center"
+            priority
+          />
+        </div>
+      </div>
+
+      <FriendStack />
     </section>
   );
 }
 
-function ActionCard({
-  title,
-  description,
-  variant,
-  onClick,
+function MetricCard({
+  icon,
+  label,
+  value,
+  suffix,
+  detail,
+  valueClassName,
 }: {
-  title: string;
-  description: string;
-  variant: 'join' | 'create';
-  onClick?: () => void;
+  icon: ReactNode;
+  label: string;
+  value: string;
+  suffix?: string;
+  detail: string;
+  valueClassName?: string;
 }) {
-  const isJoin = variant === 'join';
-  const illustrationSrc = isJoin ? EMPLOYER_DASHBOARD_ASSETS.joinRoom : EMPLOYER_DASHBOARD_ASSETS.createRoom;
-
   return (
-    <article className="rounded-[21px] border border-[#e2e0f0] bg-white px-[30px] py-[19px] shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
-      <div className="flex min-h-[154px] items-center gap-6">
-        <div className="relative h-[155px] w-[130px] shrink-0">
-          <Image
-            src={illustrationSrc}
-            alt=""
-            fill
-            sizes="130px"
-            className="object-contain"
-          />
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-[20px] font-bold leading-none tracking-[-0.03em] text-[#111111]">{title}</h3>
-            <p className="mt-2 text-[11px] text-[#5c5780]">{description}</p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClick}
-            className={cn(
-              'inline-flex items-center gap-2 rounded-full px-4 py-2 text-base transition',
-              isJoin
-                ? 'bg-[linear-gradient(168deg,#a29bfc_17%,#c0ffed_100%)] text-[#f8f7fc] shadow-[0_12px_24px_rgba(162,155,252,0.28)]'
-                : 'bg-[#ebe9fe] text-[#685eeb] hover:bg-[#e2defd]'
-            )}
-          >
-            <span className="font-medium">enter room</span>
-            <ArrowRight className="h-4 w-4" strokeWidth={2.2} />
-          </button>
+    <div className="min-h-[90px] rounded-[15px] border border-[#e2e0f0] bg-white px-[12px] py-[12px] shadow-[0_8px_18px_rgba(104,94,235,0.05)]">
+      <p className="text-[10px] font-semibold text-[#111111]">{label}</p>
+      <div className="mt-[9px] flex items-center gap-[10px]">
+        {icon}
+        <div className="min-w-0">
+          <p className={cn('text-[20px] font-semibold leading-none text-[#685eeb]', valueClassName)}>
+            {value}
+            {suffix ? <span className="ml-1 text-[11px] font-medium text-[#111111]">{suffix}</span> : null}
+          </p>
+          <p className="mt-[5px] whitespace-nowrap text-[9px] font-medium text-[#858585]">{detail}</p>
         </div>
       </div>
-    </article>
-  );
-}
-
-function RoomPreview() {
-  return (
-    <div className="relative h-[125px] overflow-hidden rounded-[9px] bg-[#d9d9d9]">
-      <Image
-        src={EMPLOYER_DASHBOARD_ASSETS.roomPreview}
-        alt=""
-        fill
-        sizes="330px"
-        className="object-cover"
-      />
     </div>
   );
 }
 
-function RoomCard({ title, level }: { title: string; level: string }) {
+function FocusMetricIcon({ variant }: { variant: 'flame' | 'timer' }) {
+  if (variant === 'timer') {
+    return (
+      <div className="relative flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1px_#eeeafd]">
+        <svg className="absolute inset-0 -rotate-90" width="38" height="38" viewBox="0 0 38 38" aria-hidden="true">
+          <circle cx="19" cy="19" r="16" fill="none" stroke="#f3f0f7" strokeWidth="3.5" />
+          <circle
+            cx="19"
+            cy="19"
+            r="16"
+            fill="none"
+            stroke="url(#dashboard-focus-timer-gradient)"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeDasharray="100.53"
+            strokeDashoffset="18"
+          />
+          <defs>
+            <linearGradient id="dashboard-focus-timer-gradient" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#39B54A" />
+              <stop offset="45%" stopColor="#5BCFE0" />
+              <stop offset="100%" stopColor="#685EEB" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <Image
+          src={EMPLOYER_DASHBOARD_ASSETS.focusTomato}
+          alt=""
+          width={26}
+          height={21}
+          sizes="26px"
+          className="relative z-10 h-auto w-[26px] object-contain"
+        />
+      </div>
+    );
+  }
+
   return (
-    <article className="rounded-[21px] border border-[#e2e0f0] bg-white p-4 shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
-      <RoomPreview />
+    <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[13px] bg-[#fff3ed] shadow-[inset_0_0_0_1px_rgba(255,118,117,0.14)]">
+      <Flame className="h-[25px] w-[25px] text-[#ff7675] drop-shadow-[0_4px_6px_rgba(255,118,117,0.16)]" fill="#ffb44f" strokeWidth={1.7} />
+    </div>
+  );
+}
 
-      <div className="mt-4 flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-[20px] font-semibold leading-none tracking-[-0.03em] text-[#111111]">{title}</h3>
-        </div>
-        <span className="pt-1 text-[16px] text-[#111111]">{level}</span>
-      </div>
+function FriendStack() {
+  const friendThumbnails = PROFILE_THUMBNAILS.slice(3, 7);
 
-      <div className="mt-5 flex items-center justify-between gap-4">
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-[12px] bg-[#ebe9fe] px-4 py-2 text-base text-[#685eeb] transition hover:bg-[#e2defd]"
-        >
-          <span>enter room</span>
-          <ArrowRight className="h-4 w-4" strokeWidth={2.2} />
-        </button>
-
-        <div className="flex items-center">
-          {avatarGradients.map((gradient, index) => (
-            <div
-              key={gradient}
-              className={cn(
-                'h-[28px] w-[28px] rounded-full border-2 border-white bg-gradient-to-br shadow-[0_6px_18px_rgba(124,92,252,0.15)]',
-                gradient,
-                index > 0 && '-ml-2'
-              )}
-            />
-          ))}
+  return (
+    <div className="absolute right-[31px] top-[20px] z-10 hidden items-center gap-[10px] rounded-[43px] border border-[#e2e0f0] bg-white/80 px-[16px] py-[10px] shadow-[0_3px_4.7px_rgba(249,251,253,0.75)] lg:flex">
+      <div className="flex items-center">
+        {friendThumbnails.map((thumbnail, index) => (
+          <div
+            key={thumbnail}
+            className={cn(
+              'relative h-[24px] w-[24px] overflow-hidden rounded-full border border-white bg-[#f4f2ff] shadow-[0_3px_4.7px_rgba(249,251,253,0.95)]',
+              index > 0 && '-ml-[5px]'
+            )}
+          >
+            <Image src={thumbnail} alt="" fill sizes="24px" className="object-cover" />
+          </div>
+        ))}
+        <div className="-ml-[5px] flex h-[24px] w-[24px] items-center justify-center rounded-full border border-white bg-[#dedcff] text-[8px] font-medium text-[#685eeb] shadow-[0_3px_4.7px_rgba(249,251,253,0.95)]">
+          +1
         </div>
       </div>
-    </article>
+      <div className="flex items-center gap-[4px]">
+        <span className="h-[6px] w-[6px] rounded-full bg-[#56efc4]" />
+        <span className="text-[11px] font-medium text-[#858585]">5 friends in room</span>
+      </div>
+    </div>
+  );
+}
+
+function DashboardCard({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-[17px] border border-[#e2e0f0] bg-white px-[24px] py-[19px]">
+      <div className="mb-[24px] flex items-center justify-between gap-4">
+        <h2 className="text-[16px] font-semibold text-black">{title}</h2>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function RoomRow({
+  title,
+  level,
+  membersOnline,
+}: {
+  title: string;
+  level: string;
+  membersOnline: number;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-[#e2e0f0] py-[13px] first:pt-0 last:border-b-0 last:pb-0">
+      <div className="flex min-w-0 items-center gap-[15px]">
+        <div className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[6px] bg-[#685eeb] text-white">
+          <DoorOpen className="h-[15px] w-[15px]" strokeWidth={1.8} />
+        </div>
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-[7px]">
+            <p className="truncate text-[14px] font-medium text-black">{title}</p>
+            <span className="shrink-0 text-[14px] font-medium text-[#685eeb]">{level}</span>
+          </div>
+          <div className="mt-[6px] flex items-center gap-[7px]">
+            <span className="h-[6px] w-[6px] rounded-full bg-[#56efc4]" />
+            <span className="text-[11px] text-[#858585]">{membersOnline} members online</span>
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        className={cn(
+          'inline-flex h-[24px] w-[77px] shrink-0 items-center justify-center gap-[8px] rounded-[8px] bg-[#ebe9fe] text-[14px] text-[#685eeb] hover:bg-[#e2defd] active:bg-[#d8d2ff]',
+          purplePressClass
+        )}
+      >
+        enter
+        <ArrowRight className="h-[13px] w-[13px]" strokeWidth={2.2} />
+      </button>
+    </div>
+  );
+}
+
+function DeadlineRow({
+  title,
+  room,
+  date,
+  time,
+  status,
+  tone,
+}: {
+  title: string;
+  room: string;
+  date: string;
+  time: string;
+  status: string;
+  tone: 'red' | 'yellow' | 'green';
+}) {
+  const statusClass = {
+    red: 'bg-[#ffeeee] text-[#ff7675]',
+    yellow: 'bg-[#fff7df] text-[#e3a82c]',
+    green: 'bg-[#eafff4] text-[#45c486]',
+  }[tone];
+
+  return (
+    <div className="flex items-center justify-between gap-4 py-[12px]">
+      <div className="flex min-w-0 items-center gap-[15px]">
+        <div className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full bg-[#e7e5f4] text-[#8f88b3]">
+          <CalendarClock className="h-[16px] w-[16px]" strokeWidth={1.8} />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-[14px] font-medium text-black">{title}</p>
+          <p className="mt-[4px] truncate text-[10px] text-[#858585]">
+            <span className="font-bold">{room}</span>
+            <span className="ml-[8px]">{date}</span>
+            <span className="ml-[8px]">{time}</span>
+          </p>
+        </div>
+      </div>
+      <span className={cn('shrink-0 rounded-[4px] px-[8px] py-[5px] text-[11px] font-medium', statusClass)}>
+        {status}
+      </span>
+    </div>
   );
 }
 
@@ -426,16 +574,23 @@ function ActivityItem({
   role: string;
   index: number;
 }) {
+  const thumbnail = PROFILE_THUMBNAILS[index % PROFILE_THUMBNAILS.length];
+
   return (
     <article className="flex items-center gap-[11px] rounded-[10px] bg-white px-[11px] py-[9px]">
-      <div className="relative h-12 w-12 shrink-0">
-        <div className={cn('h-full w-full rounded-full bg-gradient-to-br', activityAvatarGradients[index % activityAvatarGradients.length])} />
+      <div className="relative h-[48px] w-[48px] shrink-0 overflow-visible">
+        <div className="relative h-full w-full overflow-hidden rounded-full bg-[#f4f2ff]">
+          <Image src={thumbnail} alt="" fill sizes="48px" className="object-cover" />
+        </div>
         <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#56efc4]" />
       </div>
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-[15px] font-bold text-[#111111]">{name}</p>
-        <p className="truncate text-[11px] text-[#5c5780]">{role}</p>
+        <div className="mt-[2px] flex items-center gap-[4px]">
+          <span className="h-[12px] w-[12px] rounded-full border border-[#9b96b8]" />
+          <p className="truncate text-[11px] text-[#5c5780]">{role}</p>
+        </div>
       </div>
 
       <span className="shrink-0 text-[11px] text-[#5c5780]">now</span>
@@ -459,58 +614,55 @@ function ProfilePanel({
   const visibleInterests = interests.length > 0 ? interests : ['Add interests'];
 
   return (
-    <aside className="border-t border-[#e2e0f0] bg-white px-[15px] py-[17px] lg:border-l lg:border-t-0">
-      <div className="rounded-[34px] border border-[#f3f1ff] bg-white px-[22px] py-[24px] shadow-[0_18px_30px_rgba(124,92,252,0.08)]">
-        <div className="flex flex-col items-center text-center">
-          <div className="relative h-[132px] w-[132px] rounded-full bg-[radial-gradient(circle_at_32%_24%,#f4f1ff_0%,#d5d2ff_38%,#a29bfc_66%,#74e7dd_100%)] shadow-[0_18px_34px_rgba(124,92,252,0.18)]">
-            <div className="absolute inset-[9px] overflow-hidden rounded-full bg-[linear-gradient(145deg,#f4f1ff_0%,#d6f8f2_100%)]">
+    <aside className="border-t border-[#e2e0f0] bg-white px-[14px] py-[23px] lg:border-l lg:border-t-0">
+      <div className="rounded-[28px] bg-[rgba(220,224,249,0.64)] px-[18px] pb-[18px] pt-[20px]">
+        <div className="flex items-center gap-[13px]">
+          <div className="relative h-[66px] w-[66px] shrink-0 overflow-visible rounded-full bg-white p-[4px] shadow-[0_10px_20px_rgba(104,94,235,0.10)]">
+            <div className="relative h-full w-full overflow-hidden rounded-full bg-[#f4f2ff]">
               <Image
-                src={EMPLOYER_DASHBOARD_ASSETS.profileMain}
+                src={PROFILE_THUMBNAILS[1]}
                 alt={displayName}
                 fill
-                sizes="114px"
-                className="scale-[1.08] object-contain object-bottom"
+                sizes="58px"
+                className="object-cover"
+                priority
               />
             </div>
-            <span className="absolute bottom-[15px] right-[14px] h-[17px] w-[17px] rounded-full border-[3px] border-white bg-[#56efc4] shadow-[0_4px_10px_rgba(86,239,196,0.35)]" />
+            <span className="absolute bottom-[3px] right-[3px] h-[15px] w-[15px] rounded-full border-[3px] border-white bg-[#56efc4]" />
           </div>
 
-          <p className="mt-[18px] text-[20px] font-bold leading-none tracking-[-0.03em] text-[#111111]">{displayName}</p>
-          <p className="mt-[8px] text-[11px] text-[#5c5780]">{roleLabel}</p>
+          <div className="min-w-0">
+            <p className="truncate text-[18px] font-bold leading-tight text-[#111111]">{displayName}</p>
+            <p className="mt-[4px] truncate text-[11px] font-medium text-[#9b96b8]">{roleLabel}</p>
+          </div>
         </div>
 
-        <div className="mt-[20px] min-h-[78px] rounded-[20px] bg-[linear-gradient(136deg,#f4f2ff_0%,#f4fbff_54%,#effdf9_100%)] px-[12px] py-[12px]">
-          <p className="warp-font-display text-[11px] font-bold uppercase tracking-[0.04em] text-[#9b96b8]">
-            Interests
-          </p>
-          <div className="mt-[10px] flex flex-wrap gap-[8px]">
-            {visibleInterests.map((interest, index) => (
-              <span
-                key={`${interest}-${index}`}
-                className="inline-flex items-center rounded-full bg-white px-[12px] py-[6px] text-[11px] font-medium text-[#5c5780] shadow-[0_6px_14px_rgba(124,92,252,0.08)]"
-              >
-                {interest}
-              </span>
-            ))}
-          </div>
+        <div className="mt-[16px] flex flex-wrap gap-[7px]">
+          {visibleInterests.slice(0, 3).map((interest, index) => (
+            <span
+              key={`${interest}-${index}`}
+              className="inline-flex max-w-full items-center rounded-[13px] border border-white bg-white px-[8px] py-[5px] text-[10px] font-medium text-[#5c5780] shadow-[0_3px_8px_rgba(104,94,235,0.05)]"
+            >
+              <span className="truncate">{interest}</span>
+            </span>
+          ))}
         </div>
 
         <button
           type="button"
           onClick={onEditProfile}
-          className="mt-[18px] flex w-full items-center justify-center gap-2 rounded-full border border-[#a29bfc] bg-white/75 px-4 py-[9px] text-[11px] text-[#5c5780] transition hover:bg-white"
+          className="mt-[18px] flex h-[34px] w-full items-center justify-center rounded-[13px] border border-white bg-white px-4 text-[11px] font-semibold text-[#5c5780] transition-all duration-150 hover:bg-[#fbfaff] active:translate-y-[1px] active:bg-[#f1eeff] active:shadow-[inset_0_2px_5px_rgba(104,94,235,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685eeb]/25"
         >
-          <PenLine className="h-3.5 w-3.5" strokeWidth={1.8} />
           <span>Edit Profile</span>
         </button>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-[31px]">
         <p className="warp-font-display text-[13px] font-extrabold uppercase tracking-[0.04em] text-[#5c5780]">
           Team Activity
         </p>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-[20px] space-y-[19px]">
           {teammates.map((teammate, index) => (
             <ActivityItem key={teammate.id} name={teammate.name} role={teammate.role} index={index} />
           ))}
@@ -528,30 +680,37 @@ function EmployerDashboardHome({
   onCreateRoom: () => void;
 }) {
   return (
-    <div className="space-y-[22px] px-[21px] py-[23px]">
-      <HeroPanel />
+    <div className="space-y-[15px] px-[21px] py-[22px]">
+      <HeroPanel onCreateRoom={onCreateRoom} />
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <ActionCard title="Join a Room" description="Join an existing room" variant="join" />
-        <ActionCard
-          title="Create a Room"
-          description="Create a room for your team"
-          variant="create"
-          onClick={onCreateRoom}
-        />
-      </div>
-
-      <section>
-        <h2 className="warp-font-display text-[20px] font-extrabold tracking-[-0.03em] text-[#111111]">
-          Recents
-        </h2>
-
-        <div className="mt-4 grid gap-[14px] xl:grid-cols-2">
+      <div className="grid gap-[14px] xl:grid-cols-2">
+        <DashboardCard
+          title="Your Rooms"
+          action={
+            <button type="button" className="text-[14px] font-semibold text-[#685eeb] transition hover:text-[#4f45d9]">
+              View all
+            </button>
+          }
+        >
           {recentRooms.map((room) => (
-            <RoomCard key={room.id} title={room.title} level={room.level} />
+            <RoomRow key={room.id} title={room.title} level={room.level} membersOnline={room.membersOnline} />
           ))}
-        </div>
-      </section>
+        </DashboardCard>
+
+        <DashboardCard title="Upcoming Deadlines">
+          {upcomingDeadlines.map((deadline) => (
+            <DeadlineRow
+              key={deadline.id}
+              title={deadline.title}
+              room={deadline.room}
+              date={deadline.date}
+              time={deadline.time}
+              status={deadline.status}
+              tone={deadline.tone}
+            />
+          ))}
+        </DashboardCard>
+      </div>
     </div>
   );
 }
