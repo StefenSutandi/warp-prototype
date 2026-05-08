@@ -182,7 +182,7 @@ type EmployerChatThread = {
   role: string;
   time: string;
   unread?: number;
-  avatarGradient: string;
+  avatarSrc: string;
   messages: EmployerChatMessage[];
 };
 
@@ -199,7 +199,7 @@ const employerChatThreads: EmployerChatThread[] = [
     name: 'Baskara Putra',
     role: 'Visual Designer',
     time: '14.12',
-    avatarGradient: 'from-[#9e97ff] to-[#a8eee8]',
+    avatarSrc: PROFILE_THUMBNAILS[6],
     messages: [
       {
         id: 'baskara-1',
@@ -239,7 +239,7 @@ const employerChatThreads: EmployerChatThread[] = [
     role: 'Product Lead',
     time: '13.58',
     unread: 2,
-    avatarGradient: 'from-[#8b84f9] to-[#7fe6dc]',
+    avatarSrc: PROFILE_THUMBNAILS[1],
     messages: [
       { id: 'maya-1', author: 'them', text: 'The sprint board is cleaned up now.', time: '13.51' },
       { id: 'maya-2', author: 'me', text: 'Great, I will review the blockers next.', time: '13.54' },
@@ -251,7 +251,7 @@ const employerChatThreads: EmployerChatThread[] = [
     name: 'Alex Rivera',
     role: 'Frontend Engineer',
     time: '12.44',
-    avatarGradient: 'from-[#84a9ff] to-[#96e8f2]',
+    avatarSrc: PROFILE_THUMBNAILS[2],
     messages: [
       { id: 'alex-1', author: 'them', text: 'The chat prototype is ready for QA.', time: '12.41' },
       { id: 'alex-2', author: 'me', text: 'Nice, please keep the interaction notes in the task.', time: '12.44' },
@@ -263,7 +263,7 @@ const employerChatThreads: EmployerChatThread[] = [
     role: 'Researcher',
     time: '11.32',
     unread: 1,
-    avatarGradient: 'from-[#b5a8ff] to-[#97e9d9]',
+    avatarSrc: PROFILE_THUMBNAILS[5],
     messages: [
       { id: 'jordan-1', author: 'them', text: 'User interview notes are in the doc.', time: '11.32' },
     ],
@@ -273,7 +273,7 @@ const employerChatThreads: EmployerChatThread[] = [
     name: 'Casey Park',
     role: 'Motion Designer',
     time: '09.18',
-    avatarGradient: 'from-[#9e97ff] to-[#b6f4e3]',
+    avatarSrc: PROFILE_THUMBNAILS[3],
     messages: [
       { id: 'casey-1', author: 'me', text: 'Can you send the softer transition pass?', time: '09.12' },
       { id: 'casey-2', author: 'them', text: 'Yes, exporting it after lunch.', time: '09.18' },
@@ -1576,7 +1576,9 @@ function EmployerChatPage() {
                     isActive ? 'bg-[rgba(226,224,240,0.45)]' : 'hover:bg-[#f7f5ff]'
                   )}
                 >
-                  <div className={cn('h-[53px] w-[53px] shrink-0 rounded-full bg-gradient-to-br shadow-[0_8px_18px_rgba(124,92,252,0.16)]', thread.avatarGradient)} />
+                  <div className="relative h-[53px] w-[53px] shrink-0 overflow-hidden rounded-full bg-[#f4f2ff] ring-1 ring-white/80 shadow-[0_8px_18px_rgba(124,92,252,0.16)]">
+                    <Image src={thread.avatarSrc} alt="" fill sizes="53px" className="object-cover" />
+                  </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-3">
                       <p className="truncate text-[16px] font-semibold text-black">{thread.name}</p>
@@ -1606,7 +1608,9 @@ function EmployerChatPage() {
         <section className="flex min-w-0 flex-1 flex-col bg-[#e2e0f0]">
           <header className="flex h-[88px] shrink-0 items-center justify-between border-b border-[#d4d0e8] bg-white px-[34px]">
             <div className="flex items-center gap-[16px]">
-              <div className={cn('h-[53px] w-[53px] rounded-full bg-gradient-to-br shadow-[0_8px_18px_rgba(124,92,252,0.16)]', activeThread.avatarGradient)} />
+              <div className="relative h-[53px] w-[53px] overflow-hidden rounded-full bg-[#f4f2ff] ring-1 ring-white/80 shadow-[0_8px_18px_rgba(124,92,252,0.16)]">
+                <Image src={activeThread.avatarSrc} alt="" fill sizes="53px" className="object-cover" />
+              </div>
               <div>
                 <p className="text-[16px] font-semibold text-black">{activeThread.name}</p>
                 <div className="mt-[3px] flex items-center gap-[5px]">
