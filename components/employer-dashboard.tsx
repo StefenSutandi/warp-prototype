@@ -66,7 +66,7 @@ const navItems = [
   { id: 'stats', label: 'My Stats', icon: ChartColumnBig },
   { id: 'tasks', label: 'To-Do', icon: ClipboardCheck },
   { id: 'chat', label: 'Chat', icon: MessageCircle },
-  { id: 'team', label: 'My Team', icon: UsersRound },
+  { id: 'team', label: 'My Team & Project', icon: UsersRound },
   { id: 'settings', label: 'Settings', icon: Settings2 },
 ] as const;
 
@@ -112,59 +112,50 @@ const achievementCards = [
   { id: 'social-warper', title: 'Social Warper', subtitle: 'Chat with your whole team', unlocked: false, icon: Star },
 ] as const;
 
-const teamRooms = [
+const studioTabs = [
+  { id: 'papers-studio', name: 'Papers Studio', focus: 'Brand refresh', activeMembers: 3 },
+  { id: 'pencil-studio', name: 'Pencil Studio', focus: 'Illustration system', activeMembers: 2 },
+  { id: 'eraser-studio', name: 'Eraser Studio', focus: 'Launch cleanup', activeMembers: 1 },
+] as const;
+
+const onlineMembers = [
+  { name: 'Baskara Putra', role: 'UI/UX Designer', task: 'Icon Set Exploration', status: 'In Review', progress: 70, avatar: PROFILE_THUMBNAILS[6] },
+  { name: 'Nadira Salma', role: 'Illustrator', task: 'Character Pose Cleanup', status: 'In Progress', progress: 55, avatar: PROFILE_THUMBNAILS[7] },
+  { name: 'Kenzo Pratama', role: 'Motion Designer', task: 'Micro-interaction Pass', status: 'Review Today', progress: 82, avatar: PROFILE_THUMBNAILS[0] },
+] as const;
+
+const teamMembers = [
+  { name: 'Baskara Putra', role: 'UI/UX Designer', avatar: PROFILE_THUMBNAILS[6], status: 'Online' },
+  { name: 'Nadira Salma', role: 'Illustrator', avatar: PROFILE_THUMBNAILS[7], status: 'Online' },
+  { name: 'Kenzo Pratama', role: 'Motion Designer', avatar: PROFILE_THUMBNAILS[0], status: 'Online' },
+  { name: 'Raka Mahendra', role: 'Frontend Developer', avatar: PROFILE_THUMBNAILS[2], status: 'Focused' },
+  { name: 'Alya Kirana', role: 'Content Strategist', avatar: PROFILE_THUMBNAILS[3], status: 'Planning' },
+  { name: 'Dimas Wicaksono', role: 'Project Lead', avatar: PROFILE_THUMBNAILS[4], status: 'Reviewing' },
+] as const;
+
+const timelineMonths = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP'] as const;
+
+const projectTimelineGroups = [
   {
-    id: 'paper-studio',
-    name: 'Paper Studio',
-    focus: 'Product sprint',
-    accent: '#685eeb',
-    members: [
-      { name: 'Jordan Quinn', role: 'UI/UX Designer', avatar: PROFILE_THUMBNAILS[0], status: 'Online', progress: 'Polishing mobile flows', tasks: 12, focus: '3h 10m', badge: 'Design' },
-      { name: 'Maya Chen', role: 'UI Designer', avatar: PROFILE_THUMBNAILS[1], status: 'Reviewing', progress: 'Finalizing component states', tasks: 9, focus: '2h 45m', badge: 'UI' },
-      { name: 'Alex Rivera', role: 'Product Manager', avatar: PROFILE_THUMBNAILS[2], status: 'Online', progress: 'Clearing sprint blockers', tasks: 15, focus: '1h 55m', badge: 'PM' },
-    ],
-    timeline: [
-      { label: 'Research', start: 4, width: 24, tone: 'purple', status: 'Done' },
-      { label: 'Wireframe', start: 22, width: 28, tone: 'cyan', status: 'In review' },
-      { label: 'Visual Design', start: 42, width: 34, tone: 'green', status: 'Active' },
-      { label: 'Prototype', start: 62, width: 26, tone: 'orange', status: 'Next' },
-      { label: 'Review', start: 79, width: 17, tone: 'muted', status: 'Queued' },
+    group: 'PRE-PRODUCTION',
+    tasks: [
+      { name: 'Visual direction', start: 18, width: 16, tone: 'purple' },
+      { name: 'Moodboard research', start: 31, width: 16, tone: 'mint' },
+      { name: 'Brand audit', start: 45, width: 14, tone: 'pink' },
     ],
   },
   {
-    id: 'pencil-studio',
-    name: 'Pencil Studio',
-    focus: 'Brand system',
-    accent: '#56cfd2',
-    members: [
-      { name: 'Casey Park', role: 'Brand Designer', avatar: PROFILE_THUMBNAILS[3], status: 'Online', progress: 'Exploring campaign marks', tasks: 8, focus: '2h 20m', badge: 'Brand' },
-      { name: 'Morgan Smith', role: 'Tech Lead', avatar: PROFILE_THUMBNAILS[4], status: 'Focused', progress: 'Preparing handoff notes', tasks: 11, focus: '3h 35m', badge: 'Lead' },
-      { name: 'Jordan Lee', role: 'Frontend Engineer', avatar: PROFILE_THUMBNAILS[5], status: 'Online', progress: 'Building token previews', tasks: 10, focus: '2h 05m', badge: 'FE' },
-    ],
-    timeline: [
-      { label: 'Research', start: 2, width: 20, tone: 'cyan', status: 'Done' },
-      { label: 'Wireframe', start: 18, width: 25, tone: 'purple', status: 'Done' },
-      { label: 'Visual Design', start: 36, width: 38, tone: 'orange', status: 'Active' },
-      { label: 'Prototype', start: 58, width: 30, tone: 'green', status: 'Starting' },
-      { label: 'Review', start: 82, width: 13, tone: 'muted', status: 'Queued' },
+    group: 'PRODUCTION',
+    tasks: [
+      { name: 'Icon system', start: 48, width: 30, tone: 'violet' },
+      { name: 'Landing page design', start: 74, width: 13, tone: 'green' },
     ],
   },
   {
-    id: 'eraser-studio',
-    name: 'Eraser Studio',
-    focus: 'Motion pack',
-    accent: '#ff9f6e',
-    members: [
-      { name: 'Baskara Putra', role: 'Illustrator', avatar: PROFILE_THUMBNAILS[6], status: 'Online', progress: 'Sketching room props', tasks: 7, focus: '2h 50m', badge: 'Art' },
-      { name: 'Rani Wijaya', role: 'Project Coordinator', avatar: PROFILE_THUMBNAILS[7], status: 'Planning', progress: 'Syncing milestone owners', tasks: 13, focus: '1h 40m', badge: 'Ops' },
-      { name: 'Naufal Ardi', role: 'Motion Designer', avatar: PROFILE_THUMBNAILS[0], status: 'Focused', progress: 'Animating feedback loops', tasks: 6, focus: '3h 00m', badge: 'Motion' },
-    ],
-    timeline: [
-      { label: 'Research', start: 6, width: 18, tone: 'orange', status: 'Done' },
-      { label: 'Wireframe', start: 20, width: 22, tone: 'green', status: 'Done' },
-      { label: 'Visual Design', start: 34, width: 31, tone: 'purple', status: 'Active' },
-      { label: 'Prototype', start: 55, width: 36, tone: 'cyan', status: 'Active' },
-      { label: 'Review', start: 80, width: 16, tone: 'muted', status: 'Queued' },
+    group: 'REVIEW & LAUNCH',
+    tasks: [
+      { name: 'Stakeholder review', start: 78, width: 12, tone: 'pink' },
+      { name: 'Launch assets', start: 90, width: 7, tone: 'green' },
     ],
   },
 ] as const;
@@ -1021,169 +1012,199 @@ function EmployerStatsPage() {
 }
 
 function EmployerTeamPage() {
-  const [selectedTeamId, setSelectedTeamId] = useState<(typeof teamRooms)[number]['id']>('paper-studio');
-  const [selectedMember, setSelectedMember] = useState<string>('Jordan Quinn');
-  const selectedTeam = teamRooms.find((team) => team.id === selectedTeamId) ?? teamRooms[0];
+  const [selectedStudioId, setSelectedStudioId] = useState<(typeof studioTabs)[number]['id']>('papers-studio');
+  const selectedStudio = studioTabs.find((studio) => studio.id === selectedStudioId) ?? studioTabs[0];
+  const timelineToneClass = {
+    purple: 'bg-[#c5bff5]',
+    mint: 'bg-[#9fe1cb]',
+    pink: 'bg-[#eb9eb9]',
+    violet: 'bg-[#8b7fe8]',
+    green: 'bg-[#5dcaa5]',
+  } as const;
+  const statusToneClass = {
+    'In Review': 'bg-[#e4e0ff] text-[#685eeb]',
+    'In Progress': 'bg-[#e7fbf5] text-[#20a875]',
+    'Review Today': 'bg-[#fff0f6] text-[#c95d86]',
+  } as const;
 
   return (
-    <div className="px-[30px] py-[27px]">
-      <section className="overflow-hidden rounded-[22px] border border-[#e2e0f0] bg-[linear-gradient(135deg,#ffffff_0%,#f4f1ff_50%,#eefdf9_112%)] px-[25px] py-[23px] shadow-[0_10px_28px_rgba(104,94,235,0.08)]">
-        <div className="flex flex-wrap items-center justify-between gap-5">
+    <div className="px-[30px] py-[24px]">
+      <section className="rounded-[24px] border border-white/70 bg-white/45 px-[16px] py-[14px] shadow-[0_10px_28px_rgba(104,94,235,0.06)] backdrop-blur-sm">
+        <div className="flex flex-wrap items-center justify-center gap-[16px]">
+          {studioTabs.map((studio) => {
+            const isActive = studio.id === selectedStudio.id;
+
+            return (
+              <button
+                key={studio.id}
+                type="button"
+                onClick={() => setSelectedStudioId(studio.id)}
+                className={cn(
+                  'group relative min-w-[155px] rounded-[10px] px-[22px] py-[10px] text-[14px] font-bold transition-all duration-150 active:translate-y-[1px] active:scale-[0.98]',
+                  isActive
+                    ? 'bg-[#a29bfc] text-white shadow-[0_12px_24px_rgba(104,94,235,0.20)]'
+                    : 'text-[#858585] hover:bg-white/70 hover:text-[#685eeb]'
+                )}
+              >
+                {studio.name}
+                <span
+                  className={cn(
+                    'absolute -bottom-[10px] left-1/2 h-[3px] w-[112px] -translate-x-1/2 rounded-full transition-opacity',
+                    isActive ? 'bg-[#685eeb] opacity-100' : 'bg-transparent opacity-0'
+                  )}
+                />
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="mt-[25px]">
+        <div className="flex items-end justify-between gap-4">
           <div>
-            <h2 className="warp-font-display text-[30px] font-extrabold leading-none tracking-[-0.04em] text-[#111111]">
-              My Team
-            </h2>
-            <p className="mt-[9px] max-w-[560px] text-[13px] font-medium leading-[1.45] text-[#858585]">
-              See who is active, what each room is moving through, and where the project timeline stands.
+            <h2 className="warp-font-display text-[20px] font-extrabold tracking-[-0.03em] text-[#111111]">Currently online</h2>
+            <p className="mt-[5px] text-[12px] font-medium text-[#858585]">
+              {selectedStudio.activeMembers} teammates active in {selectedStudio.name}.
             </p>
           </div>
-          <div className="flex items-center gap-[10px] rounded-[16px] border border-[#e2e0f0] bg-white/80 px-[14px] py-[10px] shadow-[0_8px_22px_rgba(104,94,235,0.06)]">
-            <span className="flex h-[34px] w-[34px] items-center justify-center rounded-[12px] bg-[#ebe9fe] text-[#685eeb]">
-              <UsersRound className="h-[18px] w-[18px]" strokeWidth={2} />
-            </span>
-            <div>
-              <p className="text-[12px] font-bold text-[#111111]">{selectedTeam.members.length} active members</p>
-              <p className="text-[11px] font-medium text-[#858585]">{selectedTeam.focus}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-[22px] flex flex-wrap gap-[10px]">
-          {teamRooms.map((team) => {
-            const isActive = team.id === selectedTeam.id;
-
-            return (
-              <button
-                key={team.id}
-                type="button"
-                onClick={() => {
-                  setSelectedTeamId(team.id);
-                  setSelectedMember(team.members[0].name);
-                }}
-                className={cn(
-                  'rounded-[15px] border px-[16px] py-[10px] text-left transition-all duration-150 active:translate-y-[1px] active:scale-[0.98]',
-                  isActive
-                    ? 'border-[#bfb8ff] bg-white text-[#111111] shadow-[0_10px_22px_rgba(104,94,235,0.12)]'
-                    : 'border-[#e2e0f0] bg-white/60 text-[#858585] hover:-translate-y-[1px] hover:border-[#d0cbff] hover:bg-white'
-                )}
-              >
-                <span className="block text-[13px] font-bold">{team.name}</span>
-                <span className="mt-[2px] block text-[11px] font-medium text-[#858585]">{team.focus}</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="mt-[28px]">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h3 className="warp-font-display text-[20px] font-extrabold tracking-[-0.03em] text-[#111111]">Team Members</h3>
-            <p className="mt-[5px] text-[12px] font-medium text-[#858585]">{selectedTeam.name} workspace activity.</p>
-          </div>
           <span className="rounded-full bg-white px-[13px] py-[7px] text-[12px] font-semibold text-[#5c5780] shadow-[0_6px_18px_rgba(104,94,235,0.05)]">
-            {selectedTeam.members.filter((member) => member.status === 'Online').length} online now
+            {selectedStudio.focus}
           </span>
         </div>
 
-        <div className="mt-[16px] grid gap-[16px] xl:grid-cols-3">
-          {selectedTeam.members.map((member) => {
-            const isSelected = selectedMember === member.name;
-
-            return (
-              <button
-                key={member.name}
-                type="button"
-                onClick={() => setSelectedMember(member.name)}
-                className={cn(
-                  'group rounded-[22px] border bg-white p-[18px] text-left shadow-[0_8px_22px_rgba(104,94,235,0.06)] transition-all duration-200 hover:-translate-y-[3px] hover:border-[#bfb8ff] hover:shadow-[0_18px_34px_rgba(104,94,235,0.13)] active:translate-y-[1px] active:scale-[0.99]',
-                  isSelected ? 'border-[#bfb8ff] ring-2 ring-[#685eeb]/18' : 'border-[#e2e0f0]'
-                )}
-              >
-                <div className="flex items-start gap-[14px]">
-                  <div className="relative h-[58px] w-[58px] shrink-0 overflow-hidden rounded-[19px] bg-[#f4f2ff] shadow-[0_8px_16px_rgba(104,94,235,0.08)]">
-                    <Image src={member.avatar} alt="" fill sizes="58px" className="object-cover" />
-                    <span className="absolute bottom-[4px] right-[4px] h-[10px] w-[10px] rounded-full border-2 border-white bg-[#56efc4]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-[15px] font-extrabold text-[#111111]">{member.name}</p>
-                        <p className="mt-[3px] truncate text-[12px] font-medium text-[#858585]">{member.role}</p>
-                      </div>
-                      <span className="rounded-full bg-[#edfdf7] px-[9px] py-[4px] text-[10px] font-bold text-[#20a875]">
-                        {member.status}
-                      </span>
+        <div className="mt-[14px] grid gap-[16px] xl:grid-cols-3">
+          {onlineMembers.map((member) => (
+            <article
+              key={member.name}
+              className="rounded-[26px] bg-white p-[18px] shadow-[0_12px_26px_rgba(104,94,235,0.08)] ring-1 ring-[#e2e0f0]/70"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-[16px]">
+                  <div className="relative h-[58px] w-[58px] shrink-0 overflow-visible">
+                    <div className="relative h-full w-full overflow-hidden rounded-full bg-[#f4f2ff]">
+                      <Image src={member.avatar} alt="" fill sizes="58px" className="object-cover" />
                     </div>
-                    <p className="mt-[12px] text-[12px] font-medium leading-[1.35] text-[#5c5780]">{member.progress}</p>
+                    <span className="absolute bottom-[2px] right-[2px] h-[12px] w-[12px] rounded-full border-2 border-white bg-[#56efc4]" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-[16px] font-bold text-black">{member.name}</p>
+                    <p className="mt-[3px] truncate text-[13px] font-medium text-[#9b96b8]">{member.role}</p>
                   </div>
                 </div>
+                <button
+                  type="button"
+                  className="flex h-[24px] shrink-0 items-center gap-[4px] rounded-full border border-[#e2e0f0] bg-white px-[8px] text-[10px] font-semibold text-[#9b96b8] transition hover:bg-[#f7f5ff] hover:text-[#685eeb]"
+                >
+                  see more
+                  <ArrowRight className="h-[12px] w-[12px]" strokeWidth={2.2} />
+                </button>
+              </div>
 
-                <div className="mt-[16px] grid grid-cols-3 gap-[8px]">
-                  {[
-                    ['Tasks', member.tasks],
-                    ['Focus', member.focus],
-                    ['Role', member.badge],
-                  ].map(([label, value]) => (
-                    <div key={label} className="rounded-[13px] bg-[#f8f7fc] px-[10px] py-[9px]">
-                      <p className="text-[10px] font-semibold text-[#9b96b8]">{label}</p>
-                      <p className="mt-[3px] truncate text-[12px] font-extrabold text-[#111111]">{value}</p>
-                    </div>
-                  ))}
+              <p className="mt-[21px] text-[10px] font-bold uppercase tracking-[0.08em] text-[#9b96b8]">Current progress</p>
+              <div className="mt-[10px] rounded-[13px] bg-[#f1f3ff] px-[16px] py-[14px]">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="truncate text-[15px] font-extrabold text-black">{member.task}</p>
+                  <span className={cn('shrink-0 rounded-[10px] px-[10px] py-[6px] text-[10px] font-extrabold uppercase', statusToneClass[member.status])}>
+                    {member.status}
+                  </span>
                 </div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="mt-[30px]">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h3 className="warp-font-display text-[20px] font-extrabold tracking-[-0.03em] text-[#111111]">Project Timeline</h3>
-            <p className="mt-[5px] text-[12px] font-medium text-[#858585]">Sprint pacing for {selectedTeam.name}.</p>
-          </div>
-          <span className="rounded-full border border-[#e2e0f0] bg-white px-[13px] py-[7px] text-[12px] font-semibold text-[#685eeb] shadow-[0_6px_18px_rgba(104,94,235,0.05)]">
-            May 2026
-          </span>
-        </div>
-
-        <div className="mt-[16px] overflow-hidden rounded-[22px] border border-[#e2e0f0] bg-white p-[18px] shadow-[0_10px_28px_rgba(104,94,235,0.07)]">
-          <div className="grid grid-cols-[132px_minmax(0,1fr)] border-b border-[#f0eff8] pb-[11px] text-[11px] font-bold uppercase tracking-[0.08em] text-[#9b96b8]">
-            <span>Phase</span>
-            <div className="grid grid-cols-4">
-              {['Week 1', 'Week 2', 'Week 3', 'Week 4'].map((week) => (
-                <span key={week}>{week}</span>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-[8px] space-y-[8px]">
-            {selectedTeam.timeline.map((item) => (
-              <div
-                key={item.label}
-                className="group grid min-h-[52px] grid-cols-[132px_minmax(0,1fr)] items-center rounded-[16px] px-[10px] transition hover:bg-[#f8f7fc]"
-              >
-                <div>
-                  <p className="text-[13px] font-bold text-[#111111]">{item.label}</p>
-                  <p className="mt-[2px] text-[10px] font-semibold text-[#9b96b8]">{item.status}</p>
-                </div>
-                <div className="relative h-[28px] overflow-hidden rounded-full bg-[repeating-linear-gradient(90deg,#f3f1fb_0,#f3f1fb_1px,transparent_1px,transparent_25%)]">
-                  <div className="absolute inset-y-[5px] left-0 right-0 rounded-full bg-[#f8f7fc]" />
-                  <div
-                    className={cn(
-                      'absolute top-[5px] h-[18px] rounded-full shadow-[0_6px_14px_rgba(104,94,235,0.16)] transition-all duration-200 group-hover:scale-y-[1.08]',
-                      item.tone === 'purple' && 'bg-[linear-gradient(90deg,#685eeb,#a29bfc)]',
-                      item.tone === 'cyan' && 'bg-[linear-gradient(90deg,#56cfd2,#9af1e7)]',
-                      item.tone === 'green' && 'bg-[linear-gradient(90deg,#56efc4,#a8f5dc)]',
-                      item.tone === 'orange' && 'bg-[linear-gradient(90deg,#ff9f6e,#ffd0a8)]',
-                      item.tone === 'muted' && 'bg-[#cfcbe1]'
-                    )}
-                    style={{ left: `${item.start}%`, width: `${item.width}%` }}
-                  />
+                <div className="mt-[15px]">
+                  <div className="flex items-center justify-between text-[10px] font-bold">
+                    <span className="text-[#858585]">Progress</span>
+                    <span className="text-[#685eeb]">{member.progress}%</span>
+                  </div>
+                  <div className="mt-[6px] h-[5px] overflow-hidden rounded-full bg-[#d9d9d9]">
+                    <div className="h-full rounded-full bg-[#685eeb]" style={{ width: `${member.progress}%` }} />
+                  </div>
                 </div>
               </div>
-            ))}
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-[22px]">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="warp-font-display text-[18px] font-extrabold tracking-[-0.02em] text-[#111111]">Members (6)</h2>
+          <span className="text-[12px] font-semibold text-[#858585]">{selectedStudio.name}</span>
+        </div>
+        <div className="mt-[13px] grid gap-[14px] md:grid-cols-2 xl:grid-cols-3">
+          {teamMembers.map((member) => (
+            <article
+              key={member.name}
+              className="flex items-center justify-between gap-4 rounded-[18px] bg-white px-[16px] py-[14px] shadow-[0_8px_20px_rgba(104,94,235,0.06)] ring-1 ring-[#e2e0f0]/60"
+            >
+              <div className="flex min-w-0 items-center gap-[14px]">
+                <div className="relative h-[53px] w-[53px] shrink-0 overflow-visible">
+                  <div className="relative h-full w-full overflow-hidden rounded-full bg-[#f4f2ff]">
+                    <Image src={member.avatar} alt="" fill sizes="53px" className="object-cover" />
+                  </div>
+                  <span className={cn('absolute bottom-[2px] right-[2px] h-[10px] w-[10px] rounded-full border-2 border-white', member.status === 'Online' ? 'bg-[#56efc4]' : 'bg-[#a29bfc]')} />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-[15px] font-bold text-black">{member.name}</p>
+                  <p className="mt-[3px] truncate text-[13px] font-medium text-[#9b96b8]">{member.role}</p>
+                </div>
+              </div>
+              <span className="shrink-0 rounded-full bg-[#f7f5ff] px-[9px] py-[5px] text-[10px] font-bold text-[#685eeb]">
+                {member.status}
+              </span>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-[31px]">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="warp-font-display text-[20px] font-extrabold tracking-[-0.03em] text-[#111111]">Project Timeline</h2>
+          <button
+            type="button"
+            className={cn('rounded-[10px] bg-[#685eeb] px-[12px] py-[8px] text-[12px] font-bold text-white shadow-[0_10px_20px_rgba(104,94,235,0.16)] hover:bg-[#5d54df]', purplePressClass)}
+          >
+            Edit Timeline
+          </button>
+        </div>
+
+        <div className="mt-[16px] rounded-[22px] bg-white px-[18px] py-[18px] shadow-[0_12px_30px_rgba(104,94,235,0.08)] ring-1 ring-[#e2e0f0]/70">
+          <div className="px-[4px]">
+            <h3 className="text-[16px] font-bold text-black">Rebranding Harmonia Studio</h3>
+            <p className="mt-[5px] text-[11px] font-medium text-[#a5a4a4]">1 January 2026 - 30 September 2026</p>
+          </div>
+
+          <div className="mt-[26px] border-t border-[#e2e0f0] pt-[17px]">
+            <div className="grid grid-cols-[142px_minmax(680px,1fr)] gap-[16px] overflow-x-auto pb-[2px]">
+              <div />
+              <div className="grid grid-cols-9 px-[6px] text-center text-[12px] font-bold text-black">
+                {timelineMonths.map((month) => (
+                  <span key={month}>{month}</span>
+                ))}
+              </div>
+
+              {projectTimelineGroups.map((group) => (
+                <div key={group.group} className="contents">
+                  <div className="pt-[18px] text-[12px] font-extrabold uppercase text-black">{group.group}</div>
+                  <div className="relative space-y-[10px] py-[18px]">
+                    <div className="absolute bottom-[6px] left-[48.5%] top-[4px] w-px bg-[#ff7675]">
+                      <span className="absolute -top-[3px] left-1/2 h-[8px] w-[8px] -translate-x-1/2 rounded-full bg-[#ff7675]" />
+                    </div>
+                    {group.tasks.map((item) => (
+                      <div key={item.name} className="grid grid-cols-[170px_minmax(0,1fr)] items-center gap-[12px]">
+                        <div className="flex min-w-0 items-center gap-[8px]">
+                          <span className={cn('h-[7px] w-[7px] shrink-0 rounded-full', timelineToneClass[item.tone])} />
+                          <span className="truncate text-[13px] font-medium text-black">{item.name}</span>
+                        </div>
+                        <div className="relative h-[19px]">
+                          <span
+                            className={cn('absolute inset-y-0 rounded-full shadow-[0_5px_12px_rgba(104,94,235,0.08)]', timelineToneClass[item.tone])}
+                            style={{ left: `${item.start}%`, width: `${item.width}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -1944,7 +1965,7 @@ export function EmployerDashboard() {
             <EmployerTaskManagementPage />
           ) : (
             <>
-              <TopBar displayName={displayName} rewardBalance={rewardBalance} title={isChatPage ? 'Chat' : isStatsPage ? 'My Stats' : isTeamPage ? 'My Team' : isSettingsPage ? 'Settings' : undefined} />
+              <TopBar displayName={displayName} rewardBalance={rewardBalance} title={isChatPage ? 'Chat' : isStatsPage ? 'My Stats' : isTeamPage ? 'My Team & Project' : isSettingsPage ? 'Settings' : undefined} />
 
               {isChatPage ? (
                 <EmployerChatPage />
