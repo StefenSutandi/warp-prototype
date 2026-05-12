@@ -642,6 +642,13 @@ export default class MainOfficeScene extends Phaser.Scene {
       this.setSceneZoom(this.sceneZoom - MainOfficeScene.ZOOM_STEP);
     }
   };
+  private handlePlayerEmote = (event: Event) => {
+    const customEvent = event as CustomEvent<{ emote?: string }>;
+
+    if (customEvent.detail?.emote === 'clap') {
+      this.startPlayerClap();
+    }
+  };
   private handleScaleResize = () => {
     if (this.isSceneShuttingDown || !this.sys?.isActive()) {
       return;
@@ -890,6 +897,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       window.addEventListener('warp:switch-room', this.handleExternalRoomSwitch as EventListener);
       window.addEventListener('warp:viewport-control', this.handleViewportControl as EventListener);
       window.addEventListener('warp:avatar-selection-changed', this.handleAvatarSelectionChanged as EventListener);
+      window.addEventListener('warp:player-emote', this.handlePlayerEmote as EventListener);
       window.addEventListener('blur', this.handleWindowBlur);
       window.addEventListener('focus', this.handleWindowFocus);
       document.addEventListener('focusin', this.handleDocumentFocusChange);
@@ -900,6 +908,7 @@ export default class MainOfficeScene extends Phaser.Scene {
         window.removeEventListener('warp:switch-room', this.handleExternalRoomSwitch as EventListener);
         window.removeEventListener('warp:viewport-control', this.handleViewportControl as EventListener);
         window.removeEventListener('warp:avatar-selection-changed', this.handleAvatarSelectionChanged as EventListener);
+        window.removeEventListener('warp:player-emote', this.handlePlayerEmote as EventListener);
         window.removeEventListener('blur', this.handleWindowBlur);
         window.removeEventListener('focus', this.handleWindowFocus);
         document.removeEventListener('focusin', this.handleDocumentFocusChange);

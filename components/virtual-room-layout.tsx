@@ -677,13 +677,28 @@ function TomatoWidget() {
 // =============================================
 
 function ClapHint() {
+  const triggerClap = () => {
+    window.dispatchEvent(new CustomEvent('warp:player-emote', { detail: { emote: 'clap' } }));
+  };
+
   return (
     <div className="pointer-events-none absolute bottom-[98px] left-1/2 z-30 -translate-x-1/2">
-      <div className="warp-font-ui flex h-[30px] items-center gap-[8px] rounded-full border border-white/70 bg-white/80 px-[10px] text-[12px] font-semibold text-[#5C5780] shadow-[0_5px_17.6px_rgba(133,133,133,0.14)] backdrop-blur-[6px]">
-        <span className="flex h-[19px] min-w-[19px] items-center justify-center rounded-[6px] bg-[#685EEB] px-[6px] text-[11px] font-bold leading-none text-white shadow-[0_2px_7px_rgba(104,94,235,0.22)]">
-          E
-        </span>
-        <span>Press E to Clap</span>
+      <div className="warp-font-ui flex items-center gap-[8px]">
+        <div className="flex h-[30px] items-center gap-[8px] rounded-full border border-white/70 bg-white/80 px-[10px] text-[12px] font-semibold text-[#5C5780] shadow-[0_5px_17.6px_rgba(133,133,133,0.14)] backdrop-blur-[6px]">
+          <span className="flex h-[19px] min-w-[19px] items-center justify-center rounded-[6px] bg-[#685EEB] px-[6px] text-[11px] font-bold leading-none text-white shadow-[0_2px_7px_rgba(104,94,235,0.22)]">
+            E
+          </span>
+          <span>Press E to Clap</span>
+        </div>
+        <button
+          type="button"
+          onClick={triggerClap}
+          className="pointer-events-auto flex h-[30px] items-center gap-[6px] rounded-full bg-[#685EEB] px-[13px] text-[12px] font-bold text-white shadow-[0_6px_18px_rgba(104,94,235,0.26)] transition-all hover:bg-[#7970F0] active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#DFDFFF] focus-visible:ring-offset-2"
+          aria-label="Clap"
+        >
+          <Smile size={14} strokeWidth={2.4} aria-hidden="true" />
+          Clap
+        </button>
       </div>
     </div>
   );
