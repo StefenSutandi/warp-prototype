@@ -676,6 +676,19 @@ function TomatoWidget() {
 //  BOTTOM CONTROL BAR (Figma: dark rounded pill)
 // =============================================
 
+function ClapHint() {
+  return (
+    <div className="pointer-events-none absolute bottom-[98px] left-1/2 z-30 -translate-x-1/2">
+      <div className="warp-font-ui flex h-[30px] items-center gap-[8px] rounded-full border border-white/70 bg-white/80 px-[10px] text-[12px] font-semibold text-[#5C5780] shadow-[0_5px_17.6px_rgba(133,133,133,0.14)] backdrop-blur-[6px]">
+        <span className="flex h-[19px] min-w-[19px] items-center justify-center rounded-[6px] bg-[#685EEB] px-[6px] text-[11px] font-bold leading-none text-white shadow-[0_2px_7px_rgba(104,94,235,0.22)]">
+          E
+        </span>
+        <span>Press E to Clap</span>
+      </div>
+    </div>
+  );
+}
+
 function BottomControlBar() {
   return (
     <div className="absolute bottom-[50px] left-1/2 z-30 flex h-[41px] w-[298px] -translate-x-1/2 items-center justify-center gap-[31px] rounded-[33px] bg-[rgba(76,78,98,0.95)] shadow-[0_10px_25px_rgba(0,0,0,0.18)]">
@@ -1144,6 +1157,7 @@ export function VirtualRoomLayout() {
           <TopRightHud />
           <UserCardOverlay />
           <TomatoWidget />
+          <ClapHint />
           <BottomControlBar />
           <ZoomControls
             onZoomIn={() => sendViewportControl('zoom-in')}
