@@ -392,7 +392,7 @@ function TopBar({
 
 function HeroPanel({ onCreateRoom }: { onCreateRoom: () => void }) {
   return (
-    <section className="relative min-h-[339px] overflow-hidden rounded-[17px] bg-[linear-gradient(145deg,#eeeaff_0%,#dfd7ff_42%,#fbf8ff_100%)] px-[42px] py-[40px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
+    <section className="relative min-h-[332px] overflow-hidden rounded-[17px] bg-[linear-gradient(145deg,#eeeaff_0%,#dfd7ff_42%,#fbf8ff_100%)] px-[42px] py-[38px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
       <div className="relative z-10 max-w-[430px]">
         <h2 className="warp-font-display text-[32px] font-extrabold leading-[0.99] tracking-[-0.04em] text-black">
           Ready to Start <span className="text-[#685eeb]">Warping?</span>
@@ -432,13 +432,13 @@ function HeroPanel({ onCreateRoom }: { onCreateRoom: () => void }) {
         </div>
       </div>
 
-      <div className="pointer-events-none absolute bottom-[-22px] right-[14px] hidden w-[46%] max-w-[457px] lg:block">
+      <div className="pointer-events-none absolute bottom-[-10px] right-[28px] hidden w-[43%] max-w-[420px] lg:block">
         <Image
           src={EMPLOYER_DASHBOARD_ASSETS.roomPreview}
           alt=""
           width={457}
           height={308}
-          sizes="457px"
+          sizes="420px"
           className="h-auto w-full drop-shadow-[0_24px_34px_rgba(104,94,235,0.14)]"
           priority
           unoptimized
@@ -1031,7 +1031,7 @@ function EmployerTeamPage() {
         <div className="flex flex-wrap items-center justify-between gap-5">
           <div>
             <h2 className="warp-font-display text-[30px] font-extrabold leading-none tracking-[-0.04em] text-[#111111]">
-              My Teams
+              My Team
             </h2>
             <p className="mt-[9px] max-w-[560px] text-[13px] font-medium leading-[1.45] text-[#858585]">
               See who is active, what each room is moving through, and where the project timeline stands.
@@ -1141,7 +1141,7 @@ function EmployerTeamPage() {
         <div className="flex items-end justify-between gap-4">
           <div>
             <h3 className="warp-font-display text-[20px] font-extrabold tracking-[-0.03em] text-[#111111]">Project Timeline</h3>
-            <p className="mt-[5px] text-[12px] font-medium text-[#858585]">Mock sprint pacing for {selectedTeam.name}.</p>
+            <p className="mt-[5px] text-[12px] font-medium text-[#858585]">Sprint pacing for {selectedTeam.name}.</p>
           </div>
           <span className="rounded-full border border-[#e2e0f0] bg-white px-[13px] py-[7px] text-[12px] font-semibold text-[#685eeb] shadow-[0_6px_18px_rgba(104,94,235,0.05)]">
             May 2026
@@ -1276,7 +1276,7 @@ function EmployerSettingsPage() {
             </span>
             <div>
               <p className="text-[12px] font-bold text-[#111111]">Workspace controls</p>
-              <p className="text-[11px] font-medium text-[#858585]">Prototype settings</p>
+              <p className="text-[11px] font-medium text-[#858585]">Team preferences</p>
             </div>
           </div>
         </div>
@@ -1302,7 +1302,7 @@ function EmployerSettingsPage() {
                 <p className="mt-[3px] text-[13px] font-semibold text-[#685eeb]">UI/UX Designer</p>
                 <div className="mt-[8px] flex items-center gap-[6px] text-[12px] font-medium text-[#858585]">
                   <Mail className="h-[14px] w-[14px]" strokeWidth={2} />
-                  <span className="truncate">jordan.quinn@warp.local</span>
+                  <span className="truncate">jordan.quinn@warp.team</span>
                 </div>
               </div>
             </div>
@@ -1449,7 +1449,7 @@ function EmployerSettingsPage() {
               );
             })}
           </div>
-          <p className="mt-[12px] text-[12px] font-medium text-[#858585]">Theme selection is local to this prototype view.</p>
+          <p className="mt-[12px] text-[12px] font-medium text-[#858585]">Theme selection updates this dashboard workspace.</p>
         </section>
 
         <section className="rounded-[22px] border border-[#ffd7d7] bg-[#fffafa] p-[20px] shadow-[0_10px_28px_rgba(255,118,117,0.05)]">
@@ -1457,18 +1457,18 @@ function EmployerSettingsPage() {
             <span className="flex h-[36px] w-[36px] items-center justify-center rounded-[13px] bg-[#fff0f0] text-[#ff7675]">
               <LogOut className="h-[19px] w-[19px]" strokeWidth={2} />
             </span>
-            <h3 className="warp-font-display text-[18px] font-extrabold tracking-[-0.03em] text-[#111111]">Danger Zone</h3>
+            <h3 className="warp-font-display text-[18px] font-extrabold tracking-[-0.03em] text-[#111111]">Account Access</h3>
           </div>
           <div className="mt-[15px] flex flex-wrap items-center justify-between gap-4 rounded-[16px] border border-[#ffd7d7] bg-white px-[14px] py-[13px]">
             <div>
-              <p className="text-[13px] font-bold text-[#111111]">Leave Workspace</p>
-              <p className="mt-[2px] text-[11px] font-medium text-[#858585]">This is a mock action for the prototype.</p>
+              <p className="text-[13px] font-bold text-[#111111]">Sign Out</p>
+              <p className="mt-[2px] text-[11px] font-medium text-[#858585]">End the current dashboard session.</p>
             </div>
             <button
               type="button"
               className="rounded-[12px] border border-[#ffb8b8] bg-[#fff0f0] px-[13px] py-[9px] text-[12px] font-bold text-[#e05757] transition hover:bg-[#ffe7e7] active:translate-y-[1px] active:scale-[0.98]"
             >
-              Leave Workspace
+              Sign Out
             </button>
           </div>
         </section>
@@ -1586,7 +1586,7 @@ function EmployerChatPage() {
                     </div>
                     <div className="mt-[3px] flex items-center gap-[6px]">
                       {lastMessage?.author === 'me' ? (
-                        <span className="text-[14px] leading-none text-[#685eeb]">✓✓</span>
+                        <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#685eeb]">Sent</span>
                       ) : null}
                       <p className={cn('truncate text-[14px] text-[#9b96b8]', thread.unread ? 'font-bold' : 'font-medium')}>
                         {previewPrefix}
@@ -1645,7 +1645,7 @@ function EmployerChatPage() {
                     <p>{message.text}</p>
                     <span className={cn('mt-[4px] block text-right text-[10px] font-light', message.author === 'me' ? 'text-white/85' : 'text-[#9b96b8]')}>
                       {message.time}
-                      {message.author === 'me' ? ' ✓✓' : ''}
+                      {message.author === 'me' ? ' Sent' : ''}
                     </span>
                   </div>
                 </div>
@@ -1944,7 +1944,7 @@ export function EmployerDashboard() {
             <EmployerTaskManagementPage />
           ) : (
             <>
-              <TopBar displayName={displayName} rewardBalance={rewardBalance} title={isChatPage ? 'Chat' : isStatsPage ? 'My Stats' : isTeamPage ? 'My Teams' : isSettingsPage ? 'Settings' : undefined} />
+              <TopBar displayName={displayName} rewardBalance={rewardBalance} title={isChatPage ? 'Chat' : isStatsPage ? 'My Stats' : isTeamPage ? 'My Team' : isSettingsPage ? 'Settings' : undefined} />
 
               {isChatPage ? (
                 <EmployerChatPage />
