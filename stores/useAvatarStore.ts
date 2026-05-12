@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 export interface AvatarConfig {
   hairStyle: string;
@@ -16,11 +17,25 @@ export interface AvatarProfile {
   bio: string;
 }
 
+export interface AvatarSelection {
+  selectedFaceId: string;
+  selectedFaceSrc: string;
+  selectedHairId: string;
+  selectedHairSrc: string;
+  selectedHairColorId: string;
+  selectedOutfitId: string;
+  selectedOutfitSrc: string;
+  selectedOutfitType: string;
+  selectedBodyTone: string;
+}
+
 interface AvatarState {
   config: AvatarConfig;
+  selection: AvatarSelection;
   profile: AvatarProfile;
   isCustomizerOpen: boolean;
   updateConfig: (partial: Partial<AvatarConfig>) => void;
+  updateAvatarSelection: (partial: Partial<AvatarSelection>) => void;
   updateProfile: (partial: Partial<AvatarProfile>) => void;
   openCustomizer: () => void;
   closeCustomizer: () => void;
@@ -86,6 +101,18 @@ const defaultConfig: AvatarConfig = {
   bottomColor: '#1e293b',
 };
 
+const defaultSelection: AvatarSelection = {
+  selectedFaceId: 'face-1-default',
+  selectedFaceSrc: '/assets/avatar/face/Layer_1-2.png',
+  selectedHairId: 'hair-brown-1',
+  selectedHairSrc: '/assets/avatar/hair/hair_1%201.svg',
+  selectedHairColorId: 'brown',
+  selectedOutfitId: 'outfit-3',
+  selectedOutfitSrc: '/assets/avatar/outfit/outfit3_idle.png',
+  selectedOutfitType: 'short',
+  selectedBodyTone: 'light',
+};
+
 const defaultProfile: AvatarProfile = {
   displayName: '',
   position: '',
@@ -93,14 +120,32 @@ const defaultProfile: AvatarProfile = {
   bio: '',
 };
 
-export const useAvatarStore = create<AvatarState>((set) => ({
-  config: defaultConfig,
-  profile: defaultProfile,
-  isCustomizerOpen: false,
-  updateConfig: (partial) =>
-    set((state) => ({ config: { ...state.config, ...partial } })),
-  updateProfile: (partial) =>
-    set((state) => ({ profile: { ...state.profile, ...partial } })),
-  openCustomizer: () => set({ isCustomizerOpen: true }),
-  closeCustomizer: () => set({ isCustomizerOpen: false }),
-}));
+export const AVATAR_STORE_STORAGE_KEY = 'warp-avatar-store';
+
+export const useAvatarStore = create<AvatarState>()(
+  persist(
+    (set) => ({
+      config: defaultConfig,
+      selection: defaultSelection,
+      profile: defaultProfile,
+      isCustomizerOpen: false,
+      updateConfig: (partial) =>
+        set((state) => ({ config: { ...state.config, ...partial } })),
+      updateAvatarSelection: (partial) =>
+        set((state) => ({ selection: { ...state.selection, ...partial } })),
+      updateProfile: (partial) =>
+        set((state) => ({ profile: { ...state.profile, ...partial } })),
+      openCustomizer: () => set({ isCustomizerOpen: true }),
+      closeCustomizer: () => set({ isCustomizerOpen: false }),
+    }),
+    {
+      name: AVATAR_STORE_STORAGE_KEY,
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        config: state.config,
+        selection: state.selection,
+        profile: state.profile,
+      }),
+    },
+  ),
+);

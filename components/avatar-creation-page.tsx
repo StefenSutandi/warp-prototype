@@ -93,6 +93,13 @@ const outfitOptions: AvatarOption[] = [
   { id: 'outfit-4', label: 'Smart', src: '/assets/avatar/outfit/outfit4_idle.png' },
 ];
 
+const outfitTypesById: Record<string, string> = {
+  'outfit-1': 'long',
+  'outfit-2': 'hoodie',
+  'outfit-3': 'short',
+  'outfit-4': 'suit',
+};
+
 const hairColors: HairColorOption[] = [
   { id: 'dark', label: 'Dark hair', value: '#241B1B' },
   { id: 'brown', label: 'Brown hair', value: '#8F5A3C' },
@@ -101,6 +108,12 @@ const hairColors: HairColorOption[] = [
 
 const defaultInterests: string[] = [];
 const interestPool = ['UI/UX', 'Product', 'Frontend', 'Backend', 'Branding', 'Research', 'Motion', 'DevOps'];
+
+const isHairColorId = (value: string): value is HairColorId =>
+  hairColors.some((color) => color.id === value);
+
+const findAvatarOption = (options: AvatarOption[], id: string, fallback: AvatarOption) =>
+  options.find((option) => option.id === id) ?? fallback;
 
 function StepIndicator() {
   const steps = [
@@ -417,13 +430,29 @@ function ProfileInfoCard({
 
 export function AvatarCreationPage() {
   const router = useRouter();
+  const avatarConfig = useAvatarStore((state) => state.config);
   const avatarProfile = useAvatarStore((state) => state.profile);
+  const avatarSelection = useAvatarStore((state) => state.selection);
   const updateAvatarProfile = useAvatarStore((state) => state.updateProfile);
+  const updateAvatarSelection = useAvatarStore((state) => state.updateAvatarSelection);
+  const initialHairColorId = isHairColorId(avatarSelection.selectedHairColorId)
+    ? avatarSelection.selectedHairColorId
+    : 'brown';
   const [activeTab, setActiveTab] = useState<AvatarTab>('face');
-  const [selectedFace, setSelectedFace] = useState(faceOptions[0]);
-  const [selectedHairColorId, setSelectedHairColorId] = useState<HairColorId>('brown');
-  const [selectedHair, setSelectedHair] = useState(selectableHairOptionsByColor.brown[0]);
-  const [selectedOutfit, setSelectedOutfit] = useState(outfitOptions[2]);
+  const [selectedFace, setSelectedFace] = useState(() =>
+    findAvatarOption(faceOptions, avatarSelection.selectedFaceId, faceOptions[0])
+  );
+  const [selectedHairColorId, setSelectedHairColorId] = useState<HairColorId>(initialHairColorId);
+  const [selectedHair, setSelectedHair] = useState(() =>
+    findAvatarOption(
+      selectableHairOptionsByColor[initialHairColorId],
+      avatarSelection.selectedHairId,
+      selectableHairOptionsByColor[initialHairColorId][0],
+    )
+  );
+  const [selectedOutfit, setSelectedOutfit] = useState(() =>
+    findAvatarOption(outfitOptions, avatarSelection.selectedOutfitId, outfitOptions[2])
+  );
   const [displayName, setDisplayName] = useState(() => avatarProfile.displayName);
   const [position, setPosition] = useState(() => avatarProfile.position);
   const [interests, setInterests] = useState<string[]>(() => avatarProfile.interests.length > 0 ? avatarProfile.interests : defaultInterests);
@@ -450,6 +479,17 @@ export function AvatarCreationPage() {
   };
 
   const handleContinue = () => {
+    updateAvatarSelection({
+      selectedFaceId: selectedFace.id,
+      selectedFaceSrc: selectedFace.src,
+      selectedHairId: selectedHair.id,
+      selectedHairSrc: selectedHair.src,
+      selectedHairColorId,
+      selectedOutfitId: selectedOutfit.id,
+      selectedOutfitSrc: selectedOutfit.src,
+      selectedOutfitType: outfitTypesById[selectedOutfit.id] ?? 'short',
+      selectedBodyTone: avatarSelection.selectedBodyTone || avatarConfig.skinTone,
+    });
     updateAvatarProfile({
       displayName: displayName.trim(),
       position: position.trim(),
