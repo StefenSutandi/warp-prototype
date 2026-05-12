@@ -244,6 +244,11 @@ const COWORKER_SHADOW_ASSET_PATH = '/assets/avatar/walk/shadow/source/Frame%2038
 const AVATAR_DEPTH_OFFSET = 16;
 const AVATAR_DISPLAY_SIZE = 180;
 const AVATAR_WALK_FRAME_RATE = 16;
+const AVATAR_CLAP_FRAME_WIDTH = 500;
+const AVATAR_CLAP_FRAME_HEIGHT = 500;
+const AVATAR_CLAP_FRAME_COUNT = 20;
+const AVATAR_CLAP_FRAME_RATE = 18;
+const AVATAR_CLAP_SOURCE_DIRECTION = 'FR';
 const AVATAR_FACE_BLINK_INTERVAL_MS = 3500;
 const AVATAR_FACE_BLINK_DURATION_MS = 140;
 const AVATAR_DIRECTIONS: AvatarDirection[] = ['FR', 'FL', 'BR', 'BL'];
@@ -265,6 +270,17 @@ const PLAYER_OUTFIT_IDLE_FILES: Record<OutfitType, { front: string; back: string
   short: { front: 'outfit3_idle_front left.png', back: 'outfit3_idle_back right.png' },
   suit: { front: 'outfit4_idle.png', back: 'outfit4_idle_back.png' },
 };
+const AVATAR_CLAP_BODY_SPRITESHEET_PATHS: Partial<Record<BodyTone, string>> = {
+  light: '/assets/avatar/emotes/clap/body/light/source/spritesheet%20(4).png',
+  medium: '/assets/avatar/emotes/clap/body/medium/source/spritesheet%20(4).png',
+  dark: '/assets/avatar/emotes/clap/body/dark/source/spritesheet%20(4).png',
+};
+const AVATAR_CLAP_OUTFIT_SPRITESHEET_PATHS: Partial<Record<OutfitType, string>> = {
+  hoodie: '/assets/avatar/emotes/clap/outfit/hoodie/source/spritesheet%20(1).png',
+  short: '/assets/avatar/emotes/clap/outfit/short/source/spritesheet%20(2).png',
+  suit: '/assets/avatar/emotes/clap/outfit/suit/source/spritesheet%20(16).png',
+};
+const AVATAR_CLAP_FACE_ASSET_PATH = '/assets/avatar/emotes/clap/face/EMOTE_face%201.png';
 const HAIR_COLOR_SUFFIX_BY_ID: Record<string, string> = {
   brown: '1',
   dark: '2',
@@ -404,6 +420,26 @@ function avatarOutfitAssetPath(outfitType: OutfitType, direction: AvatarDirectio
   return `${AVATAR_OUTFIT_BASE_PATH}/${outfitType}${isIdle ? '' : `/${direction}`}/${encodeURIComponent(fileName)}`;
 }
 
+function avatarClapBodyTextureKey(tone: BodyTone): string {
+  return `avatar-clap-body-${tone}`;
+}
+
+function avatarClapBodyAssetPath(tone: BodyTone): string | null {
+  return AVATAR_CLAP_BODY_SPRITESHEET_PATHS[tone] ?? null;
+}
+
+function avatarClapOutfitTextureKey(outfitType: OutfitType): string {
+  return `avatar-clap-outfit-${outfitType}`;
+}
+
+function avatarClapOutfitAssetPath(outfitType: OutfitType): string | null {
+  return AVATAR_CLAP_OUTFIT_SPRITESHEET_PATHS[outfitType] ?? null;
+}
+
+function avatarClapFaceTextureKey(): string {
+  return 'avatar-clap-face-1';
+}
+
 function coworkerOutfitTextureKey(outfitType: OutfitType): string {
   return `avatar-coworker-outfit-${outfitType}-idle`;
 }
@@ -508,6 +544,9 @@ export default class MainOfficeScene extends Phaser.Scene {
   private playerOutfit!: Phaser.GameObjects.Sprite;
   private playerHair!: Phaser.GameObjects.Sprite;
   private playerFace!: Phaser.GameObjects.Sprite;
+  private playerClapBody?: Phaser.GameObjects.Sprite;
+  private playerClapOutfit?: Phaser.GameObjects.Sprite;
+  private playerClapFace?: Phaser.GameObjects.Sprite;
   private playerLabel!: Phaser.GameObjects.Text;
   private playerAvatarSelection: Pick<
     AvatarSelection,
@@ -526,6 +565,7 @@ export default class MainOfficeScene extends Phaser.Scene {
   private activeWalkDirection: AvatarDirection | null = null;
   private activeBodyWalkAnimationKey: string | null = null;
   private activeOutfitWalkAnimationKey: string | null = null;
+  private isPlayerClapping = false;
   private isFaceBlinking = false;
   private blinkEvent?: Phaser.Time.TimerEvent;
 
@@ -720,6 +760,28 @@ export default class MainOfficeScene extends Phaser.Scene {
         });
       });
     });
+
+    PLAYER_BODY_TONES.forEach((tone) => {
+      const assetPath = avatarClapBodyAssetPath(tone);
+      if (assetPath) {
+        this.load.spritesheet(avatarClapBodyTextureKey(tone), assetPath, {
+          frameWidth: AVATAR_CLAP_FRAME_WIDTH,
+          frameHeight: AVATAR_CLAP_FRAME_HEIGHT,
+        });
+      }
+    });
+
+    PLAYER_OUTFIT_TYPES.forEach((outfitType) => {
+      const assetPath = avatarClapOutfitAssetPath(outfitType);
+      if (assetPath) {
+        this.load.spritesheet(avatarClapOutfitTextureKey(outfitType), assetPath, {
+          frameWidth: AVATAR_CLAP_FRAME_WIDTH,
+          frameHeight: AVATAR_CLAP_FRAME_HEIGHT,
+        });
+      }
+    });
+
+    this.load.image(avatarClapFaceTextureKey(), AVATAR_CLAP_FACE_ASSET_PATH);
   }
 
   private applyCoworkerTextureSmoothing() {
@@ -805,6 +867,7 @@ export default class MainOfficeScene extends Phaser.Scene {
         S: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S, false),
         D: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D, false),
       };
+      this.input.keyboard.on('keydown-E', () => this.startPlayerClap());
 
       this.input.keyboard.removeCapture([
         Phaser.Input.Keyboard.KeyCodes.SPACE,
@@ -812,6 +875,7 @@ export default class MainOfficeScene extends Phaser.Scene {
         Phaser.Input.Keyboard.KeyCodes.A,
         Phaser.Input.Keyboard.KeyCodes.S,
         Phaser.Input.Keyboard.KeyCodes.D,
+        Phaser.Input.Keyboard.KeyCodes.E,
       ]);
     }
 
@@ -893,6 +957,14 @@ export default class MainOfficeScene extends Phaser.Scene {
         }
       });
     });
+
+    PLAYER_BODY_TONES.forEach((tone) => {
+      this.createClapAnimation(this.getBodyClapAnimationKey(tone), this.getLoadedClapBodyTextureKey(tone));
+    });
+
+    PLAYER_OUTFIT_TYPES.forEach((outfitType) => {
+      this.createClapAnimation(this.getOutfitClapAnimationKey(outfitType), this.getLoadedClapOutfitTextureKey(outfitType));
+    });
   }
 
   update() {
@@ -900,6 +972,14 @@ export default class MainOfficeScene extends Phaser.Scene {
 
     const body = this.player.body as Phaser.Physics.Arcade.Body;
     body.setVelocity(0);
+
+    if (this.isPlayerClapping) {
+      this.clampPlayerToRoomBounds();
+      this.resolvePlayerObstacleCollisions();
+      this.updatePlayerDepth();
+      this.syncAvatarLayers();
+      return;
+    }
 
     if (this.movementInputBlocked || this.isEditableElementFocused()) {
       this.setAvatarIdle();
@@ -970,6 +1050,10 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.playerFaceIndex = getSelectionFaceIndex(this.playerAvatarSelection);
 
     if (!refreshSprites || !this.player || !this.playerOutfit || !this.playerHair || !this.playerFace) {
+      return;
+    }
+
+    if (this.isPlayerClapping) {
       return;
     }
 
@@ -1058,12 +1142,21 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.playerOutfit?.setDepth(this.player.depth + 1);
     this.playerHair?.setDepth(this.player.depth + 2);
     this.playerFace?.setDepth(this.player.depth + 3);
+    this.playerClapBody?.setDepth(this.player.depth);
+    this.playerClapOutfit?.setDepth(this.player.depth + 1);
+    this.playerClapFace?.setDepth(this.player.depth + 3);
     this.playerLabel?.setDepth(this.player.depth + 4);
   }
 
   private syncAvatarLayers() {
     this.playerShadow.setPosition(this.player.x, this.player.y);
     this.playerShadow.setDepth(this.player.depth - 1);
+    if (this.isPlayerClapping) {
+      this.syncPlayerClapLayers();
+      this.playerLabel?.setDepth(this.player.depth + 4);
+      return;
+    }
+
     const outfitLayerConfig = this.isPlayerWalking
       ? this.getOutfitWalkLayerConfig(this.lastAvatarDirection)
       : this.getOutfitIdleLayerConfig(this.lastAvatarDirection);
@@ -1095,6 +1188,180 @@ export default class MainOfficeScene extends Phaser.Scene {
 
   private getOutfitWalkAnimationKey(direction: AvatarDirection, outfitType: OutfitType = this.playerOutfitType): string {
     return `avatar-outfit-walk-${outfitType}-${direction}`;
+  }
+
+  private getBodyClapAnimationKey(tone: BodyTone = this.playerBodyTone): string {
+    return `avatar-clap-body-${tone}`;
+  }
+
+  private getOutfitClapAnimationKey(outfitType: OutfitType = this.playerOutfitType): string {
+    return `avatar-clap-outfit-${outfitType}`;
+  }
+
+  private getLoadedClapBodyTextureKey(tone: BodyTone): string | null {
+    const textureKeys = [
+      avatarClapBodyTextureKey(tone),
+      avatarClapBodyTextureKey('light'),
+    ];
+
+    return textureKeys.find((textureKey) => this.textures.exists(textureKey)) ?? null;
+  }
+
+  private getLoadedClapOutfitTextureKey(outfitType: OutfitType): string | null {
+    const textureKeys = [
+      avatarClapOutfitTextureKey(outfitType),
+      avatarClapOutfitTextureKey('short'),
+    ];
+
+    return textureKeys.find((textureKey) => this.textures.exists(textureKey)) ?? null;
+  }
+
+  private getPlayableClapBodyTone(): BodyTone | null {
+    return this.getLoadedClapBodyTextureKey(this.playerBodyTone)
+      ? this.playerBodyTone
+      : this.getLoadedClapBodyTextureKey('light') ? 'light' : null;
+  }
+
+  private getPlayableClapOutfitType(): OutfitType | null {
+    return this.getLoadedClapOutfitTextureKey(this.playerOutfitType)
+      ? this.playerOutfitType
+      : this.getLoadedClapOutfitTextureKey('short') ? 'short' : null;
+  }
+
+  private createClapAnimation(animationKey: string, textureKey: string | null) {
+    if (!textureKey || this.anims.exists(animationKey)) {
+      return;
+    }
+
+    this.anims.create({
+      key: animationKey,
+      frames: this.anims.generateFrameNumbers(textureKey, {
+        start: 0,
+        end: AVATAR_CLAP_FRAME_COUNT - 1,
+      }),
+      frameRate: AVATAR_CLAP_FRAME_RATE,
+      repeat: 0,
+    });
+  }
+
+  private startPlayerClap() {
+    if (this.isPlayerClapping || !this.player || !this.playerOutfit || !this.input.keyboard || this.isEditableElementFocused()) {
+      return;
+    }
+
+    const clapBodyTone = this.getPlayableClapBodyTone();
+    const clapOutfitType = this.getPlayableClapOutfitType();
+    if (!clapBodyTone || !clapOutfitType) {
+      return;
+    }
+
+    const bodyTextureKey = this.getLoadedClapBodyTextureKey(clapBodyTone);
+    const outfitTextureKey = this.getLoadedClapOutfitTextureKey(clapOutfitType);
+    const bodyAnimationKey = this.getBodyClapAnimationKey(clapBodyTone);
+    const outfitAnimationKey = this.getOutfitClapAnimationKey(clapOutfitType);
+    if (!bodyTextureKey || !outfitTextureKey || !this.anims.exists(bodyAnimationKey) || !this.anims.exists(outfitAnimationKey)) {
+      return;
+    }
+
+    this.isPlayerClapping = true;
+    this.isPlayerWalking = false;
+    this.activeWalkDirection = null;
+    this.activeBodyWalkAnimationKey = null;
+    this.activeOutfitWalkAnimationKey = null;
+    this.player.anims.stop();
+    this.playerOutfit.anims.stop();
+    (this.player.body as Phaser.Physics.Arcade.Body | null)?.setVelocity(0);
+
+    const shouldMirrorClap = this.lastAvatarDirection === 'FL' || this.lastAvatarDirection === 'BL';
+    this.player.setVisible(false);
+    this.playerOutfit.setVisible(false);
+    this.playerClapBody = this.add.sprite(this.player.x, this.player.y, bodyTextureKey);
+    this.playerClapOutfit = this.add.sprite(this.player.x, this.player.y, outfitTextureKey);
+    [this.playerClapBody, this.playerClapOutfit].forEach((sprite) => {
+      sprite.setOrigin(0.5, 0.88);
+      sprite.setDisplaySize(AVATAR_DISPLAY_SIZE, AVATAR_DISPLAY_SIZE);
+      sprite.setFlipX(shouldMirrorClap);
+    });
+
+    this.applyClapFaceLayerConfig(shouldMirrorClap);
+    this.syncPlayerClapLayers();
+
+    this.playerClapBody.anims.play(bodyAnimationKey);
+    this.playerClapOutfit.anims.play(outfitAnimationKey);
+    this.playerClapBody.on(Phaser.Animations.Events.ANIMATION_UPDATE, this.syncClapOutfitFrame, this);
+    this.playerClapBody.once(Phaser.Animations.Events.ANIMATION_COMPLETE, this.finishPlayerClap, this);
+  }
+
+  private syncClapOutfitFrame(
+    _animation: Phaser.Animations.Animation,
+    frame: Phaser.Animations.AnimationFrame,
+  ) {
+    if (!this.playerClapOutfit?.active) {
+      return;
+    }
+
+    const outfitFrame = this.playerClapOutfit.anims.currentAnim?.frames[frame.index];
+    if (outfitFrame) {
+      this.playerClapOutfit.anims.setCurrentFrame(outfitFrame);
+    }
+  }
+
+  private applyClapFaceLayerConfig(shouldMirrorClap: boolean) {
+    const clapFaceTextureKey = this.textures.exists(avatarClapFaceTextureKey())
+      ? avatarClapFaceTextureKey()
+      : null;
+
+    if (clapFaceTextureKey) {
+      this.playerFace.setVisible(false);
+      this.playerClapFace = this.add.sprite(this.player.x, this.player.y, clapFaceTextureKey);
+      this.playerClapFace.setOrigin(0.5, 0.88);
+      this.playerClapFace.setDisplaySize(AVATAR_DISPLAY_SIZE, AVATAR_DISPLAY_SIZE);
+      this.playerClapFace.setFlipX(shouldMirrorClap);
+      return;
+    }
+
+    this.playerFace.setTexture(avatarFaceTextureKey(this.playerFaceIndex, 'default'));
+    this.playerFace.setVisible(true);
+    this.playerFace.setFlipX(shouldMirrorClap);
+  }
+
+  private syncPlayerClapLayers() {
+    const shouldMirrorClap = this.lastAvatarDirection === 'FL' || this.lastAvatarDirection === 'BL';
+
+    this.playerClapBody?.setPosition(this.player.x, this.player.y).setDepth(this.player.depth);
+    this.playerClapOutfit?.setPosition(this.player.x, this.player.y).setDepth(this.player.depth + 1);
+    this.playerHair.setPosition(this.player.x, this.player.y);
+    this.playerHair.setDepth(this.player.depth + 2);
+    this.playerHair.setTexture(avatarHairTextureKey(this.playerHairStyleIndex, this.playerHairColorSuffix, 'front'));
+    this.playerHair.setFlipX(shouldMirrorClap);
+    this.playerFace.setPosition(this.player.x, this.player.y);
+    this.playerFace.setDepth(this.player.depth + 3);
+    this.playerClapFace?.setPosition(this.player.x, this.player.y).setDepth(this.player.depth + 3);
+  }
+
+  private finishPlayerClap() {
+    if (!this.isPlayerClapping) {
+      return;
+    }
+
+    this.playerClapBody?.off(Phaser.Animations.Events.ANIMATION_UPDATE, this.syncClapOutfitFrame, this);
+    this.playerClapBody?.destroy();
+    this.playerClapOutfit?.destroy();
+    this.playerClapFace?.destroy();
+    this.playerClapBody = undefined;
+    this.playerClapOutfit = undefined;
+    this.playerClapFace = undefined;
+    this.isPlayerClapping = false;
+
+    this.player.setVisible(true);
+    this.playerOutfit.setVisible(true);
+    this.player.anims.stop();
+    this.playerOutfit.anims.stop();
+    this.player.setTexture(this.getBodyIdleTexture(this.lastAvatarDirection));
+    this.applyOutfitIdleLayerConfig();
+    this.applyHairLayerConfig();
+    this.applyFaceLayerConfig();
+    this.syncAvatarLayers();
   }
 
   private getOutfitIdleLayerConfig(direction: AvatarDirection): OutfitIdleLayerConfig {
