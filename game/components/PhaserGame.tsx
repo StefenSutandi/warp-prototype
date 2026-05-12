@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import type { AvatarSelection } from '@/stores/useAvatarStore';
 
 // Next.js explicitly ignores the SSR behavior for any module imported behind this boundary
 const PhaserGameDynamic = dynamic(() => import('./PhaserGameDynamic'), {
@@ -14,6 +15,22 @@ const PhaserGameDynamic = dynamic(() => import('./PhaserGameDynamic'), {
   ),
 });
 
-export function PhaserGame() {
-  return <PhaserGameDynamic />;
+interface PhaserGameProps {
+  avatarSelection?: AvatarSelection;
+}
+
+const DEFAULT_AVATAR_SELECTION: AvatarSelection = {
+  selectedFaceId: 'face-1-default',
+  selectedFaceSrc: '/assets/avatar/face/Layer_1-2.png',
+  selectedHairId: 'hair-brown-1',
+  selectedHairSrc: '/assets/avatar/hair/hair_1%201.svg',
+  selectedHairColorId: 'brown',
+  selectedOutfitId: 'outfit-3',
+  selectedOutfitSrc: '/assets/avatar/outfit/outfit3_idle.png',
+  selectedOutfitType: 'short',
+  selectedBodyTone: 'light',
+};
+
+export function PhaserGame({ avatarSelection }: PhaserGameProps) {
+  return <PhaserGameDynamic avatarSelection={avatarSelection ?? DEFAULT_AVATAR_SELECTION} />;
 }

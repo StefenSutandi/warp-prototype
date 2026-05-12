@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { AvatarSelection } from '@/stores/useAvatarStore';
 
 // =============================================
 //  ROOM DEFINITIONS
@@ -234,8 +235,8 @@ type RoomCoworkerLayers = {
   hitArea?: Phaser.GameObjects.Arc;
 };
 
-const AVATAR_BODY_BASE_PATH = '/assets/avatar/walk/body/light';
-const AVATAR_OUTFIT_BASE_PATH = '/assets/avatar/walk/outfit/short';
+const AVATAR_BODY_BASE_PATH = '/assets/avatar/walk/body';
+const AVATAR_OUTFIT_BASE_PATH = '/assets/avatar/walk/outfit';
 const AVATAR_HAIR_BASE_PATH = '/assets/avatar/walk/hair/source';
 const AVATAR_FACE_BASE_PATH = '/assets/avatar/walk/face/source';
 const AVATAR_SHADOW_ASSET_PATH = '/assets/avatar/walk/shadow/SHADOW_BASE.png';
@@ -243,13 +244,11 @@ const COWORKER_SHADOW_ASSET_PATH = '/assets/avatar/walk/shadow/source/Frame%2038
 const AVATAR_DEPTH_OFFSET = 16;
 const AVATAR_DISPLAY_SIZE = 180;
 const AVATAR_WALK_FRAME_RATE = 16;
-const AVATAR_HAIR_FRONT_FILE = 'hair_1.png';
-const AVATAR_HAIR_BACK_FILE = 'hair_1_back.png';
-const AVATAR_FACE_DEFAULT_FILE = 'face_1_default.png';
-const AVATAR_FACE_BLINK_FILE = 'face_1_blink.png';
 const AVATAR_FACE_BLINK_INTERVAL_MS = 3500;
 const AVATAR_FACE_BLINK_DURATION_MS = 140;
 const AVATAR_DIRECTIONS: AvatarDirection[] = ['FR', 'FL', 'BR', 'BL'];
+const PLAYER_BODY_TONES: BodyTone[] = ['light', 'medium', 'dark'];
+const PLAYER_OUTFIT_TYPES: OutfitType[] = ['long', 'hoodie', 'short', 'suit'];
 const COWORKER_IDLE_DIRECTIONS: Extract<AvatarDirection, 'FR' | 'FL'>[] = ['FR', 'FL'];
 const COWORKER_DISPLAY_SIZE = AVATAR_DISPLAY_SIZE;
 const COWORKER_BLINK_INTERVAL_MS = 3200;
@@ -259,6 +258,27 @@ const COWORKER_OUTFIT_IDLE_FILES: Record<OutfitType, string> = {
   hoodie: 'outfit2_idle.png',
   short: 'outfit3_idle.png',
   suit: 'outfit4_idle.png',
+};
+const PLAYER_OUTFIT_IDLE_FILES: Record<OutfitType, { front: string; back: string }> = {
+  long: { front: 'outfit1_idle.png', back: 'outfit1_idle_back.png' },
+  hoodie: { front: 'outfit2_idle.png', back: 'outfit2_idle_back.png' },
+  short: { front: 'outfit3_idle_front left.png', back: 'outfit3_idle_back right.png' },
+  suit: { front: 'outfit4_idle.png', back: 'outfit4_idle_back.png' },
+};
+const HAIR_COLOR_SUFFIX_BY_ID: Record<string, string> = {
+  brown: '1',
+  dark: '2',
+  blonde: '3',
+};
+const DEFAULT_PLAYER_AVATAR_SELECTION: Pick<
+  AvatarSelection,
+  'selectedFaceId' | 'selectedHairId' | 'selectedHairColorId' | 'selectedOutfitType' | 'selectedBodyTone'
+> = {
+  selectedFaceId: 'face-1-default',
+  selectedHairId: 'hair-brown-1',
+  selectedHairColorId: 'brown',
+  selectedOutfitType: 'short',
+  selectedBodyTone: 'light',
 };
 const MAIN_ROOM_COWORKER_CONFIGS: Omit<RoomCoworkerConfig, 'x' | 'y'>[] = [
   {
@@ -325,37 +345,23 @@ const MAIN_ROOM_BLOCK_ZONES: FigmaWalkBlockZone[] = [
   { id: 'right-chair-person-zone', x: 815, y: 560, w: 154, h: 150 },
   { id: 'lower-left-platform-lip', x: 74, y: 585, w: 198, h: 88 },
 ];
-const AVATAR_BODY_IDLE_FILES: Record<AvatarDirection, string> = {
-  FR: 'base_light_idle_FR.png',
-  FL: 'base_light_idle_FL.png',
-  BR: 'base_light_idle_BR.png',
-  BL: 'base_light_idle_BL.png',
-};
 const AVATAR_BODY_WALK_FILES: Record<AvatarDirection, string[]> = {
   FR: Array.from({ length: 13 }, (_, index) => `base_walk${String(index + 1).padStart(4, '0')} 1.png`),
   FL: Array.from({ length: 13 }, (_, index) => `base_walk${String(index + 1).padStart(4, '0')} 1.png`),
   BR: Array.from({ length: 13 }, (_, index) => `walkcycle_back_${String(index + 1).padStart(4, '0')} 1.png`),
   BL: Array.from({ length: 13 }, (_, index) => `walkcycle_back_${String(index + 1).padStart(4, '0')} 1.png`),
 };
-const AVATAR_OUTFIT_IDLE_FILES: Record<AvatarDirection, string> = {
-  FR: 'outfit3_idle_front left.png',
-  FL: 'outfit3_idle_front left.png',
-  BR: 'outfit3_idle_back right.png',
-  BL: 'outfit3_idle_back right.png',
-};
-const AVATAR_OUTFIT_WALK_FILES: Record<AvatarDirection, string[]> = {
-  FR: Array.from({ length: 13 }, (_, index) => `outfit_3_front_${String(index + 1).padStart(4, '0')} 1.png`),
-  FL: Array.from({ length: 13 }, (_, index) => `outfit_3_front_${String(index + 1).padStart(4, '0')} 1.png`),
-  BR: Array.from({ length: 13 }, (_, index) => `OUTFIT_3_back_${String(index + 1).padStart(4, '0')} 1.png`),
-  BL: Array.from({ length: 13 }, (_, index) => `OUTFIT_3_back_${String(index + 1).padStart(4, '0')} 1.png`),
-};
 
-function avatarBodyTextureKey(direction: AvatarDirection, frame: 'idle' | number): string {
-  return `avatar-body-light-${direction}-${frame}`;
+function avatarBodyIdleFile(tone: BodyTone, direction: AvatarDirection): string {
+  return `base_${tone}_idle_${direction}.png`;
 }
 
-function avatarBodyAssetPath(direction: AvatarDirection, fileName: string): string {
-  return `${AVATAR_BODY_BASE_PATH}/${direction}/${encodeURIComponent(fileName)}`;
+function avatarBodyTextureKey(tone: BodyTone, direction: AvatarDirection, frame: 'idle' | number): string {
+  return `avatar-body-${tone}-${direction}-${frame}`;
+}
+
+function avatarBodyAssetPath(tone: BodyTone, direction: AvatarDirection, fileName: string): string {
+  return `${AVATAR_BODY_BASE_PATH}/${tone}/${direction}/${encodeURIComponent(fileName)}`;
 }
 
 function coworkerBodyTextureKey(tone: BodyTone, direction: AvatarDirection): string {
@@ -366,13 +372,36 @@ function coworkerBodyAssetPath(tone: BodyTone, direction: AvatarDirection): stri
   return `/assets/avatar/walk/body/${tone}/source/${direction === 'FR' || direction === 'FL' ? 'base_idle.png' : 'base_idle_back.png'}`;
 }
 
-function avatarOutfitTextureKey(direction: AvatarDirection, frame: 'idle' | number): string {
-  return `avatar-outfit-short-${direction}-${frame}`;
+function avatarOutfitWalkFile(outfitType: OutfitType, direction: AvatarDirection, frameNumber: number): string {
+  const frame = String(frameNumber).padStart(4, '0');
+  const isBack = direction === 'BR' || direction === 'BL';
+
+  if (isBack) {
+    const backPrefixByOutfit: Record<OutfitType, string> = {
+      long: 'OUTFIT_1_back_',
+      hoodie: 'OUTFIT_2_back_',
+      short: 'OUTFIT_3_back_',
+      suit: 'OUTFIT_4_back_',
+    };
+    return `${backPrefixByOutfit[outfitType]}${frame} 1.png`;
+  }
+
+  const frontPrefixByOutfit: Record<OutfitType, string> = {
+    long: 'outfit_1_right_front_',
+    hoodie: 'outfit_2_front',
+    short: 'outfit_3_front_',
+    suit: 'outfit_4_front_',
+  };
+  return `${frontPrefixByOutfit[outfitType]}${frame} 1.png`;
 }
 
-function avatarOutfitAssetPath(direction: AvatarDirection, fileName: string): string {
-  const isIdle = fileName === AVATAR_OUTFIT_IDLE_FILES[direction];
-  return `${AVATAR_OUTFIT_BASE_PATH}${isIdle ? '' : `/${direction}`}/${encodeURIComponent(fileName)}`;
+function avatarOutfitTextureKey(outfitType: OutfitType, direction: AvatarDirection, frame: 'idle' | number): string {
+  return `avatar-outfit-${outfitType}-${direction}-${frame}`;
+}
+
+function avatarOutfitAssetPath(outfitType: OutfitType, direction: AvatarDirection, fileName: string): string {
+  const isIdle = Object.values(PLAYER_OUTFIT_IDLE_FILES[outfitType]).includes(fileName);
+  return `${AVATAR_OUTFIT_BASE_PATH}/${outfitType}${isIdle ? '' : `/${direction}`}/${encodeURIComponent(fileName)}`;
 }
 
 function coworkerOutfitTextureKey(outfitType: OutfitType): string {
@@ -397,6 +426,42 @@ function avatarFaceAssetPath(fileName: string): string {
 
 function avatarFaceVariantAssetPath(fileName: string): string {
   return `/assets/avatar/walk/face/${encodeURIComponent(fileName)}`;
+}
+
+function avatarHairTextureKey(styleIndex: number, colorSuffix: string, side: 'front' | 'back'): string {
+  return `avatar-player-hair-${styleIndex}-${colorSuffix}-${side}`;
+}
+
+function avatarFaceTextureKey(faceIndex: number, state: 'default' | 'blink'): string {
+  return `avatar-player-face-${faceIndex}-${state}`;
+}
+
+function getSelectionFaceIndex(selection: Pick<AvatarSelection, 'selectedFaceId'>): number {
+  const match = selection.selectedFaceId.match(/face-(\d+)/);
+  const faceIndex = match ? Number(match[1]) : 1;
+  return faceIndex >= 1 && faceIndex <= 4 ? faceIndex : 1;
+}
+
+function getSelectionHairStyleIndex(selection: Pick<AvatarSelection, 'selectedHairId'>): number {
+  const match = selection.selectedHairId.match(/hair-[^-]+-(\d+)/);
+  const hairIndex = match ? Number(match[1]) : 1;
+  return hairIndex >= 1 && hairIndex <= 4 ? hairIndex : 1;
+}
+
+function getSelectionHairColorSuffix(selection: Pick<AvatarSelection, 'selectedHairColorId'>): string {
+  return HAIR_COLOR_SUFFIX_BY_ID[selection.selectedHairColorId] ?? HAIR_COLOR_SUFFIX_BY_ID.brown;
+}
+
+function getSelectionOutfitType(selection: Pick<AvatarSelection, 'selectedOutfitType'>): OutfitType {
+  return PLAYER_OUTFIT_TYPES.includes(selection.selectedOutfitType as OutfitType)
+    ? selection.selectedOutfitType as OutfitType
+    : 'short';
+}
+
+function getSelectionBodyTone(selection: Pick<AvatarSelection, 'selectedBodyTone'>): BodyTone {
+  return PLAYER_BODY_TONES.includes(selection.selectedBodyTone as BodyTone)
+    ? selection.selectedBodyTone as BodyTone
+    : 'light';
 }
 
 const FIGMA_MAIN_ROOM = {
@@ -444,6 +509,15 @@ export default class MainOfficeScene extends Phaser.Scene {
   private playerHair!: Phaser.GameObjects.Sprite;
   private playerFace!: Phaser.GameObjects.Sprite;
   private playerLabel!: Phaser.GameObjects.Text;
+  private playerAvatarSelection: Pick<
+    AvatarSelection,
+    'selectedFaceId' | 'selectedHairId' | 'selectedHairColorId' | 'selectedOutfitType' | 'selectedBodyTone'
+  >;
+  private playerBodyTone: BodyTone = 'light';
+  private playerOutfitType: OutfitType = 'short';
+  private playerHairStyleIndex = 1;
+  private playerHairColorSuffix = HAIR_COLOR_SUFFIX_BY_ID.brown;
+  private playerFaceIndex = 1;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
   private speed: number = 250;
@@ -490,6 +564,10 @@ export default class MainOfficeScene extends Phaser.Scene {
 
     this.switchRoom(nextRoomId);
   };
+  private handleAvatarSelectionChanged = (event: Event) => {
+    const customEvent = event as CustomEvent<Partial<AvatarSelection>>;
+    this.applyPlayerAvatarSelection(customEvent.detail);
+  };
   private handleDocumentFocusChange = () => {
     if (typeof window === 'undefined') {
       return;
@@ -532,8 +610,10 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.loadRoom(this.currentRoomId);
   };
 
-  constructor() {
+  constructor(avatarSelection = DEFAULT_PLAYER_AVATAR_SELECTION) {
     super({ key: 'MainOfficeScene' });
+    this.playerAvatarSelection = { ...DEFAULT_PLAYER_AVATAR_SELECTION, ...avatarSelection };
+    this.applyPlayerAvatarSelection(this.playerAvatarSelection, false);
   }
 
   // =============================================
@@ -560,10 +640,22 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.load.image('chair_back_hover_blue', VIRTUAL_ROOM_ASSETS.chairBackHoverBlue);
     this.load.image('sit_popup_primary', VIRTUAL_ROOM_ASSETS.sitPopupPrimary);
     this.load.image('avatar-shadow', AVATAR_SHADOW_ASSET_PATH);
-    this.load.image('avatar-hair-front', avatarHairAssetPath(AVATAR_HAIR_FRONT_FILE));
-    this.load.image('avatar-hair-back', avatarHairAssetPath(AVATAR_HAIR_BACK_FILE));
-    this.load.image('avatar-face-default', avatarFaceAssetPath(AVATAR_FACE_DEFAULT_FILE));
-    this.load.image('avatar-face-blink', avatarFaceAssetPath(AVATAR_FACE_BLINK_FILE));
+    [1, 2, 3, 4].forEach((hairIndex) => {
+      ['1', '2', '3'].forEach((colorSuffix) => {
+        this.load.image(
+          avatarHairTextureKey(hairIndex, colorSuffix, 'front'),
+          avatarHairColorVariantAssetPath(`hair_${hairIndex} ${colorSuffix}.png`),
+        );
+        this.load.image(
+          avatarHairTextureKey(hairIndex, colorSuffix, 'back'),
+          avatarHairColorVariantAssetPath(`hair_${hairIndex}_back ${colorSuffix}.png`),
+        );
+      });
+    });
+    [1, 2, 3, 4].forEach((faceIndex) => {
+      this.load.image(avatarFaceTextureKey(faceIndex, 'default'), avatarFaceAssetPath(`face_${faceIndex}_default.png`));
+      this.load.image(avatarFaceTextureKey(faceIndex, 'blink'), avatarFaceAssetPath(`face_${faceIndex}_blink.png`));
+    });
     this.load.image('avatar-coworker-shadow', COWORKER_SHADOW_ASSET_PATH);
     this.load.image('avatar-coworker-hair-1', avatarHairAssetPath('hair_1.png'));
     this.load.image('avatar-coworker-hair-1-3', avatarHairColorVariantAssetPath('hair_1 3.png'));
@@ -594,29 +686,38 @@ export default class MainOfficeScene extends Phaser.Scene {
       this.load.image(coworkerOutfitTextureKey(outfitType), coworkerOutfitAssetPath(outfitType));
     });
 
-    AVATAR_DIRECTIONS.forEach((direction) => {
-      this.load.image(
-        avatarBodyTextureKey(direction, 'idle'),
-        avatarBodyAssetPath(direction, AVATAR_BODY_IDLE_FILES[direction]),
-      );
-
-      AVATAR_BODY_WALK_FILES[direction].forEach((fileName, index) => {
+    PLAYER_BODY_TONES.forEach((tone) => {
+      AVATAR_DIRECTIONS.forEach((direction) => {
         this.load.image(
-          avatarBodyTextureKey(direction, index + 1),
-          avatarBodyAssetPath(direction, fileName),
+          avatarBodyTextureKey(tone, direction, 'idle'),
+          avatarBodyAssetPath(tone, direction, avatarBodyIdleFile(tone, direction)),
         );
+
+        AVATAR_BODY_WALK_FILES[direction].forEach((fileName, index) => {
+          this.load.image(
+            avatarBodyTextureKey(tone, direction, index + 1),
+            avatarBodyAssetPath(tone, direction, fileName),
+          );
+        });
       });
+    });
 
-      this.load.image(
-        avatarOutfitTextureKey(direction, 'idle'),
-        avatarOutfitAssetPath(direction, AVATAR_OUTFIT_IDLE_FILES[direction]),
-      );
-
-      AVATAR_OUTFIT_WALK_FILES[direction].forEach((fileName, index) => {
+    PLAYER_OUTFIT_TYPES.forEach((outfitType) => {
+      AVATAR_DIRECTIONS.forEach((direction) => {
+        const idleFile = direction === 'FR' || direction === 'FL'
+          ? PLAYER_OUTFIT_IDLE_FILES[outfitType].front
+          : PLAYER_OUTFIT_IDLE_FILES[outfitType].back;
         this.load.image(
-          avatarOutfitTextureKey(direction, index + 1),
-          avatarOutfitAssetPath(direction, fileName),
+          avatarOutfitTextureKey(outfitType, direction, 'idle'),
+          avatarOutfitAssetPath(outfitType, direction, idleFile),
         );
+
+        Array.from({ length: 13 }, (_, index) => avatarOutfitWalkFile(outfitType, direction, index + 1)).forEach((fileName, index) => {
+          this.load.image(
+            avatarOutfitTextureKey(outfitType, direction, index + 1),
+            avatarOutfitAssetPath(outfitType, direction, fileName),
+          );
+        });
       });
     });
   }
@@ -654,7 +755,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.applyCoworkerTextureSmoothing();
 
     // --- Player Avatar (persistent across rooms) ---
-    this.player = this.physics.add.sprite(400, 300, avatarBodyTextureKey(this.lastAvatarDirection, 'idle'));
+    this.player = this.physics.add.sprite(400, 300, this.getBodyIdleTexture(this.lastAvatarDirection));
     this.player.setOrigin(0.5, 0.88);
     this.player.setDisplaySize(AVATAR_DISPLAY_SIZE, AVATAR_DISPLAY_SIZE);
     this.player.setCollideWorldBounds(true);
@@ -665,7 +766,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.playerShadow.setOrigin(0.5, 0.88);
     this.playerShadow.setDisplaySize(AVATAR_DISPLAY_SIZE, AVATAR_DISPLAY_SIZE);
 
-    this.playerOutfit = this.add.sprite(400, 300, avatarOutfitTextureKey(this.lastAvatarDirection, 'idle'));
+    this.playerOutfit = this.add.sprite(400, 300, this.getOutfitIdleTexture(this.lastAvatarDirection));
     this.applyOutfitVisualTransform();
     this.applyOutfitIdleLayerConfig();
 
@@ -724,6 +825,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     if (typeof window !== 'undefined') {
       window.addEventListener('warp:switch-room', this.handleExternalRoomSwitch as EventListener);
       window.addEventListener('warp:viewport-control', this.handleViewportControl as EventListener);
+      window.addEventListener('warp:avatar-selection-changed', this.handleAvatarSelectionChanged as EventListener);
       window.addEventListener('blur', this.handleWindowBlur);
       window.addEventListener('focus', this.handleWindowFocus);
       document.addEventListener('focusin', this.handleDocumentFocusChange);
@@ -733,6 +835,7 @@ export default class MainOfficeScene extends Phaser.Scene {
         this.isSceneShuttingDown = true;
         window.removeEventListener('warp:switch-room', this.handleExternalRoomSwitch as EventListener);
         window.removeEventListener('warp:viewport-control', this.handleViewportControl as EventListener);
+        window.removeEventListener('warp:avatar-selection-changed', this.handleAvatarSelectionChanged as EventListener);
         window.removeEventListener('blur', this.handleWindowBlur);
         window.removeEventListener('focus', this.handleWindowFocus);
         document.removeEventListener('focusin', this.handleDocumentFocusChange);
@@ -759,34 +862,36 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   private createAvatarAnimations() {
-    AVATAR_DIRECTIONS.forEach((direction) => {
-      if (AVATAR_BODY_WALK_FILES[direction].length !== AVATAR_OUTFIT_WALK_FILES[direction].length) {
-        throw new Error(`Avatar walk frame count mismatch for ${direction}`);
-      }
+    PLAYER_BODY_TONES.forEach((tone) => {
+      AVATAR_DIRECTIONS.forEach((direction) => {
+        const key = this.getBodyWalkAnimationKey(direction, tone);
+        if (!this.anims.exists(key)) {
+          this.anims.create({
+            key,
+            frames: AVATAR_BODY_WALK_FILES[direction].map((_, index) => ({
+              key: avatarBodyTextureKey(tone, direction, index + 1),
+            })),
+            frameRate: AVATAR_WALK_FRAME_RATE,
+            repeat: -1,
+          });
+        }
+      });
+    });
 
-      const key = `avatar-walk-${direction}`;
-      if (!this.anims.exists(key)) {
-        this.anims.create({
-          key,
-          frames: AVATAR_BODY_WALK_FILES[direction].map((_, index) => ({
-            key: avatarBodyTextureKey(direction, index + 1),
-          })),
-          frameRate: AVATAR_WALK_FRAME_RATE,
-          repeat: -1,
-        });
-      }
-
-      const outfitKey = `avatar-outfit-walk-${direction}`;
-      if (!this.anims.exists(outfitKey)) {
-        this.anims.create({
-          key: outfitKey,
-          frames: AVATAR_OUTFIT_WALK_FILES[direction].map((_, index) => ({
-            key: avatarOutfitTextureKey(direction, index + 1),
-          })),
-          frameRate: AVATAR_WALK_FRAME_RATE,
-          repeat: -1,
-        });
-      }
+    PLAYER_OUTFIT_TYPES.forEach((outfitType) => {
+      AVATAR_DIRECTIONS.forEach((direction) => {
+        const outfitKey = this.getOutfitWalkAnimationKey(direction, outfitType);
+        if (!this.anims.exists(outfitKey)) {
+          this.anims.create({
+            key: outfitKey,
+            frames: Array.from({ length: 13 }, (_, index) => ({
+              key: avatarOutfitTextureKey(outfitType, direction, index + 1),
+            })),
+            frameRate: AVATAR_WALK_FRAME_RATE,
+            repeat: -1,
+          });
+        }
+      });
     });
   }
 
@@ -819,8 +924,8 @@ export default class MainOfficeScene extends Phaser.Scene {
     if (isMoving) {
       const nextAvatarDirection = this.getAvatarDirection(left, right, up, down);
       const outfitWalkConfig = this.getOutfitWalkLayerConfig(nextAvatarDirection);
-      const bodyAnimationKey = `avatar-walk-${nextAvatarDirection}`;
-      const outfitAnimationKey = `avatar-outfit-walk-${outfitWalkConfig.sourceDirection}`;
+      const bodyAnimationKey = this.getBodyWalkAnimationKey(nextAvatarDirection);
+      const outfitAnimationKey = this.getOutfitWalkAnimationKey(outfitWalkConfig.sourceDirection);
       const shouldStartWalkAnimation = this.activeWalkDirection !== nextAvatarDirection
         || this.activeBodyWalkAnimationKey !== bodyAnimationKey
         || this.activeOutfitWalkAnimationKey !== outfitAnimationKey
@@ -849,6 +954,35 @@ export default class MainOfficeScene extends Phaser.Scene {
 
   private getPlayerFootPoint(): Phaser.Math.Vector2 {
     return new Phaser.Math.Vector2(this.player.x, this.player.y + this.getPlayerFootYOffset());
+  }
+
+  private applyPlayerAvatarSelection(selection: Partial<AvatarSelection> | undefined, refreshSprites: boolean = true) {
+    this.playerAvatarSelection = {
+      ...DEFAULT_PLAYER_AVATAR_SELECTION,
+      ...this.playerAvatarSelection,
+      ...selection,
+    };
+
+    this.playerBodyTone = getSelectionBodyTone(this.playerAvatarSelection);
+    this.playerOutfitType = getSelectionOutfitType(this.playerAvatarSelection);
+    this.playerHairStyleIndex = getSelectionHairStyleIndex(this.playerAvatarSelection);
+    this.playerHairColorSuffix = getSelectionHairColorSuffix(this.playerAvatarSelection);
+    this.playerFaceIndex = getSelectionFaceIndex(this.playerAvatarSelection);
+
+    if (!refreshSprites || !this.player || !this.playerOutfit || !this.playerHair || !this.playerFace) {
+      return;
+    }
+
+    if (this.isPlayerWalking) {
+      this.playAvatarWalkAnimations(this.lastAvatarDirection);
+    } else {
+      this.player.setTexture(this.getBodyIdleTexture(this.lastAvatarDirection));
+      this.applyOutfitIdleLayerConfig();
+    }
+
+    this.applyHairLayerConfig();
+    this.applyFaceLayerConfig();
+    this.syncAvatarLayers();
   }
 
   private clampPlayerToRoomBounds() {
@@ -948,11 +1082,19 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   private getBodyIdleTexture(direction: AvatarDirection): string {
-    return avatarBodyTextureKey(direction, 'idle');
+    return avatarBodyTextureKey(this.playerBodyTone, direction, 'idle');
   }
 
   private getOutfitIdleTexture(direction: AvatarDirection): string {
-    return avatarOutfitTextureKey(direction, 'idle');
+    return avatarOutfitTextureKey(this.playerOutfitType, direction, 'idle');
+  }
+
+  private getBodyWalkAnimationKey(direction: AvatarDirection, tone: BodyTone = this.playerBodyTone): string {
+    return `avatar-walk-${tone}-${direction}`;
+  }
+
+  private getOutfitWalkAnimationKey(direction: AvatarDirection, outfitType: OutfitType = this.playerOutfitType): string {
+    return `avatar-outfit-walk-${outfitType}-${direction}`;
   }
 
   private getOutfitIdleLayerConfig(direction: AvatarDirection): OutfitIdleLayerConfig {
@@ -983,8 +1125,8 @@ export default class MainOfficeScene extends Phaser.Scene {
 
   private playAvatarWalkAnimations(direction: AvatarDirection) {
     const outfitWalkConfig = this.getOutfitWalkLayerConfig(direction);
-    const bodyAnimationKey = `avatar-walk-${direction}`;
-    const outfitAnimationKey = `avatar-outfit-walk-${outfitWalkConfig.sourceDirection}`;
+    const bodyAnimationKey = this.getBodyWalkAnimationKey(direction);
+    const outfitAnimationKey = this.getOutfitWalkAnimationKey(outfitWalkConfig.sourceDirection);
 
     this.playerOutfit.setFlipX(outfitWalkConfig.flipX);
     this.player.anims.play(bodyAnimationKey);
@@ -1011,13 +1153,13 @@ export default class MainOfficeScene extends Phaser.Scene {
   private getHairLayerConfig(direction: AvatarDirection): HairLayerConfig {
     switch (direction) {
       case 'FR':
-        return { texture: 'avatar-hair-front', flipX: false, offsetX: 0, offsetY: 0 };
+        return { texture: avatarHairTextureKey(this.playerHairStyleIndex, this.playerHairColorSuffix, 'front'), flipX: false, offsetX: 0, offsetY: 0 };
       case 'FL':
-        return { texture: 'avatar-hair-front', flipX: true, offsetX: 0, offsetY: 0 };
+        return { texture: avatarHairTextureKey(this.playerHairStyleIndex, this.playerHairColorSuffix, 'front'), flipX: true, offsetX: 0, offsetY: 0 };
       case 'BR':
-        return { texture: 'avatar-hair-back', flipX: true, offsetX: 8, offsetY: 6 };
+        return { texture: avatarHairTextureKey(this.playerHairStyleIndex, this.playerHairColorSuffix, 'back'), flipX: true, offsetX: 8, offsetY: 6 };
       case 'BL':
-        return { texture: 'avatar-hair-back', flipX: false, offsetX: -8, offsetY: 6 };
+        return { texture: avatarHairTextureKey(this.playerHairStyleIndex, this.playerHairColorSuffix, 'back'), flipX: false, offsetX: -8, offsetY: 6 };
     }
   }
 
@@ -1028,21 +1170,22 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   private getFaceLayerConfig(direction: AvatarDirection): FaceLayerConfig {
+    const defaultTexture = avatarFaceTextureKey(this.playerFaceIndex, 'default');
     switch (direction) {
       case 'FR':
-        return { visible: true, texture: 'avatar-face-default', flipX: false, offsetX: 0, offsetY: 0 };
+        return { visible: true, texture: defaultTexture, flipX: false, offsetX: 0, offsetY: 0 };
       case 'FL':
-        return { visible: true, texture: 'avatar-face-default', flipX: true, offsetX: 0, offsetY: 0 };
+        return { visible: true, texture: defaultTexture, flipX: true, offsetX: 0, offsetY: 0 };
       case 'BR':
-        return { visible: false, texture: 'avatar-face-default', flipX: false, offsetX: 0, offsetY: 0 };
+        return { visible: false, texture: defaultTexture, flipX: false, offsetX: 0, offsetY: 0 };
       case 'BL':
-        return { visible: false, texture: 'avatar-face-default', flipX: true, offsetX: 0, offsetY: 0 };
+        return { visible: false, texture: defaultTexture, flipX: true, offsetX: 0, offsetY: 0 };
     }
   }
 
   private applyFaceLayerConfig() {
     const faceConfig = this.getFaceLayerConfig(this.lastAvatarDirection);
-    const texture = faceConfig.visible && this.isFaceBlinking ? 'avatar-face-blink' : faceConfig.texture;
+    const texture = faceConfig.visible && this.isFaceBlinking ? avatarFaceTextureKey(this.playerFaceIndex, 'blink') : faceConfig.texture;
     this.playerFace.setTexture(texture);
     this.playerFace.setFlipX(faceConfig.flipX);
     this.playerFace.setVisible(faceConfig.visible);

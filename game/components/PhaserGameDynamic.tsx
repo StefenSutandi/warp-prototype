@@ -3,12 +3,23 @@
 import Phaser from 'phaser';
 import { useEffect, useRef, useState } from 'react';
 import MainOfficeScene from '@/game/scenes/MainOfficeScene';
+import type { AvatarSelection } from '@/stores/useAvatarStore';
 
-export default function PhaserGameDynamic() {
+interface PhaserGameDynamicProps {
+  avatarSelection: AvatarSelection;
+}
+
+export default function PhaserGameDynamic({ avatarSelection }: PhaserGameDynamicProps) {
   const gameRef = useRef<HTMLDivElement>(null);
+  const avatarSelectionRef = useRef(avatarSelection);
   const lastSizeRef = useRef({ width: 0, height: 0 });
   const resizeFrameRef = useRef<number | null>(null);
   const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    avatarSelectionRef.current = avatarSelection;
+    window.dispatchEvent(new CustomEvent('warp:avatar-selection-changed', { detail: avatarSelection }));
+  }, [avatarSelection]);
 
   useEffect(() => {
     if (!gameRef.current) return;
@@ -33,7 +44,7 @@ export default function PhaserGameDynamic() {
           debug: false
         }
       },
-      scene: [MainOfficeScene]
+      scene: [new MainOfficeScene(avatarSelectionRef.current)]
     };
 
     const game = new Phaser.Game(config);

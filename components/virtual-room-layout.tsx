@@ -1072,6 +1072,7 @@ export function ChangeRoomsModal({
 // =============================================
 
 export function VirtualRoomLayout() {
+  const avatarSelection = useAvatarStore(s => s.selection);
   const [showChangeRooms, setShowChangeRooms] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [activeRoom, setActiveRoom] = useState<RoomDisplayState>(VIRTUAL_ROOM_OPTIONS[0]);
@@ -1129,9 +1130,9 @@ export function VirtualRoomLayout() {
       <div className="flex-1 flex flex-col min-w-0 relative">
         <div ref={viewportRef} className="flex-1 relative min-h-0 overflow-hidden">
           {/* Phaser Game */}
-        <div className="absolute inset-0">
-          <PhaserGame />
-        </div>
+          <div className="absolute inset-0">
+            <PhaserGame avatarSelection={avatarSelection} />
+          </div>
 
         {/* Overlays */}
         <TopBarBackdrop />
