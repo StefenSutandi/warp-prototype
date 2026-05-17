@@ -690,6 +690,12 @@ function ClapHint() {
           </span>
           <span>Press E to Clap</span>
         </div>
+        <div className="flex h-[30px] items-center gap-[8px] rounded-full border border-white/70 bg-white/80 px-[10px] text-[12px] font-semibold text-[#5C5780] shadow-[0_5px_17.6px_rgba(133,133,133,0.14)] backdrop-blur-[6px]">
+          <span className="flex h-[19px] min-w-[19px] items-center justify-center rounded-[6px] bg-[#685EEB] px-[6px] text-[11px] font-bold leading-none text-white shadow-[0_2px_7px_rgba(104,94,235,0.22)]">
+            F
+          </span>
+          <span>Press F to Sit / Stand</span>
+        </div>
         <button
           type="button"
           onClick={triggerClap}

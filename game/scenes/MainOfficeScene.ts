@@ -108,6 +108,7 @@ type SeatVariant = 'front' | 'back';
 type SeatColor = 'orange' | 'green' | 'blue';
 type SeatState = 'idle' | 'hover' | 'selected';
 type SeatRow = 'top' | 'bottom';
+type SittingAssetSide = 'front' | 'back';
 
 const SEAT_ASSET_METRICS = {
   front: {
@@ -155,6 +156,7 @@ interface SeatData {
   depth: number;
   state: SeatState;
   sitOverlay?: Phaser.GameObjects.Container;
+  sitOverlayLabel?: Phaser.GameObjects.Text;
 }
 
 const VIRTUAL_ROOM_ASSETS = {
@@ -205,6 +207,17 @@ type OutfitWalkLayerConfig = {
   offsetX: number;
   offsetY: number;
 };
+type SittingVisualPose = {
+  assetDirection: SittingAssetSide;
+  avatarDirection: AvatarDirection;
+  flipX: boolean;
+  offsetX: number;
+  offsetY: number;
+  hairOffsetX: number;
+  hairOffsetY: number;
+  faceOffsetX: number;
+  faceOffsetY: number;
+};
 type BodyTone = 'light' | 'medium' | 'dark';
 type OutfitType = 'long' | 'hoodie' | 'short' | 'suit';
 type RoomCoworkerConfig = {
@@ -237,12 +250,15 @@ type RoomCoworkerLayers = {
 
 const AVATAR_BODY_BASE_PATH = '/assets/avatar/walk/body';
 const AVATAR_OUTFIT_BASE_PATH = '/assets/avatar/walk/outfit';
+const AVATAR_SITTING_BODY_BASE_PATH = '/assets/avatar/sitting/body';
+const AVATAR_SITTING_OUTFIT_BASE_PATH = '/assets/avatar/sitting/outfit';
 const AVATAR_HAIR_BASE_PATH = '/assets/avatar/walk/hair/source';
 const AVATAR_FACE_BASE_PATH = '/assets/avatar/walk/face/source';
 const AVATAR_SHADOW_ASSET_PATH = '/assets/avatar/walk/shadow/SHADOW_BASE.png';
 const COWORKER_SHADOW_ASSET_PATH = '/assets/avatar/walk/shadow/source/Frame%203852%20(3).png';
 const AVATAR_DEPTH_OFFSET = 16;
 const AVATAR_DISPLAY_SIZE = 180;
+const AVATAR_SITTING_INTERACTION_RANGE = 145;
 const AVATAR_WALK_FRAME_RATE = 16;
 const AVATAR_CLAP_FRAME_WIDTH = 500;
 const AVATAR_CLAP_FRAME_HEIGHT = 500;
@@ -361,6 +377,48 @@ const MAIN_ROOM_BLOCK_ZONES: FigmaWalkBlockZone[] = [
   { id: 'right-chair-person-zone', x: 815, y: 560, w: 154, h: 150 },
   { id: 'lower-left-platform-lip', x: 74, y: 585, w: 198, h: 88 },
 ];
+const SITTING_VISUAL_POSE_BY_SEAT_VARIANT: Record<SeatVariant, SittingVisualPose> = {
+  front: {
+    assetDirection: 'front',
+    avatarDirection: 'FL',
+    flipX: false,
+    offsetX: 0,
+    offsetY: 0,
+    hairOffsetX: 0,
+    hairOffsetY: 0,
+    faceOffsetX: 0,
+    faceOffsetY: 0,
+  },
+  back: {
+    assetDirection: 'back',
+    avatarDirection: 'BR',
+    flipX: false,
+    offsetX: 0,
+    offsetY: 0,
+    hairOffsetX: 0,
+    hairOffsetY: 0,
+    faceOffsetX: 0,
+    faceOffsetY: 0,
+  },
+};
+const SEAT_ANCHOR_Y_RATIO_BY_SEAT_VARIANT: Record<SeatVariant, number> = {
+  front: 0.76,
+  back: 0.72,
+};
+const SITTING_BASE_OFFSET_BY_SEAT_VARIANT: Record<SeatVariant, FigmaPoint> = {
+  front: { x: -6, y: 4 },
+  back: { x: 6, y: -4 },
+};
+const SITTING_BASE_OFFSET_BY_SEAT_ID: Partial<Record<string, FigmaPoint>> = {
+  'front-green': { x: 0, y: 0 },
+};
+const SIT_CHIP_STANDING_OFFSET_Y_BY_SEAT_VARIANT: Record<SeatVariant, number> = {
+  front: 0.1,
+  back: 0.14,
+};
+const SITTING_CHIP_HEAD_CLEARANCE = 14;
+const SITTING_TABLE_BODY_OCCLUSION_GAP = 0;
+const SITTING_TABLE_HEAD_DEPTH_GAP = 2;
 const AVATAR_BODY_WALK_FILES: Record<AvatarDirection, string[]> = {
   FR: Array.from({ length: 13 }, (_, index) => `base_walk${String(index + 1).padStart(4, '0')} 1.png`),
   FL: Array.from({ length: 13 }, (_, index) => `base_walk${String(index + 1).padStart(4, '0')} 1.png`),
@@ -418,6 +476,26 @@ function avatarOutfitTextureKey(outfitType: OutfitType, direction: AvatarDirecti
 function avatarOutfitAssetPath(outfitType: OutfitType, direction: AvatarDirection, fileName: string): string {
   const isIdle = Object.values(PLAYER_OUTFIT_IDLE_FILES[outfitType]).includes(fileName);
   return `${AVATAR_OUTFIT_BASE_PATH}/${outfitType}${isIdle ? '' : `/${direction}`}/${encodeURIComponent(fileName)}`;
+}
+
+function avatarSittingBodyTextureKey(tone: BodyTone, side: SittingAssetSide): string {
+  return `avatar-sitting-body-${tone}-${side}`;
+}
+
+function avatarSittingBodyAssetPath(tone: BodyTone, side: SittingAssetSide): string {
+  return `${AVATAR_SITTING_BODY_BASE_PATH}/${tone}/${side}.png`;
+}
+
+function avatarSittingOutfitTextureKey(outfitType: OutfitType, side: SittingAssetSide): string {
+  return `avatar-sitting-outfit-${outfitType}-${side}`;
+}
+
+function avatarSittingOutfitVisualTextureKey(outfitType: OutfitType, side: SittingAssetSide): string {
+  return `avatar-sitting-outfit-${outfitType}-${side}-visual`;
+}
+
+function avatarSittingOutfitAssetPath(outfitType: OutfitType, side: SittingAssetSide): string {
+  return `${AVATAR_SITTING_OUTFIT_BASE_PATH}/${outfitType}/${side}.png`;
 }
 
 function avatarClapBodyTextureKey(tone: BodyTone): string {
@@ -547,6 +625,8 @@ export default class MainOfficeScene extends Phaser.Scene {
   private playerClapBody?: Phaser.GameObjects.Sprite;
   private playerClapOutfit?: Phaser.GameObjects.Sprite;
   private playerClapFace?: Phaser.GameObjects.Sprite;
+  private playerSittingBody?: Phaser.GameObjects.Sprite;
+  private playerSittingOutfit?: Phaser.GameObjects.Sprite;
   private playerLabel!: Phaser.GameObjects.Text;
   private playerAvatarSelection: Pick<
     AvatarSelection,
@@ -566,6 +646,9 @@ export default class MainOfficeScene extends Phaser.Scene {
   private activeBodyWalkAnimationKey: string | null = null;
   private activeOutfitWalkAnimationKey: string | null = null;
   private isPlayerClapping = false;
+  private isPlayerSitting = false;
+  private activeSittingPose: SittingVisualPose | null = null;
+  private activeSittingSeat: SeatData | null = null;
   private isFaceBlinking = false;
   private blinkEvent?: Phaser.Time.TimerEvent;
 
@@ -576,6 +659,7 @@ export default class MainOfficeScene extends Phaser.Scene {
   private roomCoworkers: RoomCoworkerLayers[] = [];
   private hoveredSeat: SeatData | null = null;
   private selectedSeat: SeatData | null = null;
+  private mainRoomTableDepth: number | null = null;
   private roomObjects: Phaser.GameObjects.GameObject[] = [];
 
   private activeMenu: Phaser.GameObjects.Container | null = null;
@@ -769,6 +853,24 @@ export default class MainOfficeScene extends Phaser.Scene {
     });
 
     PLAYER_BODY_TONES.forEach((tone) => {
+      (['front', 'back'] as SittingAssetSide[]).forEach((side) => {
+        this.load.image(
+          avatarSittingBodyTextureKey(tone, side),
+          avatarSittingBodyAssetPath(tone, side),
+        );
+      });
+    });
+
+    PLAYER_OUTFIT_TYPES.forEach((outfitType) => {
+      (['front', 'back'] as SittingAssetSide[]).forEach((side) => {
+        this.load.image(
+          avatarSittingOutfitTextureKey(outfitType, side),
+          avatarSittingOutfitAssetPath(outfitType, side),
+        );
+      });
+    });
+
+    PLAYER_BODY_TONES.forEach((tone) => {
       const assetPath = avatarClapBodyAssetPath(tone);
       if (assetPath) {
         this.load.spritesheet(avatarClapBodyTextureKey(tone), assetPath, {
@@ -807,6 +909,32 @@ export default class MainOfficeScene extends Phaser.Scene {
     });
   }
 
+  private prepareSittingOutfitVisualTextures() {
+    PLAYER_OUTFIT_TYPES.forEach((outfitType) => {
+      (['front', 'back'] as SittingAssetSide[]).forEach((assetDirection) => {
+        const sourceTextureKey = avatarSittingOutfitTextureKey(outfitType, assetDirection);
+        const visualTextureKey = avatarSittingOutfitVisualTextureKey(outfitType, assetDirection);
+        if (this.textures.exists(visualTextureKey) || !this.textures.exists(sourceTextureKey)) {
+          return;
+        }
+
+        const sourceImage = this.textures.get(sourceTextureKey).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
+        const visualTexture = this.textures.createCanvas(visualTextureKey, sourceImage.width, sourceImage.height);
+        if (!visualTexture) {
+          return;
+        }
+
+        const context = visualTexture.getContext();
+        if (assetDirection === 'front' || assetDirection === 'back') {
+          context.translate(sourceImage.width, 0);
+          context.scale(-1, 1);
+        }
+        context.drawImage(sourceImage, 0, 0);
+        visualTexture.refresh();
+      });
+    });
+  }
+
   create() {
     this.isSceneShuttingDown = false;
     this.cameras.main.setBackgroundColor('rgba(0,0,0,0)');
@@ -822,6 +950,7 @@ export default class MainOfficeScene extends Phaser.Scene {
 
     this.createAvatarAnimations();
     this.applyCoworkerTextureSmoothing();
+    this.prepareSittingOutfitVisualTextures();
 
     // --- Player Avatar (persistent across rooms) ---
     this.player = this.physics.add.sprite(400, 300, this.getBodyIdleTexture(this.lastAvatarDirection));
@@ -875,6 +1004,7 @@ export default class MainOfficeScene extends Phaser.Scene {
         D: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D, false),
       };
       this.input.keyboard.on('keydown-E', () => this.startPlayerClap());
+      this.input.keyboard.on('keydown-F', () => this.togglePlayerSitting());
 
       this.input.keyboard.removeCapture([
         Phaser.Input.Keyboard.KeyCodes.SPACE,
@@ -883,6 +1013,7 @@ export default class MainOfficeScene extends Phaser.Scene {
         Phaser.Input.Keyboard.KeyCodes.S,
         Phaser.Input.Keyboard.KeyCodes.D,
         Phaser.Input.Keyboard.KeyCodes.E,
+        Phaser.Input.Keyboard.KeyCodes.F,
       ]);
     }
 
@@ -982,11 +1113,20 @@ export default class MainOfficeScene extends Phaser.Scene {
     const body = this.player.body as Phaser.Physics.Arcade.Body;
     body.setVelocity(0);
 
+    if (this.isPlayerSitting) {
+      this.isPlayerWalking = false;
+      this.updatePlayerDepth();
+      this.syncAvatarLayers();
+      this.updateSeatKeyboardHint();
+      return;
+    }
+
     if (this.isPlayerClapping) {
       this.clampPlayerToRoomBounds();
       this.resolvePlayerObstacleCollisions();
       this.updatePlayerDepth();
       this.syncAvatarLayers();
+      this.updateSeatKeyboardHint();
       return;
     }
 
@@ -996,6 +1136,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       this.resolvePlayerObstacleCollisions();
       this.updatePlayerDepth();
       this.syncAvatarLayers();
+      this.updateSeatKeyboardHint();
       return;
     }
 
@@ -1035,6 +1176,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.resolvePlayerObstacleCollisions();
     this.updatePlayerDepth();
     this.syncAvatarLayers();
+    this.updateSeatKeyboardHint();
   }
 
   private getPlayerFootYOffset(): number {
@@ -1063,6 +1205,11 @@ export default class MainOfficeScene extends Phaser.Scene {
     }
 
     if (this.isPlayerClapping) {
+      return;
+    }
+
+    if (this.isPlayerSitting) {
+      this.applyPlayerSittingVisuals();
       return;
     }
 
@@ -1145,6 +1292,18 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   private updatePlayerDepth() {
+    if (this.isPlayerSitting) {
+      const sittingBodyDepth = this.getSittingBodyDepth();
+      this.player.setDepth(sittingBodyDepth);
+      this.playerShadow?.setDepth(sittingBodyDepth - 1);
+      this.playerSittingBody?.setDepth(sittingBodyDepth);
+      this.playerSittingOutfit?.setDepth(sittingBodyDepth + 1);
+      this.playerHair?.setDepth(this.getSittingHeadDepth(sittingBodyDepth));
+      this.playerFace?.setDepth(this.getSittingHeadDepth(sittingBodyDepth) + 1);
+      this.playerLabel?.setDepth(this.getSittingHeadDepth(sittingBodyDepth) + 2);
+      return;
+    }
+
     const footY = this.player.y + this.player.displayHeight * (1 - this.player.originY);
     this.player.setDepth(footY + AVATAR_DEPTH_OFFSET);
     this.playerShadow?.setDepth(this.player.depth - 1);
@@ -1154,12 +1313,42 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.playerClapBody?.setDepth(this.player.depth);
     this.playerClapOutfit?.setDepth(this.player.depth + 1);
     this.playerClapFace?.setDepth(this.player.depth + 3);
+    this.playerSittingBody?.setDepth(this.player.depth);
+    this.playerSittingOutfit?.setDepth(this.player.depth + 1);
     this.playerLabel?.setDepth(this.player.depth + 4);
+  }
+
+  private getSittingBodyDepth(): number {
+    const seat = this.activeSittingSeat ?? this.selectedSeat;
+    if (!seat) {
+      return this.player.depth;
+    }
+
+    const seatBodyDepth = seat.depth + 1;
+    if (seat.row === 'top' && this.mainRoomTableDepth !== null) {
+      return Math.min(seatBodyDepth, this.mainRoomTableDepth - SITTING_TABLE_BODY_OCCLUSION_GAP);
+    }
+
+    return seatBodyDepth;
+  }
+
+  private getSittingHeadDepth(bodyDepth = this.getSittingBodyDepth()): number {
+    if (this.mainRoomTableDepth === null) {
+      return bodyDepth + 2;
+    }
+
+    return Math.max(bodyDepth + 2, this.mainRoomTableDepth + SITTING_TABLE_HEAD_DEPTH_GAP);
   }
 
   private syncAvatarLayers() {
     this.playerShadow.setPosition(this.player.x, this.player.y);
     this.playerShadow.setDepth(this.player.depth - 1);
+    if (this.isPlayerSitting) {
+      this.syncPlayerSittingLayers();
+      this.playerLabel?.setDepth(this.getSittingHeadDepth() + 2);
+      return;
+    }
+
     if (this.isPlayerClapping) {
       this.syncPlayerClapLayers();
       this.playerLabel?.setDepth(this.player.depth + 4);
@@ -1253,8 +1442,191 @@ export default class MainOfficeScene extends Phaser.Scene {
     });
   }
 
+  private togglePlayerSitting() {
+    if (this.isEditableElementFocused()) {
+      return;
+    }
+
+    if (this.isPlayerSitting) {
+      this.standPlayerFromSeat();
+      return;
+    }
+
+    this.sitPlayerAtNearestSeat();
+  }
+
+  private sitPlayerAtNearestSeat() {
+    if (this.isPlayerClapping || this.currentRoomId !== 'main') {
+      return;
+    }
+
+    const seat = this.getNearestSeatWithinInteractionRange();
+    if (!seat) {
+      return;
+    }
+
+    this.sitPlayerAtSeat(seat);
+  }
+
+  private getNearestSeatWithinInteractionRange(): SeatData | null {
+    const origin = this.getPlayerFootPoint();
+    let nearestSeat: SeatData | null = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    for (const seat of this.seats) {
+      const anchor = this.getSeatAnchor(seat);
+      const distance = Phaser.Math.Distance.Between(origin.x, origin.y, anchor.x, anchor.y);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestSeat = seat;
+      }
+    }
+
+    return nearestSeat && nearestDistance <= AVATAR_SITTING_INTERACTION_RANGE
+      ? nearestSeat
+      : null;
+  }
+
+  private getSeatAnchor(seat: SeatData): Phaser.Math.Vector2 {
+    const anchorYRatio = SEAT_ANCHOR_Y_RATIO_BY_SEAT_VARIANT[seat.variant];
+    return new Phaser.Math.Vector2(
+      seat.x + seat.w * 0.5,
+      seat.y + seat.h * anchorYRatio,
+    );
+  }
+
+  private getSeatSittingBasePoint(seat: SeatData): Phaser.Math.Vector2 {
+    const anchor = this.getSeatAnchor(seat);
+    const baseOffset = SITTING_BASE_OFFSET_BY_SEAT_VARIANT[seat.variant];
+    const localOffset = SITTING_BASE_OFFSET_BY_SEAT_ID[seat.id] ?? { x: 0, y: 0 };
+    return new Phaser.Math.Vector2(
+      anchor.x + baseOffset.x + localOffset.x,
+      anchor.y + baseOffset.y + localOffset.y,
+    );
+  }
+
+  private sitPlayerAtSeat(seat: SeatData) {
+    const pose = SITTING_VISUAL_POSE_BY_SEAT_VARIANT[seat.variant];
+    const sittingBasePoint = this.getSeatSittingBasePoint(seat);
+
+    this.setAvatarIdle();
+    this.isPlayerSitting = true;
+    this.activeSittingPose = pose;
+    this.activeSittingSeat = seat;
+    this.lastAvatarDirection = pose.avatarDirection;
+    this.player.setPosition(sittingBasePoint.x, sittingBasePoint.y);
+    this.lastValidPlayerPosition.set(this.player.x, this.player.y);
+    (this.player.body as Phaser.Physics.Arcade.Body | null)?.setVelocity(0);
+
+    this.player.setVisible(false);
+    this.playerOutfit.setVisible(false);
+    this.playerSittingBody = this.add.sprite(this.player.x, this.player.y, avatarSittingBodyTextureKey(this.playerBodyTone, pose.assetDirection));
+    this.playerSittingOutfit = this.add.sprite(this.player.x, this.player.y, avatarSittingOutfitVisualTextureKey(this.playerOutfitType, pose.assetDirection));
+    this.applySittingLayerTransform(this.playerSittingBody, pose, 0);
+    this.applySittingLayerTransform(this.playerSittingOutfit, pose, 1);
+
+    this.applyHairLayerConfig();
+    this.applyFaceLayerConfig();
+    this.updatePlayerDepth();
+    this.syncAvatarLayers();
+    this.selectSeat(seat);
+  }
+
+  private standPlayerFromSeat() {
+    if (!this.isPlayerSitting) {
+      return;
+    }
+
+    const previousSeat = this.activeSittingSeat;
+    this.playerSittingBody?.destroy();
+    this.playerSittingOutfit?.destroy();
+    this.playerSittingBody = undefined;
+    this.playerSittingOutfit = undefined;
+    this.isPlayerSitting = false;
+    this.activeSittingPose = null;
+    this.activeSittingSeat = null;
+
+    this.player.setVisible(true);
+    this.playerOutfit.setVisible(true);
+    this.player.anims.stop();
+    this.playerOutfit.anims.stop();
+    this.player.setTexture(this.getBodyIdleTexture(this.lastAvatarDirection));
+    this.applyOutfitIdleLayerConfig();
+    this.applyHairLayerConfig();
+    this.applyFaceLayerConfig();
+    this.lastValidPlayerPosition.set(this.player.x, this.player.y);
+    this.updatePlayerDepth();
+    this.syncAvatarLayers();
+    this.updateSeatKeyboardHint();
+    if (previousSeat && this.selectedSeat !== previousSeat) {
+      this.setSeatState(previousSeat, 'idle');
+    }
+  }
+
+  private applyPlayerSittingVisuals() {
+    const pose = this.activeSittingPose;
+    if (!pose || !this.playerSittingBody || !this.playerSittingOutfit) {
+      return;
+    }
+
+    this.playerSittingBody
+      .setTexture(avatarSittingBodyTextureKey(this.playerBodyTone, pose.assetDirection));
+    this.playerSittingOutfit
+      .setTexture(avatarSittingOutfitVisualTextureKey(this.playerOutfitType, pose.assetDirection));
+    this.applySittingLayerTransform(this.playerSittingBody, pose, 0);
+    this.applySittingLayerTransform(this.playerSittingOutfit, pose, 1);
+    this.applyHairLayerConfig();
+    this.applyFaceLayerConfig();
+    this.syncPlayerSittingLayers();
+  }
+
+  private applySittingLayerTransform(sprite: Phaser.GameObjects.Sprite, pose: SittingVisualPose, depthOffset: number) {
+    sprite
+      .setOrigin(0.5, 0.88)
+      .setDisplaySize(AVATAR_DISPLAY_SIZE, AVATAR_DISPLAY_SIZE)
+      .setFlipX(pose.flipX)
+      .setDepth(this.player.depth + depthOffset);
+  }
+
+  private syncPlayerSittingLayers() {
+    const pose = this.activeSittingPose;
+    if (!pose) {
+      return;
+    }
+
+    const sittingBodyDepth = this.getSittingBodyDepth();
+    const sittingHeadDepth = this.getSittingHeadDepth(sittingBodyDepth);
+    this.playerShadow.setPosition(this.player.x, this.player.y);
+    this.playerSittingBody?.setPosition(this.player.x + pose.offsetX, this.player.y + pose.offsetY);
+    this.playerSittingOutfit?.setPosition(this.player.x + pose.offsetX, this.player.y + pose.offsetY);
+    this.player.setDepth(sittingBodyDepth);
+    this.playerShadow.setDepth(sittingBodyDepth - 1);
+    if (this.playerSittingBody) {
+      this.applySittingLayerTransform(this.playerSittingBody, pose, 0);
+    }
+    if (this.playerSittingOutfit) {
+      this.applySittingLayerTransform(this.playerSittingOutfit, pose, 1);
+    }
+
+    const hairConfig = this.getHairLayerConfig(pose.avatarDirection);
+    this.playerHair
+      .setPosition(
+        this.player.x + pose.offsetX + hairConfig.offsetX + pose.hairOffsetX,
+        this.player.y + pose.offsetY + hairConfig.offsetY + pose.hairOffsetY,
+      )
+      .setDepth(sittingHeadDepth);
+
+    const faceConfig = this.getFaceLayerConfig(pose.avatarDirection);
+    this.playerFace
+      .setPosition(
+        this.player.x + pose.offsetX + faceConfig.offsetX + pose.faceOffsetX,
+        this.player.y + pose.offsetY + faceConfig.offsetY + pose.faceOffsetY,
+      )
+      .setDepth(sittingHeadDepth + 1);
+  }
+
   private startPlayerClap() {
-    if (this.isPlayerClapping || !this.player || !this.playerOutfit || !this.input.keyboard || this.isEditableElementFocused()) {
+    if (this.isPlayerSitting || this.isPlayerClapping || !this.player || !this.playerOutfit || !this.input.keyboard || this.isEditableElementFocused()) {
       return;
     }
 
@@ -1580,6 +1952,10 @@ export default class MainOfficeScene extends Phaser.Scene {
   // =============================================
 
   private loadRoom(roomId: string) {
+    if (this.isPlayerSitting) {
+      this.standPlayerFromSeat();
+    }
+
     this.dismissAllOverlays();
     this.clearRoom();
     this.currentRoomId = roomId;
@@ -1702,6 +2078,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.roomObjects.push(table);
 
     const tableDepth = table.depth;
+    this.mainRoomTableDepth = tableDepth;
 
     FIGMA_MAIN_ROOM.seats.forEach((seatRect, index) => {
       const mappedSeat = mapRect(seatRect);
@@ -1884,17 +2261,23 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   private setSeatState(seat: SeatData, nextState: SeatState) {
-    seat.state = nextState;
-    seat.hoverSprite.setVisible(nextState === 'hover' || nextState === 'selected');
-
-    if (nextState === 'selected') {
-      this.showSeatChip(seat);
-    } else {
-      this.hideSeatChip(seat);
+    if (this.isPlayerSitting && seat === this.activeSittingSeat && nextState === 'idle') {
+      nextState = 'selected';
     }
+
+    seat.state = nextState;
+    const shouldHideActiveSittingOutline = this.isPlayerSitting && seat === this.activeSittingSeat;
+    seat.hoverSprite.setVisible(!shouldHideActiveSittingOutline && (nextState === 'hover' || nextState === 'selected'));
+
+    this.hideSeatChip(seat);
   }
 
   private handleSeatHover(seat: SeatData) {
+    if (this.isPlayerSitting && this.activeSittingSeat && seat !== this.activeSittingSeat) {
+      this.setSeatState(this.activeSittingSeat, 'selected');
+      return;
+    }
+
     if (this.hoveredSeat && this.hoveredSeat !== seat && this.hoveredSeat !== this.selectedSeat) {
       this.setSeatState(this.hoveredSeat, 'idle');
     }
@@ -1909,6 +2292,12 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   private handleSeatHoverEnd(seat: SeatData) {
+    if (this.isPlayerSitting && seat === this.activeSittingSeat) {
+      this.hoveredSeat = seat;
+      this.setSeatState(seat, 'selected');
+      return;
+    }
+
     if (this.hoveredSeat === seat) {
       this.hoveredSeat = null;
     }
@@ -1926,26 +2315,73 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.setSeatState(seat, 'selected');
   }
 
-  private showSeatChip(seat: SeatData) {
-    const overlayWidth = 66 * (seat.w / 120.377197265625);
-    const overlayHeight = 28 * (seat.w / 120.377197265625);
+  private updateSeatKeyboardHint() {
+    if (this.currentRoomId !== 'main') {
+      if (this.selectedSeat) {
+        this.setSeatState(this.selectedSeat, 'idle');
+        this.selectedSeat = null;
+      }
+      return;
+    }
+
+    if (this.isPlayerSitting) {
+      if (this.activeSittingSeat) {
+        this.selectedSeat = this.activeSittingSeat;
+        this.hoveredSeat = this.activeSittingSeat;
+        this.setSeatState(this.activeSittingSeat, 'selected');
+      }
+      return;
+    }
+
+    const nearestSeat = this.getNearestSeatWithinInteractionRange();
+    if (!nearestSeat) {
+      if (this.selectedSeat) {
+        this.setSeatState(this.selectedSeat, 'idle');
+        this.selectedSeat = null;
+      }
+      this.hoveredSeat = null;
+      return;
+    }
+
+    this.selectSeat(nearestSeat);
+  }
+
+  private getSeatChipPosition(seat: SeatData, overlayWidth: number, overlayHeight: number): Phaser.Math.Vector2 {
     const overlayX = seat.x + (seat.w - overlayWidth) / 2;
-    const overlayY = seat.variant === 'front'
-      ? seat.y - overlayHeight - seat.h * 0.06
-      : seat.y - overlayHeight * 0.78;
+    const standingOffsetRatio = SIT_CHIP_STANDING_OFFSET_Y_BY_SEAT_VARIANT[seat.variant];
+    let overlayY = seat.y - overlayHeight - seat.h * standingOffsetRatio;
+
+    if (this.isPlayerSitting && seat === this.activeSittingSeat) {
+      const seatedSpriteTop = this.player.y - AVATAR_DISPLAY_SIZE * 0.88;
+      overlayY = Math.min(overlayY, seatedSpriteTop - overlayHeight - SITTING_CHIP_HEAD_CLEARANCE);
+    }
+
+    return new Phaser.Math.Vector2(overlayX, overlayY);
+  }
+
+  private getSeatChipLabel(seat: SeatData): string {
+    return this.isPlayerSitting && seat === this.activeSittingSeat ? 'Press F to Stand' : 'Press F to Sit';
+  }
+
+  private showSeatChip(seat: SeatData) {
+    const overlayWidth = 114 * (seat.w / 120.377197265625);
+    const overlayHeight = 28 * (seat.w / 120.377197265625);
+    const overlayPosition = this.getSeatChipPosition(seat, overlayWidth, overlayHeight);
     const overlayDepth = 1000;
+    const labelText = this.getSeatChipLabel(seat);
 
     if (seat.sitOverlay) {
+      seat.sitOverlayLabel?.setText(labelText);
       seat.sitOverlay
-        .setPosition(overlayX, overlayY)
+        .setPosition(overlayPosition.x, overlayPosition.y)
         .setDepth(overlayDepth)
         .setVisible(true);
       return;
     }
 
     const bg = this.add.graphics();
-    bg.fillStyle(0xffffff, 0.98);
-    bg.lineStyle(1.5, 0xe2e0f0, 1);
+    bg.fillStyle(0xffffff, 0.9);
+    bg.lineStyle(1, 0xe2e0f0, 0.9);
     bg.fillRoundedRect(0, 0, overlayWidth, overlayHeight, overlayHeight / 2);
     bg.strokeRoundedRect(0, 0, overlayWidth, overlayHeight, overlayHeight / 2);
 
@@ -1956,26 +2392,17 @@ export default class MainOfficeScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    const label = this.add.text(overlayWidth * 0.6, overlayHeight / 2, 'Sit', {
+    const label = this.add.text(overlayWidth * 0.58, overlayHeight / 2, labelText, {
       fontFamily: 'Funnel Sans, Arial, sans-serif',
       fontSize: `${Math.max(10, overlayHeight * 0.42)}px`,
       color: '#7C5CFC',
       fontStyle: 'bold',
     }).setOrigin(0.5);
+    seat.sitOverlayLabel = label;
 
-    seat.sitOverlay = this.add.container(overlayX, overlayY, [bg, icon, label])
+    seat.sitOverlay = this.add.container(overlayPosition.x, overlayPosition.y, [bg, icon, label])
       .setDepth(overlayDepth)
-      .setSize(overlayWidth, overlayHeight)
-      .setInteractive(
-        new Phaser.Geom.Rectangle(0, 0, overlayWidth, overlayHeight),
-        Phaser.Geom.Rectangle.Contains
-      );
-    seat.sitOverlay.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      pointer.event.stopPropagation();
-      this.selectSeat(seat);
-    });
-    seat.sitOverlay.on('pointerover', () => this.handleSeatHover(seat));
-    seat.sitOverlay.on('pointerout', () => this.handleSeatHoverEnd(seat));
+      .setSize(overlayWidth, overlayHeight);
     this.roomObjects.push(seat.sitOverlay);
   }
 
@@ -2025,6 +2452,8 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.roomCoworkers = [];
     this.hoveredSeat = null;
     this.selectedSeat = null;
+    this.activeSittingSeat = null;
+    this.mainRoomTableDepth = null;
 
     // Clear teammate data (call rings, domains, join labels)
     for (const tm of this.teammates) {
