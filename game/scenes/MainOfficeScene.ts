@@ -247,6 +247,17 @@ type RoomCoworkerLayers = {
   blinkEvent?: Phaser.Time.TimerEvent;
   hitArea?: Phaser.GameObjects.Arc;
 };
+type StaticSeatedCoworkerConfig = {
+  id: string;
+  name: string;
+  seatId: string;
+  bodyTone: BodyTone;
+  outfitType: OutfitType;
+  hairTextureKey: string;
+  faceDefaultTextureKey: string;
+  faceBlinkTextureKey: string;
+  faceFlipX?: boolean;
+};
 
 const AVATAR_BODY_BASE_PATH = '/assets/avatar/walk/body';
 const AVATAR_OUTFIT_BASE_PATH = '/assets/avatar/walk/outfit';
@@ -419,6 +430,19 @@ const SIT_CHIP_STANDING_OFFSET_Y_BY_SEAT_VARIANT: Record<SeatVariant, number> = 
 const SITTING_CHIP_HEAD_CLEARANCE = 14;
 const SITTING_TABLE_BODY_OCCLUSION_GAP = 0;
 const SITTING_TABLE_HEAD_DEPTH_GAP = 2;
+const STATIC_COWORKER_A_SEAT_ID = 'front-green';
+const STATIC_SEATED_COWORKER_DISPLAY_SIZE = 180;
+const STATIC_SEATED_COWORKER: StaticSeatedCoworkerConfig = {
+  id: 'static-seated-coworker-a',
+  name: 'Coworker A',
+  seatId: STATIC_COWORKER_A_SEAT_ID,
+  bodyTone: 'light',
+  outfitType: 'short',
+  hairTextureKey: 'avatar-coworker-hair-2-1',
+  faceDefaultTextureKey: 'avatar-coworker-face-2-default-2',
+  faceBlinkTextureKey: 'avatar-coworker-face-2-blink-2',
+  faceFlipX: false,
+};
 const AVATAR_BODY_WALK_FILES: Record<AvatarDirection, string[]> = {
   FR: Array.from({ length: 13 }, (_, index) => `base_walk${String(index + 1).padStart(4, '0')} 1.png`),
   FL: Array.from({ length: 13 }, (_, index) => `base_walk${String(index + 1).padStart(4, '0')} 1.png`),
@@ -657,6 +681,7 @@ export default class MainOfficeScene extends Phaser.Scene {
   private desks: DeskData[] = [];
   private seats: SeatData[] = [];
   private roomCoworkers: RoomCoworkerLayers[] = [];
+  private staticSeatedCoworkerBlinkEvent?: Phaser.Time.TimerEvent;
   private hoveredSeat: SeatData | null = null;
   private selectedSeat: SeatData | null = null;
   private mainRoomTableDepth: number | null = null;
@@ -1581,11 +1606,15 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   private applySittingLayerTransform(sprite: Phaser.GameObjects.Sprite, pose: SittingVisualPose, depthOffset: number) {
+    this.applySittingLayerTransformAtDepth(sprite, pose, this.player.depth + depthOffset);
+  }
+
+  private applySittingLayerTransformAtDepth(sprite: Phaser.GameObjects.Sprite, pose: SittingVisualPose, depth: number) {
     sprite
       .setOrigin(0.5, 0.88)
       .setDisplaySize(AVATAR_DISPLAY_SIZE, AVATAR_DISPLAY_SIZE)
       .setFlipX(pose.flipX)
-      .setDepth(this.player.depth + depthOffset);
+      .setDepth(depth);
   }
 
   private syncPlayerSittingLayers() {
@@ -2002,6 +2031,8 @@ export default class MainOfficeScene extends Phaser.Scene {
           : undefined;
         this.spawnTeammate(tm.x, tm.y, tm.color, tm.name, tm.role, tm.assetKey, tm.flipX, tm.displayRect, coworkerConfig);
       }
+
+      this.createStaticSeatedCoworker(STATIC_SEATED_COWORKER);
 
       // Doors
       for (const dr of room.doors) {
@@ -2442,6 +2473,8 @@ export default class MainOfficeScene extends Phaser.Scene {
     for (const coworker of this.roomCoworkers) {
       coworker.blinkEvent?.remove(false);
     }
+    this.staticSeatedCoworkerBlinkEvent?.remove(false);
+    this.staticSeatedCoworkerBlinkEvent = undefined;
 
     // Destroy all room-specific objects
     for (const obj of this.roomObjects) {
@@ -2674,6 +2707,115 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.activePopup.setDepth(20);
     this.activePopup.setAlpha(0).setScale(0.9);
     this.tweens.add({ targets: this.activePopup, alpha: 1, scale: 1, duration: 150, ease: 'Back.easeOut' });
+  }
+
+  private createStaticSeatedCoworker(config: StaticSeatedCoworkerConfig) {
+    if (this.currentRoomId !== 'main') {
+      return;
+    }
+
+    const seat = this.seats.find((candidate) => candidate.id === config.seatId);
+    if (!seat) {
+      return;
+    }
+
+    const pose = SITTING_VISUAL_POSE_BY_SEAT_VARIANT[seat.variant];
+    const base = this.getSeatSittingBasePoint(seat);
+    const bodyDepth = this.getStaticSittingBodyDepth(seat);
+    const headDepth = this.getStaticSittingHeadDepth(bodyDepth);
+
+    const shadow = this.add.sprite(base.x, base.y, 'avatar-coworker-shadow')
+      .setOrigin(0.5, 0.88)
+      .setDisplaySize(STATIC_SEATED_COWORKER_DISPLAY_SIZE, STATIC_SEATED_COWORKER_DISPLAY_SIZE)
+      .setDepth(bodyDepth - 1)
+      .setAlpha(0.42);
+    const body = this.add.sprite(base.x, base.y, avatarSittingBodyTextureKey(config.bodyTone, pose.assetDirection))
+      .setPosition(base.x + pose.offsetX, base.y + pose.offsetY);
+    const outfit = this.add.sprite(base.x, base.y, avatarSittingOutfitVisualTextureKey(config.outfitType, pose.assetDirection))
+      .setPosition(base.x + pose.offsetX, base.y + pose.offsetY);
+    this.applySittingLayerTransformAtDepth(body, pose, bodyDepth);
+    this.applySittingLayerTransformAtDepth(outfit, pose, bodyDepth + 1);
+
+    const hairConfig = this.getHairLayerConfig(pose.avatarDirection);
+    const hair = this.add.sprite(
+      base.x + pose.offsetX + hairConfig.offsetX + pose.hairOffsetX,
+      base.y + pose.offsetY + hairConfig.offsetY + pose.hairOffsetY,
+      config.hairTextureKey,
+    )
+      .setOrigin(0.5, 0.88)
+      .setDisplaySize(STATIC_SEATED_COWORKER_DISPLAY_SIZE, STATIC_SEATED_COWORKER_DISPLAY_SIZE)
+      .setFlipX(hairConfig.flipX)
+      .setDepth(headDepth);
+
+    const faceConfig = this.getFaceLayerConfig(pose.avatarDirection);
+    const face = this.add.sprite(
+      base.x + pose.offsetX + faceConfig.offsetX + pose.faceOffsetX,
+      base.y + pose.offsetY + faceConfig.offsetY + pose.faceOffsetY,
+      this.getStaticCoworkerFaceTexture(config.faceDefaultTextureKey),
+    )
+      .setOrigin(0.5, 0.88)
+      .setDisplaySize(STATIC_SEATED_COWORKER_DISPLAY_SIZE, STATIC_SEATED_COWORKER_DISPLAY_SIZE)
+      .setFlipX(config.faceFlipX ?? faceConfig.flipX)
+      .setVisible(faceConfig.visible)
+      .setDepth(headDepth + 1);
+    this.startStaticSeatedCoworkerBlink(face, config.faceDefaultTextureKey, config.faceBlinkTextureKey, faceConfig.visible);
+
+    this.roomObjects.push(shadow, body, outfit, hair, face);
+  }
+
+  private getStaticCoworkerFaceTexture(textureKey: string): string {
+    return this.textures.exists(textureKey) ? textureKey : 'avatar-coworker-face-2-default-2';
+  }
+
+  private startStaticSeatedCoworkerBlink(
+    face: Phaser.GameObjects.Sprite,
+    defaultTextureKey: string,
+    blinkTextureKey: string,
+    canBlink: boolean,
+  ) {
+    this.staticSeatedCoworkerBlinkEvent?.remove(false);
+    this.staticSeatedCoworkerBlinkEvent = undefined;
+
+    const defaultTexture = this.getStaticCoworkerFaceTexture(defaultTextureKey);
+    const blinkTexture = this.textures.exists(blinkTextureKey) ? blinkTextureKey : defaultTexture;
+    if (!canBlink || blinkTexture === defaultTexture) {
+      face.setTexture(defaultTexture);
+      return;
+    }
+
+    this.staticSeatedCoworkerBlinkEvent = this.time.addEvent({
+      delay: COWORKER_BLINK_INTERVAL_MS + 650,
+      loop: true,
+      callback: () => {
+        if (!face.active || !face.visible) {
+          return;
+        }
+
+        face.setTexture(blinkTexture);
+        this.time.delayedCall(COWORKER_BLINK_DURATION_MS, () => {
+          if (face.active) {
+            face.setTexture(defaultTexture);
+          }
+        });
+      },
+    });
+  }
+
+  private getStaticSittingBodyDepth(seat: SeatData): number {
+    const seatBodyDepth = seat.depth + 1;
+    if (seat.row === 'top' && this.mainRoomTableDepth !== null) {
+      return Math.min(seatBodyDepth, this.mainRoomTableDepth - SITTING_TABLE_BODY_OCCLUSION_GAP);
+    }
+
+    return seatBodyDepth;
+  }
+
+  private getStaticSittingHeadDepth(bodyDepth: number): number {
+    if (this.mainRoomTableDepth === null) {
+      return bodyDepth + 2;
+    }
+
+    return Math.max(bodyDepth + 2, this.mainRoomTableDepth + SITTING_TABLE_HEAD_DEPTH_GAP);
   }
 
   // =============================================
