@@ -181,6 +181,95 @@ const teamMembers = [
 type TeamMemberProfile = (typeof teamMembers)[number];
 type ProfileModalTab = 'activity' | 'completed';
 
+type ModeratorWorkloadStatus = 'overloaded' | 'on track' | 'idle';
+
+type ModeratorTeamMember = {
+  id: string;
+  name: string;
+  role: string;
+  taskCount: number;
+  status: ModeratorWorkloadStatus;
+  avatar: (typeof PROFILE_THUMBNAILS)[number];
+  summary: {
+    completed: number;
+    inProgress: number;
+    toDo: number;
+    overdue: number;
+  };
+  activeTasks: Array<{
+    id: string;
+    title: string;
+    due: string;
+    progress: number;
+    state: 'In Review' | 'In Progress' | 'To Do' | 'Blocked';
+  }>;
+};
+
+const moderatorTeamMembers: ModeratorTeamMember[] = [
+  {
+    id: 'aliyah-r',
+    name: 'Aliyah R.',
+    role: 'UI/UX Designer',
+    taskCount: 5,
+    status: 'overloaded',
+    avatar: PROFILE_THUMBNAILS[6],
+    summary: { completed: 10, inProgress: 6, toDo: 5, overdue: 2 },
+    activeTasks: [
+      { id: 'aliyah-wireframe-review', title: 'Wireframe Approval Pass', due: '25/05/2026 10:00', progress: 64, state: 'In Review' },
+      { id: 'aliyah-icon-system', title: 'Icon Set Exploration', due: '25/05/2026 13:00', progress: 70, state: 'Blocked' },
+    ],
+  },
+  {
+    id: 'bimo-s',
+    name: 'Bimo S.',
+    role: '2D Artist',
+    taskCount: 4,
+    status: 'overloaded',
+    avatar: PROFILE_THUMBNAILS[7],
+    summary: { completed: 8, inProgress: 5, toDo: 4, overdue: 2 },
+    activeTasks: [
+      { id: 'bimo-character-sprite', title: 'Character Sprite Animation', due: '25/05/2026 11:30', progress: 58, state: 'In Progress' },
+      { id: 'bimo-room-props', title: 'Room Prop Cleanup', due: '25/05/2026 16:00', progress: 42, state: 'Blocked' },
+    ],
+  },
+  {
+    id: 'citra-m',
+    name: 'Citra M.',
+    role: 'Copywriter',
+    taskCount: 3,
+    status: 'on track',
+    avatar: PROFILE_THUMBNAILS[3],
+    summary: { completed: 7, inProgress: 2, toDo: 1, overdue: 0 },
+    activeTasks: [
+      { id: 'citra-microcopy', title: 'Onboarding Microcopy', due: '26/05/2026 10:00', progress: 76, state: 'In Review' },
+    ],
+  },
+  {
+    id: 'dani-p',
+    name: 'Dani P.',
+    role: 'Frontend Dev',
+    taskCount: 3,
+    status: 'on track',
+    avatar: PROFILE_THUMBNAILS[2],
+    summary: { completed: 9, inProgress: 2, toDo: 1, overdue: 0 },
+    activeTasks: [
+      { id: 'dani-dashboard-state', title: 'Dashboard State Polish', due: '26/05/2026 15:00', progress: 62, state: 'In Progress' },
+    ],
+  },
+  {
+    id: 'eka-w',
+    name: 'Eka W.',
+    role: 'Project Manager',
+    taskCount: 1,
+    status: 'idle',
+    avatar: PROFILE_THUMBNAILS[4],
+    summary: { completed: 12, inProgress: 0, toDo: 1, overdue: 0 },
+    activeTasks: [
+      { id: 'eka-approval-queue', title: 'Approval Queue Triage', due: '25/05/2026 17:00', progress: 18, state: 'To Do' },
+    ],
+  },
+];
+
 const timelineMonths = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP'] as const;
 
 const projectTimelineGroups = [
@@ -741,6 +830,232 @@ function DeadlineRow({
   );
 }
 
+function ModeratorStatusPill({ status }: { status: ModeratorWorkloadStatus | 'overdue' }) {
+  const statusClass = {
+    overloaded: 'bg-[#fff0f0] text-[#e05252]',
+    overdue: 'bg-[#fff0f0] text-[#e05252]',
+    'on track': 'bg-[#eafff4] text-[#229b63]',
+    idle: 'bg-[#f0f0f4] text-[#85859a]',
+  }[status];
+
+  return (
+    <span className={cn('inline-flex shrink-0 items-center rounded-full px-[9px] py-[5px] text-[11px] font-extrabold leading-none', statusClass)}>
+      {status}
+    </span>
+  );
+}
+
+function ModeratorTeamStatusCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: 'overdue' | 'on track' | 'idle';
+}) {
+  const toneClass = {
+    overdue: 'bg-[#fff0f0] text-[#e05252]',
+    'on track': 'bg-[#eafff4] text-[#229b63]',
+    idle: 'bg-[#f0f0f4] text-[#85859a]',
+  }[tone];
+
+  return (
+    <div className="rounded-[13px] border border-[#e2e0f0] bg-white px-[14px] py-[12px] shadow-[0_5px_17.6px_rgba(133,133,133,0.06)]">
+      <p className="text-[22px] font-extrabold leading-none text-black">{value}</p>
+      <div className="mt-[9px]">
+        <span className={cn('inline-flex rounded-full px-[8px] py-[4px] text-[10px] font-extrabold leading-none', toneClass)}>
+          {label}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ModeratorTeamMemberRow({
+  member,
+  selected,
+  onSelect,
+}: {
+  member: ModeratorTeamMember;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        'flex w-full items-center gap-[12px] rounded-[14px] border px-[12px] py-[11px] text-left transition-all duration-150',
+        selected
+          ? 'border-[#c8c1ff] bg-[#f2efff] shadow-[0_8px_18px_rgba(104,94,235,0.10)]'
+          : 'border-transparent bg-white hover:border-[#e2e0f0] hover:bg-[#fbfaff]'
+      )}
+    >
+      <div className="relative h-[40px] w-[40px] shrink-0 overflow-hidden rounded-full bg-[#f4f2ff]">
+        <Image src={member.avatar} alt="" fill sizes="40px" className="object-cover" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-[8px]">
+          <p className="truncate text-[14px] font-extrabold text-black">{member.name}</p>
+          {member.id === 'aliyah-r' ? <span className="shrink-0 text-[11px] font-semibold text-[#9b96b8]">5 task</span> : null}
+        </div>
+        <p className="mt-[3px] truncate text-[11px] font-semibold text-[#858585]">{member.role}</p>
+      </div>
+      <ModeratorStatusPill status={member.status} />
+    </button>
+  );
+}
+
+function ModeratorMemberDetail({ member }: { member: ModeratorTeamMember | null }) {
+  const stats = member
+    ? [
+        { label: 'Completed', value: member.summary.completed, tone: 'text-[#685eeb] border-[#685eeb]' },
+        { label: 'In Progress', value: member.summary.inProgress, tone: 'text-[#6cb5ff] border-[#6cb5ff]' },
+        { label: 'To Do', value: member.summary.toDo, tone: 'text-[#9b96b8] border-[#9b96b8]' },
+        { label: 'Overdue', value: member.summary.overdue, tone: 'text-[#e05252] border-[#e05252]' },
+      ]
+    : [];
+
+  if (!member) {
+    return (
+      <aside className="flex min-h-[360px] items-center justify-center rounded-[17px] border border-dashed border-[#d4cfee] bg-white/72 px-[28px] py-[36px] text-center">
+        <p className="max-w-[260px] text-[15px] font-extrabold leading-[1.4] text-[#9b96b8]">
+          Select a team member to view workload details
+        </p>
+      </aside>
+    );
+  }
+
+  return (
+    <aside className="rounded-[17px] border border-[#e2e0f0] bg-white px-[22px] py-[20px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-[13px]">
+          <div className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-full bg-[#f4f2ff] ring-4 ring-[#f1eeff]">
+            <Image src={member.avatar} alt="" fill sizes="52px" className="object-cover" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="truncate text-[19px] font-extrabold leading-tight text-black">{member.name}</h3>
+            <p className="mt-[4px] truncate text-[12px] font-semibold text-[#858585]">{member.role}</p>
+          </div>
+        </div>
+        <ModeratorStatusPill status={member.status} />
+      </div>
+
+      <div className="mt-[18px] grid grid-cols-2 gap-[10px]">
+        {stats.map((stat) => (
+          <div key={stat.label} className="flex min-h-[58px] items-start gap-[10px] rounded-[10px] border border-[#e2e0f0] bg-[#fbfaff] px-[10px] py-[10px]">
+            <span className={cn('mt-[1px] flex h-[18px] w-[18px] items-center justify-center rounded-full border', stat.tone)}>
+              <ClipboardCheck className="h-[11px] w-[11px]" strokeWidth={2.4} />
+            </span>
+            <span>
+              <span className="block text-[15px] font-extrabold leading-none text-black">{stat.value}</span>
+              <span className="mt-[7px] block text-[10px] font-semibold leading-none text-[#858585]">{stat.label}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-[21px]">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[13px] font-extrabold uppercase tracking-[0.04em] text-[#9b96b8]">Active Tasks</p>
+          <span className="text-[11px] font-semibold text-[#685eeb]">{member.taskCount} task</span>
+        </div>
+
+        <div className="mt-[12px] space-y-[10px]">
+          {member.activeTasks.map((task) => (
+            <article key={task.id} className="rounded-[13px] border border-[#e2e0f0] bg-white px-[14px] py-[13px] shadow-[0_7px_16px_rgba(104,94,235,0.06)]">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-[13px] font-extrabold text-black">{task.title}</p>
+                  <p className="mt-[5px] text-[10px] font-semibold text-[#858585]">Due {task.due}</p>
+                </div>
+                <span className="shrink-0 rounded-full bg-[#f2efff] px-[8px] py-[4px] text-[10px] font-extrabold text-[#685eeb]">
+                  {task.state}
+                </span>
+              </div>
+              <div className="mt-[12px]">
+                <div className="flex items-center justify-between text-[10px] font-semibold text-[#9b96b8]">
+                  <span>Progress</span>
+                  <span>{task.progress}%</span>
+                </div>
+                <div className="mt-[6px] h-[5px] overflow-hidden rounded-full bg-[#edeaf8]">
+                  <div className="h-full rounded-full bg-[#685eeb]" style={{ width: `${task.progress}%` }} />
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-[18px] flex flex-wrap gap-[10px]">
+        <button
+          type="button"
+          className={cn('inline-flex h-[36px] items-center justify-center rounded-[12px] bg-[#685eeb] px-[15px] text-[12px] font-extrabold text-white hover:bg-[#5d54df]', purplePressClass)}
+        >
+          Re-assign task
+        </button>
+        <button
+          type="button"
+          className={cn('inline-flex h-[36px] items-center gap-[7px] rounded-[12px] border border-[#d8d3f2] bg-white px-[15px] text-[12px] font-extrabold text-[#685eeb] hover:bg-[#f6f4ff]', purplePressClass)}
+        >
+          <MessageCircle className="h-[14px] w-[14px]" strokeWidth={2.2} />
+          Send message
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+function ModeratorOverviewSection() {
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const selectedMember = moderatorTeamMembers.find((member) => member.id === selectedMemberId) ?? null;
+
+  return (
+    <section className="rounded-[17px] border border-[#e2e0f0] bg-[#f5f3ff]/88 px-[18px] py-[18px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="warp-font-display text-[13px] font-extrabold uppercase tracking-[0.04em] text-[#9b96b8]">Moderator Overview</p>
+          <h2 className="mt-[5px] text-[20px] font-extrabold tracking-[-0.03em] text-black">Team Status</h2>
+        </div>
+        <div className="flex max-w-[360px] items-start gap-[12px] rounded-[16px] border border-[#f2cccc] bg-white px-[14px] py-[12px] shadow-[0_8px_18px_rgba(224,82,82,0.08)]">
+          <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-[#fff0f0] text-[#e05252]">
+            <Bell className="h-[17px] w-[17px]" strokeWidth={2.2} />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[13px] font-extrabold leading-[1.3] text-[#27213f]">5 tasks wait your approval — Phase 1 is blocked.</p>
+            <p className="mt-[5px] text-[11px] font-semibold leading-[1.35] text-[#858585]">Meeting will start in 10 minutes, please get ready.</p>
+            <p className="mt-[5px] text-[11px] font-extrabold text-[#685eeb]">Daniel (CEO)</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-[16px] grid gap-[14px] xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="rounded-[17px] border border-[#e2e0f0] bg-white px-[16px] py-[16px]">
+          <div className="grid gap-[10px] sm:grid-cols-3">
+            <ModeratorTeamStatusCard label="overdue" value={2} tone="overdue" />
+            <ModeratorTeamStatusCard label="on track" value={2} tone="on track" />
+            <ModeratorTeamStatusCard label="idle" value={1} tone="idle" />
+          </div>
+
+          <div className="mt-[15px] space-y-[8px]">
+            {moderatorTeamMembers.map((member) => (
+              <ModeratorTeamMemberRow
+                key={member.id}
+                member={member}
+                selected={selectedMemberId === member.id}
+                onSelect={() => setSelectedMemberId(member.id)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <ModeratorMemberDetail member={selectedMember} />
+      </div>
+    </section>
+  );
+}
+
 function ActivityItem({
   name,
   role,
@@ -889,6 +1204,8 @@ function EmployerDashboardHome({
           ))}
         </DashboardCard>
       </div>
+
+      <ModeratorOverviewSection />
     </div>
   );
 }
