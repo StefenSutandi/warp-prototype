@@ -168,8 +168,8 @@ function IconExit() {
 
 function WarpLogo() {
   return (
-    <div className="flex h-[37px] w-[45px] items-center justify-center">
-      <img src={VIRTUAL_ROOM_LOCAL_ASSETS.logoMark} alt="WARP" className="block h-[32px] w-auto" />
+    <div className="flex h-[45px] w-[45px] items-center justify-center rounded-[14px] bg-[#f7f5ff]">
+      <img src={VIRTUAL_ROOM_LOCAL_ASSETS.logoMark} alt="WARP" className="block h-[29px] w-[40px] object-contain" />
     </div>
   );
 }
@@ -179,17 +179,18 @@ function WarpLogo() {
 // =============================================
 
 function NavRail() {
-  const [active, setActive] = useState('room');
+  const [active, setActive] = useState('dashboard');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
   const drawerTriggerRef = useRef<HTMLButtonElement>(null);
 
-  const topItems: { id: string; Icon: ComponentType<{ active?: boolean }>; label: string }[] = [
+  const navItems: { id: string; Icon: ComponentType<{ active?: boolean }>; label: string }[] = [
     { id: 'dashboard', Icon: IconDashboard, label: 'Dashboard' },
     { id: 'stats', Icon: IconStats, label: 'My Stats' },
     { id: 'todo', Icon: IconTodo, label: 'To-Do' },
     { id: 'chat', Icon: IconChat, label: 'Chat' },
     { id: 'team', Icon: IconTeam, label: 'My Team & Project' },
+    { id: 'settings', Icon: IconSettings, label: 'Settings' },
   ];
 
   useEffect(() => {
@@ -228,15 +229,15 @@ function NavRail() {
           ref={drawerTriggerRef}
           type="button"
           onClick={() => setIsDrawerOpen((current) => !current)}
-          className="mb-6 ml-[-1px] rounded-[14px] transition hover:bg-[#f6f3ff] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB]/30"
+          className="mb-5 ml-[-1px] rounded-[14px] transition hover:bg-[#f6f3ff] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB]/30"
           aria-label="Open navigation drawer"
           aria-expanded={isDrawerOpen}
         >
           <WarpLogo />
         </button>
 
-        <div className="flex w-full flex-1 flex-col items-start gap-[30px] pt-[15px]">
-          {topItems.map((item) => {
+        <div className="flex w-full flex-1 flex-col items-start gap-[14px] pt-[8px]">
+          {navItems.map((item) => {
             const isActive = active === item.id;
             return (
               <button
@@ -255,19 +256,8 @@ function NavRail() {
           })}
         </div>
 
-        {/* Bottom: Settings + Exit */}
-        <div className="flex w-full flex-col items-start gap-[30px] pt-[22px]">
-          <button
-            onClick={() => selectNavItem('settings')}
-            title="Settings"
-            className={`flex h-[45px] w-[45px] items-center justify-center rounded-[14px] transition-all duration-150 ${
-              active === 'settings'
-                ? 'bg-[linear-gradient(101deg,#efedff_2.4%,#eff3fc_47.9%,#eff9fb_108.06%)]'
-                : 'bg-transparent hover:bg-[#f6f3ff]'
-            }`}
-          >
-            <IconSettings active={active === 'settings'} />
-          </button>
+        {/* Bottom: Exit */}
+        <div className="flex w-full flex-col items-start pt-[22px]">
           <button title="Exit Room" className="flex h-[45px] w-[45px] items-center justify-center rounded-[14px] bg-transparent transition-all duration-150 hover:bg-[#fff3f3]">
             <IconExit />
           </button>
@@ -277,10 +267,10 @@ function NavRail() {
       {isDrawerOpen ? (
         <div
           ref={drawerRef}
-          className="fixed bottom-0 left-[89px] top-0 z-50 flex w-[236px] flex-col border-r border-[#e2e0f0] bg-white px-[18px] py-[22px] shadow-[8px_0_24px_rgba(84,86,106,0.10)]"
+          className="fixed bottom-0 left-[89px] top-0 z-50 flex w-[228px] flex-col border-r border-[#e2e0f0] bg-white px-[16px] py-[23px] shadow-[10px_0_22px_rgba(84,86,106,0.08)]"
         >
-          <div className="mb-[30px] flex items-center justify-between gap-3">
-            <img src={VIRTUAL_ROOM_LOCAL_ASSETS.logo} alt="WARP" className="h-[24px] w-auto" />
+          <div className="mb-[34px] flex h-[29px] items-center justify-between gap-3">
+            <img src={VIRTUAL_ROOM_LOCAL_ASSETS.logo} alt="WARP" className="h-[29px] w-auto" />
             <button
               type="button"
               onClick={() => setIsDrawerOpen(false)}
@@ -298,7 +288,7 @@ function NavRail() {
             Main Menu
           </p>
           <nav className="flex flex-col gap-[8px]">
-            {[...topItems, { id: 'settings', Icon: IconSettings, label: 'Settings' }].map((item) => {
+            {navItems.map((item) => {
               const isActive = active === item.id;
 
               return (
