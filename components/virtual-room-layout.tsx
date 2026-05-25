@@ -80,7 +80,8 @@ const VIRTUAL_ROOM_OPTIONS = [
 ] as const;
 
 const VIRTUAL_ROOM_LOCAL_ASSETS = {
-  logo: '/assets/virtual-room/logo/logo.svg',
+  logo: '/assets/dashboard-employer/branding/warp-logo.svg',
+  logoMark: '/assets/virtual-room/logo/logo.svg',
   tomato: '/assets/virtual-room/ui/tomato.png',
   start: '/assets/virtual-room/ui/start.png',
   pause: '/assets/virtual-room/ui/pause.png',
@@ -167,8 +168,8 @@ function IconExit() {
 
 function WarpLogo() {
   return (
-    <div className="mb-6 flex h-[37px] w-[51px] items-center justify-center">
-      <img src={VIRTUAL_ROOM_LOCAL_ASSETS.logo} alt="WARP" className="block h-[37px] w-[51px]" />
+    <div className="flex h-[37px] w-[45px] items-center justify-center">
+      <img src={VIRTUAL_ROOM_LOCAL_ASSETS.logoMark} alt="WARP" className="block h-[32px] w-auto" />
     </div>
   );
 }
@@ -179,59 +180,156 @@ function WarpLogo() {
 
 function NavRail() {
   const [active, setActive] = useState('room');
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const drawerTriggerRef = useRef<HTMLButtonElement>(null);
 
   const topItems: { id: string; Icon: ComponentType<{ active?: boolean }>; label: string }[] = [
     { id: 'dashboard', Icon: IconDashboard, label: 'Dashboard' },
-    { id: 'todo', Icon: IconTodo, label: 'To-Do' },
     { id: 'stats', Icon: IconStats, label: 'My Stats' },
+    { id: 'todo', Icon: IconTodo, label: 'To-Do' },
     { id: 'chat', Icon: IconChat, label: 'Chat' },
-    { id: 'team', Icon: IconTeam, label: 'My Team' },
+    { id: 'team', Icon: IconTeam, label: 'My Team & Project' },
   ];
 
+  useEffect(() => {
+    if (!isDrawerOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsDrawerOpen(false);
+      }
+    };
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (drawerRef.current?.contains(target) || drawerTriggerRef.current?.contains(target)) {
+        return;
+      }
+      setIsDrawerOpen(false);
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handlePointerDown);
+    };
+  }, [isDrawerOpen]);
+
+  const selectNavItem = (itemId: string) => {
+    setActive(itemId);
+    setIsDrawerOpen(false);
+  };
+
   return (
-    <aside className="flex w-[89px] shrink-0 flex-col items-start border-r border-[#e2e0f0] bg-[#fcfcff] px-[22px] pb-[22px] pt-[18px]">
-      <div className="ml-[-5px]">
-        <WarpLogo />
-      </div>
-
-      <div className="flex w-full flex-1 flex-col items-start gap-[30px] pt-[15px]">
-        {topItems.map((item) => {
-          const isActive = active === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActive(item.id)}
-              title={item.label}
-              className={`flex h-[45px] w-[45px] items-center justify-center rounded-[14px] transition-all duration-150 ${
-                isActive
-                  ? 'bg-[linear-gradient(101deg,#efedff_2.4%,#eff3fc_47.9%,#eff9fb_108.06%)]'
-                  : 'bg-transparent text-[#a6a1bc] hover:bg-[#f6f3ff]'
-              }`}
-            >
-              <item.Icon active={isActive} />
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Bottom: Settings + Exit */}
-      <div className="flex w-full flex-col items-start gap-[30px] pt-[22px]">
+    <>
+      <aside className="flex w-[89px] shrink-0 flex-col items-start border-r border-[#e2e0f0] bg-[#fcfcff] px-[22px] pb-[22px] pt-[18px]">
         <button
-          onClick={() => setActive('settings')}
-          title="Settings"
-          className={`flex h-[45px] w-[45px] items-center justify-center rounded-[14px] transition-all duration-150 ${
-            active === 'settings'
-              ? 'bg-[linear-gradient(101deg,#efedff_2.4%,#eff3fc_47.9%,#eff9fb_108.06%)]'
-              : 'bg-transparent hover:bg-[#f6f3ff]'
-          }`}
+          ref={drawerTriggerRef}
+          type="button"
+          onClick={() => setIsDrawerOpen((current) => !current)}
+          className="mb-6 ml-[-1px] rounded-[14px] transition hover:bg-[#f6f3ff] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB]/30"
+          aria-label="Open navigation drawer"
+          aria-expanded={isDrawerOpen}
         >
-          <IconSettings active={active === 'settings'} />
+          <WarpLogo />
         </button>
-        <button title="Exit Room" className="flex h-[45px] w-[45px] items-center justify-center rounded-[14px] bg-transparent transition-all duration-150 hover:bg-[#fff3f3]">
-          <IconExit />
-        </button>
-      </div>
-    </aside>
+
+        <div className="flex w-full flex-1 flex-col items-start gap-[30px] pt-[15px]">
+          {topItems.map((item) => {
+            const isActive = active === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => selectNavItem(item.id)}
+                title={item.label}
+                className={`flex h-[45px] w-[45px] items-center justify-center rounded-[14px] transition-all duration-150 ${
+                  isActive
+                    ? 'bg-[linear-gradient(101deg,#efedff_2.4%,#eff3fc_47.9%,#eff9fb_108.06%)]'
+                    : 'bg-transparent text-[#a6a1bc] hover:bg-[#f6f3ff]'
+                }`}
+              >
+                <item.Icon active={isActive} />
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Bottom: Settings + Exit */}
+        <div className="flex w-full flex-col items-start gap-[30px] pt-[22px]">
+          <button
+            onClick={() => selectNavItem('settings')}
+            title="Settings"
+            className={`flex h-[45px] w-[45px] items-center justify-center rounded-[14px] transition-all duration-150 ${
+              active === 'settings'
+                ? 'bg-[linear-gradient(101deg,#efedff_2.4%,#eff3fc_47.9%,#eff9fb_108.06%)]'
+                : 'bg-transparent hover:bg-[#f6f3ff]'
+            }`}
+          >
+            <IconSettings active={active === 'settings'} />
+          </button>
+          <button title="Exit Room" className="flex h-[45px] w-[45px] items-center justify-center rounded-[14px] bg-transparent transition-all duration-150 hover:bg-[#fff3f3]">
+            <IconExit />
+          </button>
+        </div>
+      </aside>
+
+      {isDrawerOpen ? (
+        <div
+          ref={drawerRef}
+          className="fixed bottom-0 left-[89px] top-0 z-50 flex w-[236px] flex-col border-r border-[#e2e0f0] bg-white px-[18px] py-[22px] shadow-[8px_0_24px_rgba(84,86,106,0.10)]"
+        >
+          <div className="mb-[30px] flex items-center justify-between gap-3">
+            <img src={VIRTUAL_ROOM_LOCAL_ASSETS.logo} alt="WARP" className="h-[24px] w-auto" />
+            <button
+              type="button"
+              onClick={() => setIsDrawerOpen(false)}
+              className="flex h-[28px] w-[28px] items-center justify-center rounded-[10px] text-[#9B96B8] transition hover:bg-[#f6f3ff] hover:text-[#685EEB]"
+              aria-label="Close navigation drawer"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                <path d="M18 6 6 18" />
+                <path d="m6 6 12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <p className="warp-font-display mb-[14px] text-[13px] font-extrabold uppercase tracking-[0.04em] text-[#9b96b8]">
+            Main Menu
+          </p>
+          <nav className="flex flex-col gap-[8px]">
+            {[...topItems, { id: 'settings', Icon: IconSettings, label: 'Settings' }].map((item) => {
+              const isActive = active === item.id;
+
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => selectNavItem(item.id)}
+                  className={`flex w-full items-center gap-3 rounded-[14px] px-[12px] py-[10px] text-left transition-all duration-150 ${
+                    isActive
+                      ? 'bg-[linear-gradient(136deg,#efedff_2%,#eff3fc_48%,#eff9fb_108%)] text-[#7c5cfc]'
+                      : 'bg-white text-[#5c5780] hover:bg-[#f7f5ff]'
+                  }`}
+                >
+                  <item.Icon active={isActive} />
+                  <span className="text-[15px] font-medium leading-tight">{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <button
+            type="button"
+            onClick={() => setIsDrawerOpen(false)}
+            className="mt-auto flex w-full items-center gap-3 rounded-[14px] px-[12px] py-[10px] text-left text-[#9ca3af] transition hover:bg-[#fff3f3] hover:text-[#d95757]"
+          >
+            <IconExit />
+            <span className="text-[15px] font-medium">Exit Room</span>
+          </button>
+        </div>
+      ) : null}
+    </>
   );
 }
 
