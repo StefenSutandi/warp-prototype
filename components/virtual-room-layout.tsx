@@ -1044,13 +1044,12 @@ function RightPanel({ onCreateTask }: { onCreateTask: () => void }) {
                   <span className="warp-font-ui text-[11px] font-medium tracking-[0.01em] text-[#9B96B8]">{msg.sender}</span>
                 </div>
               )}
-              <div className={`warp-font-ui relative max-w-[164px] rounded-[28px] px-[16px] py-[10px] text-[14px] font-normal leading-[1.25] tracking-[-0.12px] shadow-[0_4px_10px_rgba(84,86,106,0.05)] ${
+              <div className={`warp-font-ui max-w-[164px] rounded-[16px] border px-[14px] py-[9px] text-[14px] font-normal leading-[1.25] tracking-[-0.12px] shadow-[0_4px_10px_rgba(84,86,106,0.05)] ${
                 msg.isMe
-                  ? 'bg-[#685EEB] text-white'
-                  : 'bg-[#F0EFF8] text-[#4C4E62]'
+                  ? 'border-[#685EEB] bg-[#685EEB] text-white'
+                  : 'border-[#E2E0F0] bg-white text-[#4C4E62]'
               }`}>
                 {msg.text}
-                <span className={`absolute bottom-[-3px] h-[18px] w-[14px] rounded-full ${msg.isMe ? 'right-[-4px] bg-[#685EEB]' : 'left-[-4px] bg-[#F0EFF8]'}`} />
               </div>
               {!msg.isMe && <span className="warp-font-ui mt-[5px] pl-[46px] text-[10px] font-normal tracking-[0.01em] text-[#9B96B8]">{msg.time}</span>}
             </div>
