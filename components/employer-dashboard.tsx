@@ -270,32 +270,55 @@ const moderatorTeamMembers: ModeratorTeamMember[] = [
   },
 ];
 
-const timelineMonths = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP'] as const;
+const broadcastRecipients = ['Everyone', 'Room 1', 'Room 2'] as const;
+type BroadcastRecipient = (typeof broadcastRecipients)[number];
 
-const projectTimelineGroups = [
+const projectTimelineWarpMonths = ['Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'] as const;
+
+const projectTimelineWarpPhases = [
   {
-    group: 'PRE-PRODUCTION',
-    tasks: [
-      { name: 'Visual direction', start: 18, width: 16, tone: 'purple' },
-      { name: 'Moodboard research', start: 31, width: 16, tone: 'mint' },
-      { name: 'Brand audit', start: 45, width: 14, tone: 'pink' },
-    ],
+    id: 'research-concept',
+    name: 'Research & Concept',
+    dateRange: 'Mar-Apr 2026',
+    progress: 100,
+    status: 'Completed',
+    tone: 'green',
+    startColumn: 1,
+    spanColumns: 2,
   },
   {
-    group: 'PRODUCTION',
-    tasks: [
-      { name: 'Icon system', start: 48, width: 30, tone: 'violet' },
-      { name: 'Landing page design', start: 74, width: 13, tone: 'green' },
-    ],
+    id: 'ui-design',
+    name: 'UI Design',
+    dateRange: 'Apr-Jun 2026',
+    progress: 55,
+    status: 'Active',
+    tone: 'purple',
+    startColumn: 2,
+    spanColumns: 3,
   },
   {
-    group: 'REVIEW & LAUNCH',
-    tasks: [
-      { name: 'Stakeholder review', start: 78, width: 12, tone: 'pink' },
-      { name: 'Launch assets', start: 90, width: 7, tone: 'green' },
-    ],
+    id: 'dev-handoff',
+    name: 'Dev Handoff',
+    dateRange: 'Jun-Jul 2026',
+    progress: 15,
+    status: 'Active',
+    tone: 'purple',
+    startColumn: 4,
+    spanColumns: 2,
+  },
+  {
+    id: 'testing-launch',
+    name: 'Testing & Launch',
+    dateRange: 'Jul-Aug 2026',
+    progress: 0,
+    status: 'Not started',
+    tone: 'gray',
+    startColumn: 5,
+    spanColumns: 2,
   },
 ] as const;
+
+type ProjectTimelineWarpPhase = (typeof projectTimelineWarpPhases)[number];
 
 type EmployerChatMessage = {
   id: string;
@@ -1007,7 +1030,7 @@ function ModeratorMemberDetail({ member }: { member: ModeratorTeamMember | null 
   );
 }
 
-function ModeratorOverviewSection() {
+function ModeratorOverviewSection({ onBroadcast }: { onBroadcast: () => void }) {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const selectedMember = moderatorTeamMembers.find((member) => member.id === selectedMemberId) ?? null;
 
@@ -1017,6 +1040,17 @@ function ModeratorOverviewSection() {
         <div>
           <p className="warp-font-display text-[13px] font-extrabold uppercase tracking-[0.04em] text-[#9b96b8]">Moderator Overview</p>
           <h2 className="mt-[5px] text-[20px] font-extrabold tracking-[-0.03em] text-black">Team Status</h2>
+          <button
+            type="button"
+            onClick={onBroadcast}
+            className={cn(
+              'mt-[12px] inline-flex h-[34px] items-center gap-[8px] rounded-[12px] bg-[#685eeb] px-[14px] text-[12px] font-extrabold text-white shadow-[0_10px_18px_rgba(104,94,235,0.16)] hover:bg-[#5d54df]',
+              purplePressClass
+            )}
+          >
+            <MessageSquarePlus className="h-[14px] w-[14px]" strokeWidth={2.2} />
+            Broadcast
+          </button>
         </div>
         <div className="flex max-w-[360px] items-start gap-[12px] rounded-[16px] border border-[#f2cccc] bg-white px-[14px] py-[12px] shadow-[0_8px_18px_rgba(224,82,82,0.08)]">
           <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-[#fff0f0] text-[#e05252]">
@@ -1051,6 +1085,155 @@ function ModeratorOverviewSection() {
         </div>
 
         <ModeratorMemberDetail member={selectedMember} />
+      </div>
+    </section>
+  );
+}
+
+function ProjectTimelineWarpSection() {
+  const [selectedPhaseId, setSelectedPhaseId] = useState<ProjectTimelineWarpPhase['id']>('ui-design');
+  const selectedPhase = projectTimelineWarpPhases.find((phase) => phase.id === selectedPhaseId) ?? projectTimelineWarpPhases[0];
+  const barToneClass = {
+    green: 'bg-[#56c596]',
+    purple: 'bg-[#685eeb]',
+    gray: 'bg-[#cfd0d8]',
+  } as const;
+  const statusToneClass = {
+    Completed: 'bg-[#eafff4] text-[#229b63]',
+    Active: 'bg-[#f0ecff] text-[#685eeb]',
+    'Not started': 'bg-[#f0f0f4] text-[#85859a]',
+  } as const;
+
+  return (
+    <section className="mt-[31px] rounded-[22px] border border-[#e2e0f0] bg-white px-[20px] py-[20px] shadow-[0_12px_30px_rgba(104,94,235,0.08)]">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="warp-font-display text-[22px] font-extrabold tracking-[-0.03em] text-[#111111]">Project Timeline WARP</h2>
+          <p className="mt-[6px] text-[12px] font-semibold text-[#858585]">
+            4 phases &middot; 16 total tasks &middot; Project deadline: June 30, 2026
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-[10px]">
+          <button
+            type="button"
+            className={cn(
+              'inline-flex h-[34px] items-center justify-center rounded-[11px] border border-[#d8d3f2] bg-white px-[13px] text-[12px] font-extrabold text-[#685eeb] hover:bg-[#f7f5ff]',
+              purplePressClass
+            )}
+          >
+            Summary
+          </button>
+          <button
+            type="button"
+            className={cn(
+              'inline-flex h-[34px] items-center gap-[7px] rounded-[11px] bg-[#685eeb] px-[13px] text-[12px] font-extrabold text-white shadow-[0_10px_20px_rgba(104,94,235,0.16)] hover:bg-[#5d54df]',
+              purplePressClass
+            )}
+          >
+            <Plus className="h-[14px] w-[14px]" strokeWidth={2.4} />
+            Add phase
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-[18px] rounded-[18px] bg-[#fbfaff] px-[15px] py-[13px]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-[13px] font-extrabold text-[#111111]">{selectedPhase.name}</p>
+            <p className="mt-[4px] text-[11px] font-semibold text-[#858585]">
+              {selectedPhase.dateRange} - {selectedPhase.progress}% complete
+            </p>
+          </div>
+          <span className={cn('rounded-full px-[10px] py-[6px] text-[11px] font-extrabold', statusToneClass[selectedPhase.status])}>
+            {selectedPhase.status}
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-[19px] grid gap-[18px] xl:grid-cols-[300px_minmax(0,1fr)]">
+        <div className="space-y-[10px]">
+          {projectTimelineWarpPhases.map((phase) => {
+            const isSelected = selectedPhaseId === phase.id;
+
+            return (
+              <button
+                key={phase.id}
+                type="button"
+                onClick={() => setSelectedPhaseId(phase.id)}
+                className={cn(
+                  'w-full rounded-[15px] border px-[14px] py-[12px] text-left transition-all duration-150',
+                  isSelected
+                    ? 'border-[#c8c1ff] bg-[#f2efff] shadow-[0_8px_18px_rgba(104,94,235,0.10)]'
+                    : 'border-[#e2e0f0] bg-white hover:bg-[#f7f5ff]'
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-[14px] font-extrabold text-black">{phase.name}</p>
+                    <p className="mt-[4px] text-[11px] font-semibold text-[#858585]">{phase.dateRange}</p>
+                  </div>
+                  <span className={cn('shrink-0 rounded-full px-[9px] py-[5px] text-[10px] font-extrabold', statusToneClass[phase.status])}>
+                    {phase.status}
+                  </span>
+                </div>
+                <div className="mt-[11px]">
+                  <div className="flex items-center justify-between text-[10px] font-semibold text-[#9b96b8]">
+                    <span>Progress</span>
+                    <span>{phase.progress}%</span>
+                  </div>
+                  <div className="mt-[6px] h-[5px] overflow-hidden rounded-full bg-[#eceaf6]">
+                    <div className={cn('h-full rounded-full', barToneClass[phase.tone])} style={{ width: `${phase.progress}%` }} />
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="overflow-x-auto rounded-[18px] border border-[#e2e0f0] bg-white px-[16px] py-[15px]">
+          <div className="min-w-[620px]">
+            <div className="grid grid-cols-6 border-b border-[#eceaf6] pb-[11px] text-center text-[12px] font-extrabold text-[#5c5780]">
+              {projectTimelineWarpMonths.map((month) => (
+                <span key={month}>{month}</span>
+              ))}
+            </div>
+
+            <div className="relative mt-[14px] space-y-[16px]">
+              <div className="pointer-events-none absolute inset-y-0 left-0 right-0 grid grid-cols-6">
+                {projectTimelineWarpMonths.map((month) => (
+                  <span key={month} className="border-r border-[#f0eef8] last:border-r-0" />
+                ))}
+              </div>
+
+              {projectTimelineWarpPhases.map((phase) => {
+                const isSelected = selectedPhaseId === phase.id;
+
+                return (
+                  <button
+                    key={phase.id}
+                    type="button"
+                    onClick={() => setSelectedPhaseId(phase.id)}
+                    className="relative grid h-[38px] w-full grid-cols-6 items-center text-left"
+                    aria-label={`Select ${phase.name}`}
+                  >
+                    <span
+                      className={cn(
+                        'relative z-10 flex h-[18px] items-center rounded-full px-[10px] text-[10px] font-extrabold text-white shadow-[0_7px_14px_rgba(104,94,235,0.12)] transition-all',
+                        barToneClass[phase.tone],
+                        isSelected && 'ring-4 ring-[#dcd8ff]'
+                      )}
+                      style={{
+                        gridColumn: `${phase.startColumn} / span ${phase.spanColumns}`,
+                      }}
+                    >
+                      <span className="truncate">{phase.progress}%</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -1168,9 +1351,11 @@ type EmployerStage = 'dashboard' | 'create-room';
 function EmployerDashboardHome({
   onCreateRoom,
   onJoinRoom,
+  onBroadcast,
 }: {
   onCreateRoom: () => void;
   onJoinRoom: () => void;
+  onBroadcast: () => void;
 }) {
   return (
     <div className="space-y-[15px] px-[21px] py-[22px]">
@@ -1205,7 +1390,7 @@ function EmployerDashboardHome({
         </DashboardCard>
       </div>
 
-      <ModeratorOverviewSection />
+      <ModeratorOverviewSection onBroadcast={onBroadcast} />
     </div>
   );
 }
@@ -1428,6 +1613,136 @@ function AchievementCard({
   );
 }
 
+function BroadcastMessageModal({
+  onClose,
+}: {
+  onClose: () => void;
+}) {
+  const [selectedRecipients, setSelectedRecipients] = useState<BroadcastRecipient[]>(['Everyone']);
+  const [message, setMessage] = useState('');
+  const trimmedMessage = message.trim();
+
+  useEffect(() => {
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  const toggleRecipient = (recipient: BroadcastRecipient) => {
+    setSelectedRecipients((current) => {
+      const hasRecipient = current.includes(recipient);
+      if (hasRecipient && current.length === 1) {
+        return current;
+      }
+
+      return hasRecipient ? current.filter((item) => item !== recipient) : [...current, recipient];
+    });
+  };
+
+  const sendBroadcast = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!trimmedMessage) return;
+
+    console.log('Broadcast message:', {
+      recipients: selectedRecipients,
+      message: trimmedMessage,
+    });
+    setMessage('');
+    onClose();
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#111111]/30 px-4 py-6 backdrop-blur-[2px]"
+      role="presentation"
+      onMouseDown={onClose}
+    >
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="broadcast-message-title"
+        onMouseDown={(event) => event.stopPropagation()}
+        onSubmit={sendBroadcast}
+        className="relative w-full max-w-[632px] rounded-[30px] border border-[#e2e0f0] bg-white px-[34px] pb-[62px] pt-[44px] shadow-[0_22px_60px_rgba(72,66,140,0.18)] sm:px-[86px]"
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className={cn(
+            'absolute right-[20px] top-[18px] flex h-[30px] w-[30px] items-center justify-center rounded-full text-[#858585] transition hover:bg-[#f7f5ff] hover:text-[#685eeb]',
+            purplePressClass
+          )}
+          aria-label="Close broadcast message modal"
+        >
+          <X className="h-[20px] w-[20px]" strokeWidth={2.4} />
+        </button>
+
+        <h2 id="broadcast-message-title" className="text-center text-[20px] font-extrabold text-black">
+          Broadcast Message
+        </h2>
+
+        <fieldset className="mt-[58px]">
+          <legend className="text-[14px] font-extrabold uppercase text-black">Send to</legend>
+          <div className="mt-[22px] space-y-[14px]">
+            {broadcastRecipients.map((recipient) => {
+              const isSelected = selectedRecipients.includes(recipient);
+
+              return (
+                <button
+                  key={recipient}
+                  type="button"
+                  onClick={() => toggleRecipient(recipient)}
+                  className={cn(
+                    'flex h-[50px] w-full items-center justify-between gap-4 rounded-[18px] px-[16px] text-left transition',
+                    isSelected ? 'bg-[#f0ecff]' : 'bg-[#fbfaff] hover:bg-[#f5f2ff]'
+                  )}
+                  aria-pressed={isSelected}
+                >
+                  <span className="text-[16px] font-semibold text-black">{recipient}</span>
+                  <span
+                    className={cn(
+                      'flex h-[22px] w-[22px] items-center justify-center rounded-[5px] transition',
+                      isSelected ? 'bg-[#685eeb] text-white' : 'bg-[#d9d9d9] text-transparent'
+                    )}
+                  >
+                    <Check className="h-[14px] w-[14px]" strokeWidth={3} />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+
+        <label className="mt-[39px] block">
+          <span className="text-[14px] font-extrabold uppercase text-black">Message</span>
+          <textarea
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            className="mt-[12px] min-h-[130px] w-full resize-none rounded-[15px] border border-[#e2e0f0] bg-white px-[16px] py-[14px] text-[14px] font-medium text-[#27213f] outline-none transition focus:border-[#685eeb] focus:ring-2 focus:ring-[#685eeb]/12"
+          />
+        </label>
+
+        <button
+          type="submit"
+          disabled={!trimmedMessage}
+          className={cn(
+            'mt-[66px] flex h-[51px] w-full items-center justify-center rounded-[15px] bg-[linear-gradient(105deg,#685eeb_2%,#7970f0_56%,#a29bfc_111%)] text-[20px] font-extrabold text-white shadow-[0_1px_12px_rgba(162,155,252,0.58)] transition hover:brightness-[1.03]',
+            !trimmedMessage && 'cursor-not-allowed opacity-45 hover:brightness-100',
+            purplePressClass
+          )}
+        >
+          Send Broadcast
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function EmployerStatsPage() {
   const [selectedAchievement, setSelectedAchievement] = useState<string>('first-room');
 
@@ -1512,13 +1827,6 @@ function EmployerTeamPage({ onMessageTeammate }: { onMessageTeammate: (teammate:
   const [selectedTeammate, setSelectedTeammate] = useState<TeamMemberProfile | null>(null);
   const [activeProfileTab, setActiveProfileTab] = useState<ProfileModalTab>('activity');
   const selectedStudio = studioTabs.find((studio) => studio.id === selectedStudioId) ?? studioTabs[0];
-  const timelineToneClass = {
-    purple: 'bg-[#c5bff5]',
-    mint: 'bg-[#9fe1cb]',
-    pink: 'bg-[#eb9eb9]',
-    violet: 'bg-[#8b7fe8]',
-    green: 'bg-[#5dcaa5]',
-  } as const;
   const statusToneClass = {
     'In Review': 'bg-[#e4e0ff] text-[#685eeb]',
     'In Progress': 'bg-[#e7fbf5] text-[#20a875]',
@@ -1665,60 +1973,7 @@ function EmployerTeamPage({ onMessageTeammate }: { onMessageTeammate: (teammate:
         </div>
       </section>
 
-      <section className="mt-[31px]">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="warp-font-display text-[20px] font-extrabold tracking-[-0.03em] text-[#111111]">Project Timeline</h2>
-          <button
-            type="button"
-            className={cn('rounded-[10px] bg-[#685eeb] px-[12px] py-[8px] text-[12px] font-bold text-white shadow-[0_10px_20px_rgba(104,94,235,0.16)] hover:bg-[#5d54df]', purplePressClass)}
-          >
-            Edit Timeline
-          </button>
-        </div>
-
-        <div className="mt-[16px] rounded-[22px] bg-white px-[18px] py-[18px] shadow-[0_12px_30px_rgba(104,94,235,0.08)] ring-1 ring-[#e2e0f0]/70">
-          <div className="px-[4px]">
-            <h3 className="text-[16px] font-bold text-black">Rebranding Harmonia Studio</h3>
-            <p className="mt-[5px] text-[11px] font-medium text-[#a5a4a4]">1 January 2026 - 30 September 2026</p>
-          </div>
-
-          <div className="mt-[26px] border-t border-[#e2e0f0] pt-[17px]">
-            <div className="grid grid-cols-[142px_minmax(680px,1fr)] gap-[16px] overflow-x-auto pb-[2px]">
-              <div />
-              <div className="grid grid-cols-9 px-[6px] text-center text-[12px] font-bold text-black">
-                {timelineMonths.map((month) => (
-                  <span key={month}>{month}</span>
-                ))}
-              </div>
-
-              {projectTimelineGroups.map((group) => (
-                <div key={group.group} className="contents">
-                  <div className="pt-[18px] text-[12px] font-extrabold uppercase text-black">{group.group}</div>
-                  <div className="relative space-y-[10px] py-[18px]">
-                    <div className="absolute bottom-[6px] left-[48.5%] top-[4px] w-px bg-[#ff7675]">
-                      <span className="absolute -top-[3px] left-1/2 h-[8px] w-[8px] -translate-x-1/2 rounded-full bg-[#ff7675]" />
-                    </div>
-                    {group.tasks.map((item) => (
-                      <div key={item.name} className="grid grid-cols-[170px_minmax(0,1fr)] items-center gap-[12px]">
-                        <div className="flex min-w-0 items-center gap-[8px]">
-                          <span className={cn('h-[7px] w-[7px] shrink-0 rounded-full', timelineToneClass[item.tone])} />
-                          <span className="truncate text-[13px] font-medium text-black">{item.name}</span>
-                        </div>
-                        <div className="relative h-[19px]">
-                          <span
-                            className={cn('absolute inset-y-0 rounded-full shadow-[0_5px_12px_rgba(104,94,235,0.08)]', timelineToneClass[item.tone])}
-                            style={{ left: `${item.start}%`, width: `${item.width}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+      <ProjectTimelineWarpSection />
 
       {selectedTeammate ? (
         <ProfileModal
@@ -2716,6 +2971,7 @@ export function EmployerDashboard() {
   const [activeItem, setActiveItem] = useState<(typeof navItems)[number]['id']>('dashboard');
   const [selectedChatTeammate, setSelectedChatTeammate] = useState<TeamMemberProfile | null>(null);
   const [isRoomCodeModalOpen, setIsRoomCodeModalOpen] = useState(false);
+  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
   const [roomCode, setRoomCode] = useState('');
   const teammates = useTaskStore((state) => state.teammates);
   const currentUser = useUserStore((state) => state.currentUser);
@@ -2784,7 +3040,11 @@ export function EmployerDashboard() {
               ) : isSettingsPage ? (
                 <EmployerSettingsPage />
               ) : stage === 'dashboard' ? (
-                <EmployerDashboardHome onCreateRoom={() => setStage('create-room')} onJoinRoom={openRoomCodeModal} />
+                <EmployerDashboardHome
+                  onCreateRoom={() => setStage('create-room')}
+                  onJoinRoom={openRoomCodeModal}
+                  onBroadcast={() => setIsBroadcastModalOpen(true)}
+                />
               ) : (
                 <EmployerCreateRoomFlow onBack={() => setStage('dashboard')} />
               )}
@@ -2810,6 +3070,9 @@ export function EmployerDashboard() {
           onConfirm={confirmRoomCode}
           onClose={closeRoomCodeModal}
         />
+      ) : null}
+      {isBroadcastModalOpen ? (
+        <BroadcastMessageModal onClose={() => setIsBroadcastModalOpen(false)} />
       ) : null}
     </div>
   );
