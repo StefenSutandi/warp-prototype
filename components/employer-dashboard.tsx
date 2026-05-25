@@ -884,9 +884,9 @@ function ModeratorTeamStatusCard({
   }[tone];
 
   return (
-    <div className="rounded-[13px] border border-[#e2e0f0] bg-white px-[14px] py-[12px] shadow-[0_5px_17.6px_rgba(133,133,133,0.06)]">
-      <p className="text-[22px] font-extrabold leading-none text-black">{value}</p>
-      <div className="mt-[9px]">
+    <div className="rounded-[13px] border border-[#e2e0f0] bg-white px-[13px] py-[11px] shadow-[0_5px_17.6px_rgba(133,133,133,0.05)]">
+      <p className="text-[20px] font-extrabold leading-none text-black">{value}</p>
+      <div className="mt-[8px]">
         <span className={cn('inline-flex rounded-full px-[8px] py-[4px] text-[10px] font-extrabold leading-none', toneClass)}>
           {label}
         </span>
@@ -921,7 +921,7 @@ function ModeratorTeamMemberRow({
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-[8px]">
           <p className="truncate text-[14px] font-extrabold text-black">{member.name}</p>
-          {member.id === 'aliyah-r' ? <span className="shrink-0 text-[11px] font-semibold text-[#9b96b8]">5 task</span> : null}
+          {member.id === 'aliyah-r' ? <span className="shrink-0 text-[11px] font-semibold text-[#9b96b8]">5 tasks</span> : null}
         </div>
         <p className="mt-[3px] truncate text-[11px] font-semibold text-[#858585]">{member.role}</p>
       </div>
@@ -982,7 +982,7 @@ function ModeratorMemberDetail({ member }: { member: ModeratorTeamMember | null 
       <div className="mt-[21px]">
         <div className="flex items-center justify-between gap-3">
           <p className="text-[13px] font-extrabold uppercase tracking-[0.04em] text-[#9b96b8]">Active Tasks</p>
-          <span className="text-[11px] font-semibold text-[#685eeb]">{member.taskCount} task</span>
+          <span className="text-[11px] font-semibold text-[#685eeb]">{member.taskCount} {member.taskCount === 1 ? 'task' : 'tasks'}</span>
         </div>
 
         <div className="mt-[12px] space-y-[10px]">
@@ -1035,7 +1035,7 @@ function ModeratorOverviewSection({ onBroadcast }: { onBroadcast: () => void }) 
   const selectedMember = moderatorTeamMembers.find((member) => member.id === selectedMemberId) ?? null;
 
   return (
-    <section className="rounded-[17px] border border-[#e2e0f0] bg-[#f5f3ff]/88 px-[18px] py-[18px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
+    <section className="rounded-[17px] border border-[#e2e0f0] bg-white/86 px-[20px] py-[18px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="warp-font-display text-[13px] font-extrabold uppercase tracking-[0.04em] text-[#9b96b8]">Moderator Overview</p>
@@ -1044,7 +1044,7 @@ function ModeratorOverviewSection({ onBroadcast }: { onBroadcast: () => void }) 
             type="button"
             onClick={onBroadcast}
             className={cn(
-              'mt-[12px] inline-flex h-[34px] items-center gap-[8px] rounded-[12px] bg-[#685eeb] px-[14px] text-[12px] font-extrabold text-white shadow-[0_10px_18px_rgba(104,94,235,0.16)] hover:bg-[#5d54df]',
+              'mt-[12px] inline-flex h-[34px] items-center gap-[8px] rounded-[12px] border border-[#d8d3f2] bg-white px-[14px] text-[12px] font-extrabold text-[#685eeb] shadow-[0_8px_16px_rgba(104,94,235,0.08)] hover:bg-[#f7f5ff]',
               purplePressClass
             )}
           >
@@ -1057,14 +1057,14 @@ function ModeratorOverviewSection({ onBroadcast }: { onBroadcast: () => void }) 
             <Bell className="h-[17px] w-[17px]" strokeWidth={2.2} />
           </span>
           <div className="min-w-0">
-            <p className="text-[13px] font-extrabold leading-[1.3] text-[#27213f]">5 tasks wait your approval — Phase 1 is blocked.</p>
+            <p className="text-[13px] font-extrabold leading-[1.3] text-[#27213f]">5 tasks need your approval - Phase 1 is blocked.</p>
             <p className="mt-[5px] text-[11px] font-semibold leading-[1.35] text-[#858585]">Meeting will start in 10 minutes, please get ready.</p>
             <p className="mt-[5px] text-[11px] font-extrabold text-[#685eeb]">Daniel (CEO)</p>
           </div>
         </div>
       </div>
 
-      <div className="mt-[16px] grid gap-[14px] xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mt-[16px] grid gap-[14px] xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="rounded-[17px] border border-[#e2e0f0] bg-white px-[16px] py-[16px]">
           <div className="grid gap-[10px] sm:grid-cols-3">
             <ModeratorTeamStatusCard label="overdue" value={2} tone="overdue" />
@@ -1105,10 +1105,10 @@ function ProjectTimelineWarpSection() {
   } as const;
 
   return (
-    <section className="mt-[31px] rounded-[22px] border border-[#e2e0f0] bg-white px-[20px] py-[20px] shadow-[0_12px_30px_rgba(104,94,235,0.08)]">
+    <section className="mt-[28px] rounded-[20px] border border-[#e2e0f0] bg-white px-[20px] py-[18px] shadow-[0_10px_24px_rgba(104,94,235,0.07)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="warp-font-display text-[22px] font-extrabold tracking-[-0.03em] text-[#111111]">Project Timeline WARP</h2>
+          <h2 className="warp-font-display text-[21px] font-extrabold tracking-[-0.03em] text-[#111111]">Project Timeline WARP</h2>
           <p className="mt-[6px] text-[12px] font-semibold text-[#858585]">
             4 phases &middot; 16 total tasks &middot; Project deadline: June 30, 2026
           </p>
@@ -1136,7 +1136,7 @@ function ProjectTimelineWarpSection() {
         </div>
       </div>
 
-      <div className="mt-[18px] rounded-[18px] bg-[#fbfaff] px-[15px] py-[13px]">
+      <div className="mt-[16px] rounded-[16px] bg-[#fbfaff] px-[15px] py-[12px]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-[13px] font-extrabold text-[#111111]">{selectedPhase.name}</p>
@@ -1150,8 +1150,8 @@ function ProjectTimelineWarpSection() {
         </div>
       </div>
 
-      <div className="mt-[19px] grid gap-[18px] xl:grid-cols-[300px_minmax(0,1fr)]">
-        <div className="space-y-[10px]">
+      <div className="mt-[17px] grid gap-[16px] xl:grid-cols-[280px_minmax(0,1fr)]">
+        <div className="space-y-[8px]">
           {projectTimelineWarpPhases.map((phase) => {
             const isSelected = selectedPhaseId === phase.id;
 
@@ -1161,7 +1161,7 @@ function ProjectTimelineWarpSection() {
                 type="button"
                 onClick={() => setSelectedPhaseId(phase.id)}
                 className={cn(
-                  'w-full rounded-[15px] border px-[14px] py-[12px] text-left transition-all duration-150',
+                  'w-full rounded-[14px] border px-[13px] py-[11px] text-left transition-all duration-150',
                   isSelected
                     ? 'border-[#c8c1ff] bg-[#f2efff] shadow-[0_8px_18px_rgba(104,94,235,0.10)]'
                     : 'border-[#e2e0f0] bg-white hover:bg-[#f7f5ff]'
@@ -1190,7 +1190,7 @@ function ProjectTimelineWarpSection() {
           })}
         </div>
 
-        <div className="overflow-x-auto rounded-[18px] border border-[#e2e0f0] bg-white px-[16px] py-[15px]">
+        <div className="overflow-x-auto rounded-[16px] border border-[#e2e0f0] bg-white px-[16px] py-[14px]">
           <div className="min-w-[620px]">
             <div className="grid grid-cols-6 border-b border-[#eceaf6] pb-[11px] text-center text-[12px] font-extrabold text-[#5c5780]">
               {projectTimelineWarpMonths.map((month) => (
@@ -1198,7 +1198,7 @@ function ProjectTimelineWarpSection() {
               ))}
             </div>
 
-            <div className="relative mt-[14px] space-y-[16px]">
+            <div className="relative mt-[14px] space-y-[14px]">
               <div className="pointer-events-none absolute inset-y-0 left-0 right-0 grid grid-cols-6">
                 {projectTimelineWarpMonths.map((month) => (
                   <span key={month} className="border-r border-[#f0eef8] last:border-r-0" />
@@ -1213,7 +1213,7 @@ function ProjectTimelineWarpSection() {
                     key={phase.id}
                     type="button"
                     onClick={() => setSelectedPhaseId(phase.id)}
-                    className="relative grid h-[38px] w-full grid-cols-6 items-center text-left"
+                    className="relative grid h-[36px] w-full grid-cols-6 items-center text-left"
                     aria-label={`Select ${phase.name}`}
                   >
                     <span
@@ -1436,7 +1436,7 @@ function InsertRoomCodeModal({
             onConfirm();
           }
         }}
-        className="relative w-full max-w-[546px] rounded-[30px] border border-[#e2e0f0] bg-white px-[43px] pb-[48px] pt-[42px] shadow-[0_22px_60px_rgba(72,66,140,0.18)]"
+        className="relative w-full max-w-[520px] rounded-[28px] border border-[#e2e0f0] bg-white px-[38px] pb-[42px] pt-[40px] shadow-[0_22px_60px_rgba(72,66,140,0.18)]"
       >
         <button
           type="button"
@@ -1668,7 +1668,7 @@ function BroadcastMessageModal({
         aria-labelledby="broadcast-message-title"
         onMouseDown={(event) => event.stopPropagation()}
         onSubmit={sendBroadcast}
-        className="relative w-full max-w-[632px] rounded-[30px] border border-[#e2e0f0] bg-white px-[34px] pb-[62px] pt-[44px] shadow-[0_22px_60px_rgba(72,66,140,0.18)] sm:px-[86px]"
+        className="relative w-full max-w-[600px] rounded-[28px] border border-[#e2e0f0] bg-white px-[34px] pb-[46px] pt-[40px] shadow-[0_22px_60px_rgba(72,66,140,0.18)] sm:px-[72px]"
       >
         <button
           type="button"
@@ -1686,9 +1686,9 @@ function BroadcastMessageModal({
           Broadcast Message
         </h2>
 
-        <fieldset className="mt-[58px]">
+        <fieldset className="mt-[42px]">
           <legend className="text-[14px] font-extrabold uppercase text-black">Send to</legend>
-          <div className="mt-[22px] space-y-[14px]">
+          <div className="mt-[18px] space-y-[12px]">
             {broadcastRecipients.map((recipient) => {
               const isSelected = selectedRecipients.includes(recipient);
 
@@ -1698,7 +1698,7 @@ function BroadcastMessageModal({
                   type="button"
                   onClick={() => toggleRecipient(recipient)}
                   className={cn(
-                    'flex h-[50px] w-full items-center justify-between gap-4 rounded-[18px] px-[16px] text-left transition',
+                    'flex h-[48px] w-full items-center justify-between gap-4 rounded-[16px] px-[16px] text-left transition',
                     isSelected ? 'bg-[#f0ecff]' : 'bg-[#fbfaff] hover:bg-[#f5f2ff]'
                   )}
                   aria-pressed={isSelected}
@@ -1718,7 +1718,7 @@ function BroadcastMessageModal({
           </div>
         </fieldset>
 
-        <label className="mt-[39px] block">
+        <label className="mt-[32px] block">
           <span className="text-[14px] font-extrabold uppercase text-black">Message</span>
           <textarea
             value={message}
@@ -1731,7 +1731,7 @@ function BroadcastMessageModal({
           type="submit"
           disabled={!trimmedMessage}
           className={cn(
-            'mt-[66px] flex h-[51px] w-full items-center justify-center rounded-[15px] bg-[linear-gradient(105deg,#685eeb_2%,#7970f0_56%,#a29bfc_111%)] text-[20px] font-extrabold text-white shadow-[0_1px_12px_rgba(162,155,252,0.58)] transition hover:brightness-[1.03]',
+            'mt-[36px] flex h-[51px] w-full items-center justify-center rounded-[15px] bg-[linear-gradient(105deg,#685eeb_2%,#7970f0_56%,#a29bfc_111%)] text-[20px] font-extrabold text-white shadow-[0_1px_12px_rgba(162,155,252,0.58)] transition hover:brightness-[1.03]',
             !trimmedMessage && 'cursor-not-allowed opacity-45 hover:brightness-100',
             purplePressClass
           )}
@@ -2053,7 +2053,7 @@ function ProfileModal({
         aria-modal="true"
         aria-label={`${teammate.name} profile`}
         onMouseDown={(event) => event.stopPropagation()}
-        className="relative grid max-h-[90vh] w-full max-w-[940px] overflow-y-auto rounded-[44px] border border-[#e2e0f0] bg-white shadow-[0_24px_70px_rgba(72,66,140,0.20)] lg:min-h-[692px] lg:grid-cols-[316px_minmax(0,1fr)]"
+        className="relative grid max-h-[90vh] w-full max-w-[920px] overflow-y-auto rounded-[28px] border border-[#e2e0f0] bg-white shadow-[0_22px_60px_rgba(72,66,140,0.18)] lg:min-h-[660px] lg:grid-cols-[300px_minmax(0,1fr)]"
       >
         <button
           type="button"
@@ -2067,7 +2067,7 @@ function ProfileModal({
           <X className="h-[17px] w-[17px]" strokeWidth={2.2} />
         </button>
 
-        <aside className="rounded-t-[44px] bg-[#f1f3ff] px-[43px] pb-[36px] pt-[46px] lg:rounded-l-[44px] lg:rounded-tr-none">
+        <aside className="rounded-t-[28px] bg-[#f1f3ff] px-[36px] pb-[34px] pt-[42px] lg:rounded-l-[28px] lg:rounded-tr-none">
           <div className="relative h-[92px] w-[92px]">
             <div className={cn('absolute inset-0 rounded-full bg-gradient-to-br p-[4px]', teammate.avatarGradient)}>
               <div className="relative h-full w-full overflow-hidden rounded-full bg-[#f8f7fc]">
@@ -2119,7 +2119,7 @@ function ProfileModal({
           </div>
         </aside>
 
-        <div className="px-[28px] pb-[38px] pt-[48px] sm:px-[42px] lg:px-[57px]">
+        <div className="px-[28px] pb-[36px] pt-[46px] sm:px-[40px] lg:px-[50px]">
           <div className="border-b border-[#a29bfc]">
             <div className="flex items-center gap-[48px]">
               {[
@@ -2529,6 +2529,7 @@ function EmployerChatPage({ selectedTeammate }: { selectedTeammate: TeamMemberPr
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const activeThread = threads.find((thread) => thread.id === activeThreadId) ?? threads[0];
+  const openedFromProfile = selectedTeammate ? activeThread.id === teammateChatId(selectedTeammate) : false;
 
   useEffect(() => {
     if (!selectedTeammate) return;
@@ -2672,7 +2673,14 @@ function EmployerChatPage({ selectedTeammate }: { selectedTeammate: TeamMemberPr
                 <Image src={activeThread.avatarSrc} alt="" fill sizes="53px" className="object-cover" />
               </div>
               <div>
-                <p className="text-[16px] font-semibold text-black">{activeThread.name}</p>
+                <div className="flex flex-wrap items-center gap-[8px]">
+                  <p className="text-[16px] font-semibold text-black">{activeThread.name}</p>
+                  {openedFromProfile ? (
+                    <span className="rounded-full bg-[#f0ecff] px-[8px] py-[4px] text-[10px] font-extrabold uppercase tracking-[0.04em] text-[#685eeb]">
+                      Selected teammate
+                    </span>
+                  ) : null}
+                </div>
                 <div className="mt-[3px] flex items-center gap-[6px]">
                   <span className="h-[6px] w-[6px] rounded-full bg-[#3abf38]" />
                   <span className="text-[11px] font-medium text-[#3abf38]">Online</span>
