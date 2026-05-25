@@ -220,8 +220,11 @@ type SittingVisualPose = {
 };
 type BodyTone = 'light' | 'medium' | 'dark';
 type OutfitType = 'long' | 'hoodie' | 'short' | 'suit';
+type CoworkerPresenceStatus = 'online' | 'afk';
 type RoomCoworkerConfig = {
   id: string;
+  name: string;
+  status: CoworkerPresenceStatus;
   x: number;
   y: number;
   direction: Extract<AvatarDirection, 'FR' | 'FL'>;
@@ -246,6 +249,7 @@ type RoomCoworkerLayers = {
   faceBlinkTextureKey: string;
   blinkEvent?: Phaser.Time.TimerEvent;
   hitArea?: Phaser.GameObjects.Arc;
+  nameBadge?: Phaser.GameObjects.Container;
 };
 type StaticSeatedCoworkerConfig = {
   id: string;
@@ -285,6 +289,8 @@ const COWORKER_IDLE_DIRECTIONS: Extract<AvatarDirection, 'FR' | 'FL'>[] = ['FR',
 const COWORKER_DISPLAY_SIZE = AVATAR_DISPLAY_SIZE;
 const COWORKER_BLINK_INTERVAL_MS = 3200;
 const COWORKER_BLINK_DURATION_MS = 130;
+const COWORKER_NAME_BADGE_OFFSET_Y = 172;
+const STATIC_COWORKER_NAME_BADGE_OFFSET_Y = 148;
 const COWORKER_OUTFIT_IDLE_FILES: Record<OutfitType, string> = {
   long: 'outfit1_idle.png',
   hoodie: 'outfit2_idle.png',
@@ -326,6 +332,8 @@ const DEFAULT_PLAYER_AVATAR_SELECTION: Pick<
 const MAIN_ROOM_COWORKER_CONFIGS: Omit<RoomCoworkerConfig, 'x' | 'y'>[] = [
   {
     id: 'coworker-left',
+    name: 'Coworker B',
+    status: 'online',
     direction: 'FR',
     bodyTone: 'medium',
     outfitType: 'suit',
@@ -335,6 +343,8 @@ const MAIN_ROOM_COWORKER_CONFIGS: Omit<RoomCoworkerConfig, 'x' | 'y'>[] = [
   },
   {
     id: 'coworker-middle',
+    name: 'Coworker C',
+    status: 'afk',
     direction: 'FL',
     bodyTone: 'light',
     outfitType: 'hoodie',
@@ -345,6 +355,8 @@ const MAIN_ROOM_COWORKER_CONFIGS: Omit<RoomCoworkerConfig, 'x' | 'y'>[] = [
   },
   {
     id: 'coworker-right',
+    name: 'Coworker D',
+    status: 'online',
     direction: 'FL',
     bodyTone: 'dark',
     bodyTextureKey: 'avatar-coworker-body-dark-FL-idle-tone',
@@ -2760,7 +2772,15 @@ export default class MainOfficeScene extends Phaser.Scene {
       .setDepth(headDepth + 1);
     this.startStaticSeatedCoworkerBlink(face, config.faceDefaultTextureKey, config.faceBlinkTextureKey, faceConfig.visible);
 
-    this.roomObjects.push(shadow, body, outfit, hair, face);
+    const nameBadge = this.createCoworkerNameBadge(
+      base.x,
+      base.y - STATIC_COWORKER_NAME_BADGE_OFFSET_Y,
+      config.name,
+      'online',
+      headDepth + 20,
+    );
+
+    this.roomObjects.push(shadow, body, outfit, hair, face, nameBadge);
   }
 
   private getStaticCoworkerFaceTexture(textureKey: string): string {
@@ -2822,6 +2842,38 @@ export default class MainOfficeScene extends Phaser.Scene {
   //  TEAMMATE CREATION + INTERACTION MENU
   // =============================================
 
+  private createCoworkerNameBadge(
+    x: number,
+    y: number,
+    name: string,
+    status: CoworkerPresenceStatus,
+    depth: number,
+  ): Phaser.GameObjects.Container {
+    const text = this.add.text(0, 0, name, {
+      fontFamily: 'Funnel Sans, Arial, sans-serif',
+      fontSize: '10px',
+      color: '#ffffff',
+      fontStyle: '600',
+    }).setOrigin(0, 0.5);
+    const labelBounds = text.getBounds();
+    const badgeWidth = Math.max(74, labelBounds.width + 28);
+    const badgeHeight = 20;
+    const dotColor = status === 'online' ? 0x56efc4 : 0x9ca3af;
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x27213f, 0.78);
+    bg.lineStyle(1, 0xffffff, 0.14);
+    bg.fillRoundedRect(-badgeWidth / 2, -badgeHeight / 2, badgeWidth, badgeHeight, 10);
+    bg.strokeRoundedRect(-badgeWidth / 2, -badgeHeight / 2, badgeWidth, badgeHeight, 10);
+
+    const dot = this.add.circle(-badgeWidth / 2 + 11, 0, 3.5, dotColor, 1);
+    text.setPosition(-badgeWidth / 2 + 20, 0);
+
+    return this.add.container(x, y, [bg, dot, text])
+      .setDepth(depth)
+      .setSize(badgeWidth, badgeHeight);
+  }
+
   private spawnLayeredCoworker(config: RoomCoworkerConfig, hitArea?: Phaser.GameObjects.Arc): RoomCoworkerLayers {
     const shouldFlipFrontLayer = config.direction === 'FL';
     const body = this.add.sprite(config.x, config.y, config.bodyTextureKey ?? this.getCoworkerBodyIdleTexture(config.bodyTone, config.direction));
@@ -2841,6 +2893,14 @@ export default class MainOfficeScene extends Phaser.Scene {
     hair.setFlipX(shouldFlipFrontLayer);
     face.setFlipX(config.faceFlipX ?? shouldFlipFrontLayer);
     face.setVisible(config.faceVisible ?? true);
+    const nameBadge = this.createCoworkerNameBadge(
+      config.x,
+      config.y - COWORKER_NAME_BADGE_OFFSET_Y,
+      config.name,
+      config.status,
+      config.y + AVATAR_DEPTH_OFFSET + 24,
+    );
+    this.roomObjects.push(nameBadge);
 
     const coworker: RoomCoworkerLayers = {
       id: config.id,
@@ -2852,6 +2912,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       faceDefaultTextureKey: config.faceDefaultTextureKey,
       faceBlinkTextureKey: config.faceBlinkTextureKey,
       hitArea,
+      nameBadge,
     };
     this.startCoworkerBlink(coworker, config.faceVisible ?? true);
     this.syncCoworkerLayers(coworker, config.x, config.y, config.depthOffset ?? 0);
@@ -2869,6 +2930,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     coworker.hair?.setPosition(x, y).setDepth(baseDepth + 2);
     coworker.face?.setPosition(x, y).setDepth(baseDepth + 3);
     coworker.hitArea?.setPosition(x, y).setDepth(baseDepth + 4);
+    coworker.nameBadge?.setPosition(x, y - COWORKER_NAME_BADGE_OFFSET_Y).setDepth(baseDepth + 24);
   }
 
   private getCoworkerBodyIdleTexture(tone: BodyTone, direction: Extract<AvatarDirection, 'FR' | 'FL'>): string {
