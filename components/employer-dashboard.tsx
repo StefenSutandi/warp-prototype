@@ -463,7 +463,13 @@ function TopBar({
   );
 }
 
-function HeroPanel({ onCreateRoom }: { onCreateRoom: () => void }) {
+function HeroPanel({
+  onCreateRoom,
+  onJoinRoom,
+}: {
+  onCreateRoom: () => void;
+  onJoinRoom: () => void;
+}) {
   return (
     <section className="relative min-h-[332px] overflow-hidden rounded-[17px] bg-[linear-gradient(145deg,#eeeaff_0%,#dfd7ff_42%,#fbf8ff_100%)] px-[42px] py-[38px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
       <div className="relative z-10 max-w-[430px]">
@@ -482,6 +488,7 @@ function HeroPanel({ onCreateRoom }: { onCreateRoom: () => void }) {
         <div className="mt-[18px] flex flex-wrap items-center gap-[10px]">
           <button
             type="button"
+            onClick={onJoinRoom}
             className={cn(
               'inline-flex h-[38px] items-center gap-[8px] rounded-[12px] bg-[linear-gradient(97deg,#685eeb_2%,#7970f0_56%,#a29bfc_111%)] px-[18px] text-[12px] font-extrabold text-white shadow-[0_12px_24px_rgba(104,94,235,0.22)] hover:brightness-[1.03] active:brightness-95',
               purplePressClass
@@ -652,10 +659,12 @@ function RoomRow({
   title,
   level,
   membersOnline,
+  onEnterRoom,
 }: {
   title: string;
   level: string;
   membersOnline: number;
+  onEnterRoom: () => void;
 }) {
   return (
     <div className="flex items-center justify-between gap-4 border-b border-[#e2e0f0] py-[13px] first:pt-0 last:border-b-0 last:pb-0">
@@ -676,6 +685,7 @@ function RoomRow({
       </div>
       <button
         type="button"
+        onClick={onEnterRoom}
         className={cn(
           'inline-flex h-[24px] w-[77px] shrink-0 items-center justify-center gap-[8px] rounded-[8px] bg-[#ebe9fe] text-[14px] text-[#685eeb] hover:bg-[#e2defd] active:bg-[#d8d2ff]',
           purplePressClass
@@ -842,12 +852,14 @@ type EmployerStage = 'dashboard' | 'create-room';
 
 function EmployerDashboardHome({
   onCreateRoom,
+  onJoinRoom,
 }: {
   onCreateRoom: () => void;
+  onJoinRoom: () => void;
 }) {
   return (
     <div className="space-y-[15px] px-[21px] py-[22px]">
-      <HeroPanel onCreateRoom={onCreateRoom} />
+      <HeroPanel onCreateRoom={onCreateRoom} onJoinRoom={onJoinRoom} />
 
       <div className="grid gap-[14px] xl:grid-cols-2">
         <DashboardCard
@@ -859,7 +871,7 @@ function EmployerDashboardHome({
           }
         >
           {recentRooms.map((room) => (
-            <RoomRow key={room.id} title={room.title} level={room.level} membersOnline={room.membersOnline} />
+            <RoomRow key={room.id} title={room.title} level={room.level} membersOnline={room.membersOnline} onEnterRoom={onJoinRoom} />
           ))}
         </DashboardCard>
 
@@ -877,6 +889,91 @@ function EmployerDashboardHome({
           ))}
         </DashboardCard>
       </div>
+    </div>
+  );
+}
+
+function InsertRoomCodeModal({
+  roomCode,
+  onRoomCodeChange,
+  onConfirm,
+  onClose,
+}: {
+  roomCode: string;
+  onRoomCodeChange: (value: string) => void;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const trimmedRoomCode = roomCode.trim();
+
+  useEffect(() => {
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#111111]/30 px-4 py-6 backdrop-blur-[2px]"
+      role="presentation"
+      onMouseDown={onClose}
+    >
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="insert-room-code-title"
+        onMouseDown={(event) => event.stopPropagation()}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (trimmedRoomCode) {
+            onConfirm();
+          }
+        }}
+        className="relative w-full max-w-[546px] rounded-[30px] border border-[#e2e0f0] bg-white px-[43px] pb-[48px] pt-[42px] shadow-[0_22px_60px_rgba(72,66,140,0.18)]"
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className={cn(
+            'absolute right-[18px] top-[16px] flex h-[30px] w-[30px] items-center justify-center rounded-full text-[#9b96b8] transition hover:bg-[#f7f5ff] hover:text-[#685eeb]',
+            purplePressClass
+          )}
+          aria-label="Close insert room code modal"
+        >
+          <X className="h-[18px] w-[18px]" strokeWidth={2.4} />
+        </button>
+
+        <h2 id="insert-room-code-title" className="text-center text-[20px] font-extrabold text-black">
+          Insert Room Code
+        </h2>
+
+        <label className="mt-[51px] block">
+          <span className="sr-only">Room code</span>
+          <input
+            value={roomCode}
+            onChange={(event) => onRoomCodeChange(event.target.value)}
+            autoFocus
+            placeholder="Room code"
+            className="h-[49px] w-full rounded-[15px] border border-[#e2e0f0] bg-white px-[18px] text-center text-[18px] font-semibold tracking-[0.08em] text-[#111111] outline-none transition placeholder:text-transparent focus:border-[#685eeb] focus:ring-2 focus:ring-[#685eeb]/12"
+          />
+        </label>
+
+        <button
+          type="submit"
+          disabled={!trimmedRoomCode}
+          className={cn(
+            'mt-[25px] flex h-[51px] w-full items-center justify-center rounded-[15px] bg-[linear-gradient(105deg,#685eeb_2%,#7970f0_56%,#a29bfc_111%)] text-[20px] font-extrabold text-white shadow-[0_1px_6px_rgba(162,155,252,0.88)] transition hover:brightness-[1.03]',
+            trimmedRoomCode ? purplePressClass : 'cursor-not-allowed opacity-50'
+          )}
+        >
+          Confirm
+        </button>
+      </form>
     </div>
   );
 }
@@ -2301,6 +2398,8 @@ export function EmployerDashboard() {
   const [stage, setStage] = useState<EmployerStage>('dashboard');
   const [activeItem, setActiveItem] = useState<(typeof navItems)[number]['id']>('dashboard');
   const [selectedChatTeammate, setSelectedChatTeammate] = useState<TeamMemberProfile | null>(null);
+  const [isRoomCodeModalOpen, setIsRoomCodeModalOpen] = useState(false);
+  const [roomCode, setRoomCode] = useState('');
   const teammates = useTaskStore((state) => state.teammates);
   const currentUser = useUserStore((state) => state.currentUser);
   const avatarProfile = useAvatarStore((state) => state.profile);
@@ -2323,6 +2422,21 @@ export function EmployerDashboard() {
   const isStatsPage = activeItem === 'stats';
   const isTeamPage = activeItem === 'team';
   const isSettingsPage = activeItem === 'settings';
+  const openRoomCodeModal = () => {
+    setRoomCode('');
+    setIsRoomCodeModalOpen(true);
+  };
+  const closeRoomCodeModal = () => {
+    setIsRoomCodeModalOpen(false);
+  };
+  const confirmRoomCode = () => {
+    const trimmedRoomCode = roomCode.trim();
+    if (!trimmedRoomCode) return;
+
+    console.log('Join employer room with code:', trimmedRoomCode);
+    closeRoomCodeModal();
+    setRoomCode('');
+  };
 
   return (
     <div className="warp-font-ui min-h-screen w-full bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)] text-[#111111]">
@@ -2353,7 +2467,7 @@ export function EmployerDashboard() {
               ) : isSettingsPage ? (
                 <EmployerSettingsPage />
               ) : stage === 'dashboard' ? (
-                <EmployerDashboardHome onCreateRoom={() => setStage('create-room')} />
+                <EmployerDashboardHome onCreateRoom={() => setStage('create-room')} onJoinRoom={openRoomCodeModal} />
               ) : (
                 <EmployerCreateRoomFlow onBack={() => setStage('dashboard')} />
               )}
@@ -2371,6 +2485,15 @@ export function EmployerDashboard() {
           />
         ) : null}
       </div>
+
+      {isRoomCodeModalOpen ? (
+        <InsertRoomCodeModal
+          roomCode={roomCode}
+          onRoomCodeChange={setRoomCode}
+          onConfirm={confirmRoomCode}
+          onClose={closeRoomCodeModal}
+        />
+      ) : null}
     </div>
   );
 }
