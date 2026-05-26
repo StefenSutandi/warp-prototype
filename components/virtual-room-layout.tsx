@@ -800,17 +800,17 @@ function ClapHint() {
 
 function BottomControlBar() {
   return (
-    <div className="absolute bottom-[49px] left-1/2 z-30 flex h-[44px] -translate-x-1/2 items-center justify-center gap-[8px] rounded-full border border-white/10 bg-[rgba(39,33,63,0.82)] px-[10px] shadow-[0_12px_28px_rgba(39,33,63,0.22)] backdrop-blur-[10px]">
+    <div className="absolute bottom-[46px] left-1/2 z-30 flex h-[40px] -translate-x-1/2 items-center justify-center gap-[5px] rounded-full border border-white/12 bg-[rgba(34,29,55,0.82)] px-[7px] shadow-[0_10px_24px_rgba(39,33,63,0.22)] backdrop-blur-[12px]">
       {[
-        { icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>, label: 'Mic' },
-        { icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>, label: 'Chat' },
-        { icon: <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>, label: 'Emoji' },
+        { icon: <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>, label: 'Mic' },
+        { icon: <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>, label: 'Chat' },
+        { icon: <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>, label: 'Emoji' },
       ].map(btn => (
-        <button key={btn.label} type="button" title={btn.label} aria-label={btn.label} className="flex h-[32px] w-[32px] items-center justify-center rounded-full text-white/86 transition-all hover:bg-white/10 hover:text-white active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30">
+        <button key={btn.label} type="button" title={btn.label} aria-label={btn.label} className="flex h-[30px] w-[30px] items-center justify-center rounded-full text-white/84 transition-all hover:bg-white/10 hover:text-white active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#A29BFC]/60">
           {btn.icon}
         </button>
       ))}
-      <button type="button" className="warp-font-ui ml-[2px] flex h-[30px] items-center rounded-full bg-white/12 px-[12px] text-[12px] font-semibold text-white/88 transition-all hover:bg-white/18 hover:text-white active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30">
+      <button type="button" className="warp-font-ui flex h-[30px] items-center rounded-full bg-white/12 px-[11px] text-[12px] font-semibold leading-none text-white/88 transition-all hover:bg-[#685EEB]/70 hover:text-white active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#A29BFC]/60">
         AFK
       </button>
     </div>
