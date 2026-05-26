@@ -9,6 +9,7 @@ import { useAvatarStore } from '@/stores/useAvatarStore';
 
 type AvatarTab = 'face' | 'hair' | 'outfit';
 type HairColorId = 'dark' | 'brown' | 'blonde';
+type BodyToneId = 'light' | 'medium' | 'dark';
 
 type AvatarOption = {
   id: string;
@@ -25,6 +26,10 @@ type ColorOption = {
 
 type HairColorOption = ColorOption & {
   id: HairColorId;
+};
+
+type BodyToneOption = ColorOption & {
+  id: BodyToneId;
 };
 
 const avatarTabs: { id: AvatarTab; label: string }[] = [
@@ -106,11 +111,20 @@ const hairColors: HairColorOption[] = [
   { id: 'blonde', label: 'Blonde hair', value: '#DDBA72' },
 ];
 
+const bodyToneOptions: BodyToneOption[] = [
+  { id: 'light', label: 'Light body tone', value: '#F0C7A2' },
+  { id: 'medium', label: 'Medium body tone', value: '#C98558' },
+  { id: 'dark', label: 'Dark body tone', value: '#8A5038' },
+];
+
 const defaultInterests: string[] = [];
 const interestPool = ['UI/UX', 'Product', 'Frontend', 'Backend', 'Branding', 'Research', 'Motion', 'DevOps'];
 
 const isHairColorId = (value: string): value is HairColorId =>
   hairColors.some((color) => color.id === value);
+
+const isBodyToneId = (value: string): value is BodyToneId =>
+  bodyToneOptions.some((tone) => tone.id === value);
 
 const findAvatarOption = (options: AvatarOption[], id: string, fallback: AvatarOption) =>
   options.find((option) => option.id === id) ?? fallback;
@@ -161,26 +175,33 @@ function ColorSwatches({
   colors,
   selectedId,
   onSelect,
+  label,
 }: {
   colors: ColorOption[];
   selectedId: string;
   onSelect: (color: ColorOption) => void;
+  label?: string;
 }) {
   return (
-    <div className="flex items-center justify-center gap-[11px]">
-      {colors.map((color) => (
-        <button
-          key={color.id}
-          type="button"
-          aria-label={color.label}
-          onClick={() => onSelect(color)}
-          className={cn(
-            'h-[30px] w-[30px] rounded-full border-2 transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB] focus-visible:ring-offset-2',
-            selectedId === color.id ? 'border-[#A29BFC] shadow-[0_0_0_2px_rgba(104,94,235,0.16)]' : 'border-transparent'
-          )}
-          style={{ backgroundColor: color.value }}
-        />
-      ))}
+    <div className="flex items-center justify-center gap-[10px]">
+      {label ? <span className="text-[12px] font-semibold text-[#858585]">{label}</span> : null}
+      <div className="flex items-center gap-[11px]">
+        {colors.map((color) => (
+          <button
+            key={color.id}
+            type="button"
+            aria-label={color.label}
+            onClick={() => onSelect(color)}
+            className={cn(
+              'h-[30px] w-[30px] rounded-full border-2 transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB] focus-visible:ring-offset-2',
+              selectedId === color.id
+                ? 'border-white shadow-[0_0_0_3px_rgba(104,94,235,0.3)] ring-1 ring-[#685EEB]'
+                : 'border-white/80 shadow-[0_2px_8px_rgba(104,94,235,0.12)]'
+            )}
+            style={{ backgroundColor: color.value }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -251,6 +272,8 @@ function AvatarOptionsPanel({
   setSelectedOutfit,
   selectedHairColorId,
   setSelectedHairColorId,
+  selectedBodyTone,
+  setSelectedBodyTone,
 }: {
   activeTab: AvatarTab;
   setActiveTab: (tab: AvatarTab) => void;
@@ -262,6 +285,8 @@ function AvatarOptionsPanel({
   setSelectedOutfit: (option: AvatarOption) => void;
   selectedHairColorId: HairColorId;
   setSelectedHairColorId: (color: HairColorId) => void;
+  selectedBodyTone: BodyToneId;
+  setSelectedBodyTone: (tone: BodyToneId) => void;
 }) {
   const visibleOptions = useMemo(() => {
     if (activeTab === 'face') return faceOptions;
@@ -293,9 +318,22 @@ function AvatarOptionsPanel({
       </div>
 
       <div className="px-[16px] py-[18px] sm:py-[20px]">
-        {activeTab === 'hair' ? (
-          <ColorSwatches colors={hairColors} selectedId={selectedHairColorId} onSelect={(color) => setSelectedHairColorId(color.id as HairColorId)} />
-        ) : null}
+        <div className="flex flex-wrap items-center justify-center gap-x-[24px] gap-y-[12px]">
+          <ColorSwatches
+            colors={bodyToneOptions}
+            selectedId={selectedBodyTone}
+            label="Body"
+            onSelect={(color) => setSelectedBodyTone(color.id as BodyToneId)}
+          />
+          {activeTab === 'hair' ? (
+            <ColorSwatches
+              colors={hairColors}
+              selectedId={selectedHairColorId}
+              label="Hair"
+              onSelect={(color) => setSelectedHairColorId(color.id as HairColorId)}
+            />
+          ) : null}
+        </div>
         <div className={cn(activeTab === 'hair' && 'max-h-[356px] overflow-y-auto pr-[4px]')}>
           <div
             className={cn(
@@ -430,7 +468,6 @@ function ProfileInfoCard({
 
 export function AvatarCreationPage() {
   const router = useRouter();
-  const avatarConfig = useAvatarStore((state) => state.config);
   const avatarProfile = useAvatarStore((state) => state.profile);
   const avatarSelection = useAvatarStore((state) => state.selection);
   const updateAvatarProfile = useAvatarStore((state) => state.updateProfile);
@@ -438,6 +475,9 @@ export function AvatarCreationPage() {
   const initialHairColorId = isHairColorId(avatarSelection.selectedHairColorId)
     ? avatarSelection.selectedHairColorId
     : 'brown';
+  const initialBodyTone = isBodyToneId(avatarSelection.selectedBodyTone)
+    ? avatarSelection.selectedBodyTone
+    : 'light';
   const [activeTab, setActiveTab] = useState<AvatarTab>('face');
   const [selectedFace, setSelectedFace] = useState(() =>
     findAvatarOption(faceOptions, avatarSelection.selectedFaceId, faceOptions[0])
@@ -453,6 +493,7 @@ export function AvatarCreationPage() {
   const [selectedOutfit, setSelectedOutfit] = useState(() =>
     findAvatarOption(outfitOptions, avatarSelection.selectedOutfitId, outfitOptions[2])
   );
+  const [selectedBodyTone, setSelectedBodyTone] = useState<BodyToneId>(initialBodyTone);
   const [displayName, setDisplayName] = useState(() => avatarProfile.displayName);
   const [position, setPosition] = useState(() => avatarProfile.position);
   const [interests, setInterests] = useState<string[]>(() => avatarProfile.interests.length > 0 ? avatarProfile.interests : defaultInterests);
@@ -488,7 +529,7 @@ export function AvatarCreationPage() {
       selectedOutfitId: selectedOutfit.id,
       selectedOutfitSrc: selectedOutfit.src,
       selectedOutfitType: outfitTypesById[selectedOutfit.id] ?? 'short',
-      selectedBodyTone: avatarSelection.selectedBodyTone || avatarConfig.skinTone,
+      selectedBodyTone,
     });
     updateAvatarProfile({
       displayName: displayName.trim(),
@@ -519,7 +560,7 @@ export function AvatarCreationPage() {
             Create your <span className="bg-[linear-gradient(90deg,#685EEB_18%,#46D2D2_100%)] bg-clip-text text-transparent">Avatar</span>
           </h1>
           <p className="mt-[8px] text-[17px] font-light text-[#656565] sm:text-[20px]">
-            Customize how you appear in your virtual workspace - make it you!
+            Customize how you appear in your virtual workspace. Make it yours.
           </p>
         </header>
 
@@ -537,6 +578,8 @@ export function AvatarCreationPage() {
             setSelectedOutfit={setSelectedOutfit}
             selectedHairColorId={selectedHairColorId}
             setSelectedHairColorId={handleHairColorSelect}
+            selectedBodyTone={selectedBodyTone}
+            setSelectedBodyTone={setSelectedBodyTone}
           />
 
           <ProfileInfoCard
