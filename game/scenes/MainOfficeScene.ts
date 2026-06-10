@@ -178,6 +178,7 @@ const VIRTUAL_ROOM_ASSETS = {
   chairBackHoverGreen: '/assets/virtual-room/chairs/hover/chair_back_hover_green.png',
   chairBackHoverBlue: '/assets/virtual-room/chairs/hover/chair_back_hover_blue.png',
   sitPopupPrimary: '/assets/virtual-room/overlays/sit_popup_primary.png',
+  tomato: '/assets/virtual-room/ui/tomato.png',
 } as const;
 
 type AvatarDirection = 'FR' | 'FL' | 'BR' | 'BL';
@@ -837,6 +838,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.load.image('chair_back_hover_green', VIRTUAL_ROOM_ASSETS.chairBackHoverGreen);
     this.load.image('chair_back_hover_blue', VIRTUAL_ROOM_ASSETS.chairBackHoverBlue);
     this.load.image('sit_popup_primary', VIRTUAL_ROOM_ASSETS.sitPopupPrimary);
+    this.load.image('coworker-pomodoro-tomato', VIRTUAL_ROOM_ASSETS.tomato);
     this.load.image(SITTING_LAPTOP_CONFIG_BY_POSE.front.textureKey, SITTING_LAPTOP_CONFIG_BY_POSE.front.assetPath);
     this.load.image(SITTING_LAPTOP_CONFIG_BY_POSE.back.textureKey, SITTING_LAPTOP_CONFIG_BY_POSE.back.assetPath);
     this.load.image('avatar-shadow', AVATAR_SHADOW_ASSET_PATH);
@@ -2884,8 +2886,36 @@ export default class MainOfficeScene extends Phaser.Scene {
       'online',
       headDepth + 20,
     );
+    const pomodoroIndicator = this.createStaticCoworkerPomodoroIndicator(
+      base.x,
+      base.y - STATIC_COWORKER_NAME_BADGE_OFFSET_Y - 24,
+      headDepth + 19,
+    );
 
-    this.roomObjects.push(shadow, body, outfit, laptop, hair, face, nameBadge);
+    this.roomObjects.push(shadow, body, outfit, laptop, hair, face, nameBadge, pomodoroIndicator);
+  }
+
+  private createStaticCoworkerPomodoroIndicator(
+    x: number,
+    y: number,
+    depth: number,
+  ): Phaser.GameObjects.Container {
+    const width = 76;
+    const height = 16;
+    const background = this.add.graphics();
+    background.fillStyle(0xffffff, 0.92);
+    background.fillRoundedRect(-width / 2, -height / 2, width, height, 8);
+    background.lineStyle(1, 0xe2e0f0, 0.9);
+    background.strokeRoundedRect(-width / 2, -height / 2, width, height, 8);
+    const tomato = this.add.image(-width / 2 + 11, 0, 'coworker-pomodoro-tomato')
+      .setDisplaySize(18, 18);
+    const track = this.add.rectangle(-10, 0, 50, 5, 0xe9e6f6, 1)
+      .setOrigin(0, 0.5);
+    const progress = this.add.rectangle(-10, 0, 35, 5, 0x685eeb, 1)
+      .setOrigin(0, 0.5);
+
+    return this.add.container(x, y, [background, tomato, track, progress])
+      .setDepth(depth);
   }
 
   private getStaticCoworkerFaceTexture(textureKey: string): string {

@@ -8,7 +8,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useAvatarStore } from '@/stores/useAvatarStore';
 import { useOfficeStore } from '@/stores/useOfficeStore';
 import { type Task } from '@/lib/types';
-import { Pause, SkipForward, Smile } from 'lucide-react';
+import { CalendarClock, CameraOff, ChevronRight, Eye, ListTodo, MessageCircle, Mic, MonitorUp, Pause, PhoneOff, Send, SkipForward, Smile, Upload, X } from 'lucide-react';
 
 // =============================================
 //  DESIGN TOKENS (Figma typography + colors)
@@ -101,6 +101,201 @@ interface RoomDisplayState {
   members: number;
   accent: string;
 }
+
+type ModeratorTaskTab = 'active' | 'completed';
+type ScreenOverlayMode = 'share' | 'watch';
+
+interface ModeratorMember {
+  id: string;
+  name: string;
+  role: string;
+  progress: number;
+  taskLabel: string;
+  taskTone: 'purple' | 'green' | 'red';
+  avatarGradient: string;
+  avatarSrc: string;
+}
+
+interface ModeratorTask {
+  id: string;
+  assigneeId: string;
+  assignedBy: string;
+  due: string;
+  title: string;
+  description: string;
+  progress: number;
+  tab: ModeratorTaskTab;
+}
+
+const MODERATOR_TEAM_MEMBERS: ModeratorMember[] = [
+  {
+    id: 'coworker-a',
+    name: 'Coworker A',
+    role: '2D Artist',
+    progress: 72,
+    taskLabel: '3 Tasks',
+    taskTone: 'purple',
+    avatarGradient: 'linear-gradient(135deg, #f6b98f, #8d6fbb)',
+    avatarSrc: '/assets/avatar/profile/Frame%203866.png',
+  },
+  {
+    id: 'coworker-b',
+    name: 'Coworker B',
+    role: 'UI Designer',
+    progress: 58,
+    taskLabel: '1 Task',
+    taskTone: 'green',
+    avatarGradient: 'linear-gradient(135deg, #8fd9ff, #9b8dff)',
+    avatarSrc: '/assets/avatar/profile/Frame%203865.png',
+  },
+  {
+    id: 'coworker-c',
+    name: 'Coworker C',
+    role: 'Animator',
+    progress: 64,
+    taskLabel: '3 Tasks',
+    taskTone: 'purple',
+    avatarGradient: 'linear-gradient(135deg, #ffd0a1, #cda8ff)',
+    avatarSrc: '/assets/avatar/profile/Frame%203867.png',
+  },
+  {
+    id: 'coworker-d',
+    name: 'Coworker D',
+    role: 'Illustrator',
+    progress: 46,
+    taskLabel: '5 Tasks',
+    taskTone: 'red',
+    avatarGradient: 'linear-gradient(135deg, #f6a7a7, #ffd37a)',
+    avatarSrc: '/assets/avatar/profile/Frame%203868.png',
+  },
+  {
+    id: 'coworker-e',
+    name: 'Coworker E',
+    role: '3D Artist',
+    progress: 80,
+    taskLabel: '1 Task',
+    taskTone: 'green',
+    avatarGradient: 'linear-gradient(135deg, #8df2ce, #79a8ff)',
+    avatarSrc: '/assets/avatar/profile/Frame%203869.png',
+  },
+];
+
+const MODERATOR_TASKS: ModeratorTask[] = [
+  {
+    id: 'icon-set',
+    assigneeId: 'coworker-a',
+    assignedBy: 'Kevin',
+    due: '25/05/2026 10:00',
+    title: 'Icon Set Exploration',
+    description: 'Explore icon styles for collaboration tools. Prepare at least two style options.',
+    progress: 70,
+    tab: 'active',
+  },
+  {
+    id: 'landing-art',
+    assigneeId: 'coworker-a',
+    assignedBy: 'Kevin',
+    due: '27/05/2026 13:00',
+    title: 'Landing Page Illustration',
+    description: 'Refine the hero room illustration and align the supporting character poses.',
+    progress: 45,
+    tab: 'active',
+  },
+  {
+    id: 'profile-thumbs',
+    assigneeId: 'coworker-a',
+    assignedBy: 'Kevin',
+    due: '22/05/2026 16:00',
+    title: 'Profile Thumbnail Pass',
+    description: 'Finalize avatar thumbnails for dashboard profile cards and review states.',
+    progress: 100,
+    tab: 'completed',
+  },
+  {
+    id: 'motion-study',
+    assigneeId: 'coworker-b',
+    assignedBy: 'Maya',
+    due: '26/05/2026 11:30',
+    title: 'Interaction Motion Study',
+    description: 'Document hover and transition timing for room controls and team panels.',
+    progress: 62,
+    tab: 'active',
+  },
+  {
+    id: 'badge-export',
+    assigneeId: 'coworker-c',
+    assignedBy: 'Kevin',
+    due: '21/05/2026 15:00',
+    title: 'Status Badge Export',
+    description: 'Export clean status badge variants and confirm naming with engineering.',
+    progress: 100,
+    tab: 'completed',
+  },
+];
+
+interface SharedScreenParticipant {
+  id: string;
+  name: string;
+  role: string;
+  avatarGradient: string;
+  isMuted: boolean;
+  isSharing: boolean;
+  hasVideo: boolean;
+  previewType: 'screen' | 'video' | 'camera-off';
+}
+
+const SHARED_SCREEN_PARTICIPANTS: SharedScreenParticipant[] = [
+  {
+    id: 'you',
+    name: 'You',
+    role: 'Moderator',
+    avatarGradient: 'linear-gradient(135deg, #c4b5fd, #6cb5ff)',
+    isMuted: false,
+    isSharing: true,
+    hasVideo: false,
+    previewType: 'screen',
+  },
+  {
+    id: 'coworker-a',
+    name: 'Coworker A',
+    role: '2D Artist',
+    avatarGradient: 'linear-gradient(135deg, #ffe082, #b08dff)',
+    isMuted: true,
+    isSharing: true,
+    hasVideo: false,
+    previewType: 'screen',
+  },
+  {
+    id: 'coworker-b',
+    name: 'Coworker B',
+    role: 'UI Designer',
+    avatarGradient: 'linear-gradient(135deg, #f4b191, #9d7be8)',
+    isMuted: true,
+    isSharing: false,
+    hasVideo: false,
+    previewType: 'camera-off',
+  },
+  {
+    id: 'coworker-c',
+    name: 'Coworker C',
+    role: 'Animator',
+    avatarGradient: 'linear-gradient(135deg, #4b5563, #111827)',
+    isMuted: true,
+    isSharing: true,
+    hasVideo: false,
+    previewType: 'screen',
+  },
+  {
+    id: 'coworker-d',
+    name: 'Coworker D',
+    role: 'Producer',
+    avatarGradient: 'linear-gradient(135deg, #f7d1b8, #f3a0c2)',
+    isMuted: true,
+    isSharing: false,
+    hasVideo: true,
+    previewType: 'video',
+  },
+];
 
 // =============================================
 //  SVG ICON COMPONENTS (matching Figma icon set)
@@ -409,7 +604,7 @@ function TopRightHud() {
 //  USER CARD OVERLAY (Figma: top-left "Your Name" pill)
 // =============================================
 
-function UserCardOverlay() {
+function UserCardOverlay({ onOpenTeamModal }: { onOpenTeamModal: () => void }) {
   const avatarProfile = useAvatarStore(s => s.profile);
   const [isExpanded, setIsExpanded] = useState(false);
   const activityOptions = [
@@ -475,6 +670,16 @@ function UserCardOverlay() {
             <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
           </svg>
         </span>
+      </button>
+
+      <button
+        type="button"
+        onClick={onOpenTeamModal}
+        className="absolute left-[253px] top-0 flex h-[44px] w-[44px] items-center justify-center rounded-[14px] border border-[#e2e0f0] bg-white text-[#685EEB] shadow-[0_5px_17.6px_rgba(133,133,133,0.14)] transition-all hover:bg-[#f6f3ff] hover:shadow-[0_7px_21px_rgba(133,133,133,0.18)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#A29BFC]/60"
+        aria-label="Open team status"
+        title="Team Status"
+      >
+        <ListTodo size={21} strokeWidth={2.4} aria-hidden="true" />
       </button>
 
       <div
@@ -798,15 +1003,49 @@ function ClapHint() {
   );
 }
 
-function BottomControlBar() {
+function BottomControlBar({
+  onShareScreen,
+  onWatchScreen,
+}: {
+  onShareScreen: () => void;
+  onWatchScreen: () => void;
+}) {
+  const controls = [
+    {
+      label: 'Mic',
+      icon: <Mic size={18} strokeWidth={2.2} aria-hidden="true" />,
+    },
+    {
+      label: 'Chat',
+      icon: <MessageCircle size={18} strokeWidth={2.2} aria-hidden="true" />,
+    },
+    {
+      label: 'Share Screen',
+      icon: <MonitorUp size={18} strokeWidth={2.2} aria-hidden="true" />,
+      onClick: onShareScreen,
+    },
+    {
+      label: 'Emote',
+      icon: <Smile size={18} strokeWidth={2.2} aria-hidden="true" />,
+    },
+    {
+      label: 'Watch',
+      icon: <Eye size={18} strokeWidth={2.2} aria-hidden="true" />,
+      onClick: onWatchScreen,
+    },
+  ];
+
   return (
     <div className="absolute bottom-[46px] left-1/2 z-30 flex h-[40px] -translate-x-1/2 items-center justify-center gap-[5px] rounded-full border border-white/12 bg-[rgba(34,29,55,0.82)] px-[7px] shadow-[0_10px_24px_rgba(39,33,63,0.22)] backdrop-blur-[12px]">
-      {[
-        { icon: <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>, label: 'Mic' },
-        { icon: <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>, label: 'Chat' },
-        { icon: <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>, label: 'Emoji' },
-      ].map(btn => (
-        <button key={btn.label} type="button" title={btn.label} aria-label={btn.label} className="flex h-[30px] w-[30px] items-center justify-center rounded-full text-white/84 transition-all hover:bg-white/10 hover:text-white active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#A29BFC]/60">
+      {controls.map(btn => (
+        <button
+          key={btn.label}
+          type="button"
+          title={btn.label}
+          aria-label={btn.label}
+          onClick={btn.onClick}
+          className="flex h-[30px] w-[30px] items-center justify-center rounded-full text-white/84 transition-all hover:bg-white/10 hover:text-white active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#A29BFC]/60"
+        >
           {btn.icon}
         </button>
       ))}
@@ -1107,6 +1346,535 @@ function RightPanel({ onCreateTask }: { onCreateTask: () => void }) {
 }
 
 // =============================================
+//  MODERATOR TEAM STATUS MODAL
+// =============================================
+
+function ModeratorStatCard({
+  value,
+  label,
+  tone,
+}: {
+  value: string;
+  label: string;
+  tone: 'purple' | 'blue' | 'green' | 'red';
+}) {
+  const toneClass = {
+    purple: 'bg-[#F4F1FF] text-[#685EEB]',
+    blue: 'bg-[#EEF7FF] text-[#3995E8]',
+    green: 'bg-[#ECFBF4] text-[#2CA66F]',
+    red: 'bg-[#FFF0F0] text-[#FF5655]',
+  }[tone];
+
+  return (
+    <div className="flex min-h-[60px] min-w-0 items-center gap-[12px] rounded-[8px] border border-[#e2e0f0] bg-white px-[10px] py-[10px]">
+      <div className={`flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-full ${toneClass}`}>
+        <span className="text-[12px] font-bold">{value}</span>
+      </div>
+      <div className="min-w-0">
+        <p className="text-[14px] font-bold leading-none text-black">{value}</p>
+        <p className="mt-[4px] text-[11px] font-medium leading-tight text-[#858585]">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function ModeratorAvatar({
+  member,
+  size = 'member',
+}: {
+  member: ModeratorMember;
+  size?: 'member' | 'task';
+}) {
+  const sizeClass = size === 'task' ? 'h-[38px] w-[38px]' : 'h-[38px] w-[38px]';
+
+  return (
+    <div
+      className={`${sizeClass} shrink-0 overflow-hidden rounded-full border border-white bg-[#F4F1FF] shadow-[0_5px_12px_rgba(84,86,106,0.12)]`}
+      style={{ background: member.avatarGradient }}
+    >
+      <img src={member.avatarSrc} alt={`${member.name} avatar`} className="h-full w-full object-cover" />
+    </div>
+  );
+}
+
+function ModeratorMemberRow({
+  member,
+  selected,
+  onSelect,
+}: {
+  member: ModeratorMember;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const taskToneClass = {
+    purple: 'bg-[#F4F1FF] text-[#685EEB]',
+    green: 'bg-[#EAFBF3] text-[#2CA66F]',
+    red: 'bg-[#FDEDED] text-[#FF5655]',
+  }[member.taskTone];
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`flex w-full items-center gap-[12px] border-b border-[#e2e0f0] px-[14px] py-[12px] text-left transition-colors ${
+        selected ? 'bg-[#F4F1FF]' : 'bg-white hover:bg-[#FAF9FF]'
+      }`}
+    >
+      <ModeratorAvatar member={member} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="truncate text-[14px] font-semibold leading-tight text-black">{member.name}</p>
+            <p className="mt-[3px] truncate text-[13px] font-medium leading-tight text-[#9B96B8]">{member.role}</p>
+          </div>
+          <span className={`shrink-0 rounded-full px-[6px] py-[2px] text-[11px] font-medium ${taskToneClass}`}>
+            {member.taskLabel}
+          </span>
+        </div>
+        <div className="mt-[9px] h-[4px] w-full rounded-full bg-[#E9E6F6]">
+          <div className="h-full rounded-full bg-[#685EEB]" style={{ width: `${member.progress}%` }} />
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function ModeratorTaskCard({ task, member }: { task: ModeratorTask; member: ModeratorMember }) {
+  return (
+    <div className="relative rounded-[13px] bg-[#6CB5FF] pl-[4px] shadow-[0_6px_18px_rgba(84,86,106,0.1)]">
+      <div className="min-h-[160px] rounded-[13px] border border-black/10 bg-white px-[18px] py-[18px]">
+        <div className="grid grid-cols-[116px_1px_minmax(0,1fr)_auto] gap-[18px]">
+          <div className="flex flex-col gap-[14px]">
+            <div className="flex items-center gap-[10px]">
+              <ModeratorAvatar member={member} size="task" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-normal uppercase leading-tight text-[#858585]">Assigned by</p>
+                <p className="truncate text-[13px] font-normal leading-tight text-black">{task.assignedBy}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-[10px]">
+              <div className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-[#F4F1FF] text-[#685EEB]">
+                <CalendarClock size={16} strokeWidth={2.2} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-normal uppercase leading-tight text-[#858585]">Due</p>
+                <p className="text-[10px] font-normal leading-tight text-black">{task.due}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="my-[7px] w-px bg-[#E2E0F0]" />
+
+          <div className="min-w-0">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[16px] font-bold leading-tight text-black">{task.title}</p>
+                <p className="mt-[7px] line-clamp-2 text-[11px] font-normal leading-[1.35] text-[#858585]">
+                  {task.description}
+                </p>
+              </div>
+              <span className="shrink-0 rounded-[10px] bg-[#A29BFC] px-[12px] py-[8px] text-[12px] font-bold leading-none text-white">
+                IN REVIEW
+              </span>
+            </div>
+
+            <div className="mt-[22px]">
+              <div className="mb-[7px] flex items-center justify-between text-[11px] font-bold">
+                <span className="text-[#858585]">Progress</span>
+                <span className="text-[#685EEB]">{task.progress}%</span>
+              </div>
+              <div className="h-[5px] w-full rounded-full bg-[#D9D9D9]">
+                <div className="h-full rounded-full bg-[#685EEB]" style={{ width: `${task.progress}%` }} />
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="self-center rounded-full p-[4px] text-[#858585] transition-colors hover:bg-[#F4F1FF] hover:text-[#685EEB]"
+            aria-label={`Open ${task.title}`}
+          >
+            <ChevronRight size={30} strokeWidth={2.2} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModeratorTeamModal({
+  open,
+  onClose,
+  selectedMemberId,
+  onSelectMember,
+  activeTab,
+  onTabChange,
+}: {
+  open: boolean;
+  onClose: () => void;
+  selectedMemberId: string;
+  onSelectMember: (memberId: string) => void;
+  activeTab: ModeratorTaskTab;
+  onTabChange: (tab: ModeratorTaskTab) => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, open]);
+
+  if (!open) return null;
+
+  const selectedMember = MODERATOR_TEAM_MEMBERS.find((member) => member.id === selectedMemberId) ?? MODERATOR_TEAM_MEMBERS[0];
+  const visibleTasks = MODERATOR_TASKS.filter((task) => task.assigneeId === selectedMember.id && task.tab === activeTab);
+  const completedCount = MODERATOR_TASKS.filter((task) => task.tab === 'completed').length;
+  const inProgressCount = MODERATOR_TASKS.filter((task) => task.tab === 'active' && task.progress > 0 && task.progress < 100).length;
+  const todoCount = MODERATOR_TASKS.filter((task) => task.tab === 'active' && task.progress === 0).length || 4;
+  const overdueCount = 2;
+
+  const handleMessage = () => {
+    console.log('Message teammate', selectedMember.name);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4 py-6 backdrop-blur-[2px]"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Team status"
+    >
+      <div
+        className="relative flex max-h-[min(88vh,620px)] w-full max-w-[980px] overflow-hidden rounded-[16px] border border-[#E2E0F0] bg-white shadow-[0_24px_70px_rgba(84,86,106,0.24)]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-[14px] top-[14px] z-10 flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[#F4F1FF] text-[#9B96B8] transition-colors hover:text-[#685EEB]"
+          aria-label="Close team status"
+        >
+          <X size={17} strokeWidth={2.4} />
+        </button>
+
+        <section className="flex w-[313px] shrink-0 flex-col border-r border-[#E2E0F0] bg-white">
+          <div className="px-[26px] pb-[14px] pt-[28px]">
+            <p className="text-[14px] font-bold uppercase leading-none text-[#685EEB]">Team Status</p>
+            <div className="mt-[18px] grid grid-cols-3 gap-[9px]">
+              {[
+                { value: '5', label: 'Online' },
+                { value: '12', label: 'Tasks' },
+                { value: '72', label: 'Score' },
+              ].map((item) => (
+                <div key={item.label} className="flex h-[60px] flex-col items-center justify-center rounded-[8px] border border-[#E2E0F0] bg-white">
+                  <p className="text-[16px] font-bold leading-none text-black">{item.value}</p>
+                  <p className="mt-[5px] text-[10px] font-medium text-[#9B96B8]">{item.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {MODERATOR_TEAM_MEMBERS.map((member) => (
+              <ModeratorMemberRow
+                key={member.id}
+                member={member}
+                selected={member.id === selectedMember.id}
+                onSelect={() => onSelectMember(member.id)}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section className="min-w-0 flex-1 bg-white px-[26px] pb-[26px] pt-[28px]">
+          <div className="flex items-start justify-between gap-4 pr-[42px]">
+            <div>
+              <div className="flex items-center gap-[30px] border-b border-[#D8D5EA]">
+                {(['active', 'completed'] as ModeratorTaskTab[]).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => onTabChange(tab)}
+                    className={`relative pb-[13px] text-[15px] font-semibold leading-none transition-colors ${
+                      activeTab === tab ? 'text-[#685EEB]' : 'text-[#9B96B8] hover:text-[#685EEB]'
+                    }`}
+                  >
+                    {tab === 'active' ? 'Active Tasks' : 'Completed Tasks'}
+                    {activeTab === tab ? (
+                      <span className="absolute bottom-[-2px] left-0 h-[4px] w-full rounded-full bg-[#685EEB]" />
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleMessage}
+              className="inline-flex h-[32px] items-center gap-[8px] rounded-[7px] bg-[#685EEB] px-[18px] text-[14px] font-semibold text-white shadow-[0_6px_16px_rgba(104,94,235,0.24)] transition-colors hover:bg-[#7970F0]"
+            >
+              <MessageCircle size={16} strokeWidth={2.2} />
+              Message
+            </button>
+          </div>
+
+          <div className="mt-[31px] grid grid-cols-4 gap-[10px]">
+            <ModeratorStatCard value={String(completedCount)} label="Completed" tone="purple" />
+            <ModeratorStatCard value={String(inProgressCount)} label="In Progress" tone="blue" />
+            <ModeratorStatCard value={String(todoCount)} label="To Do" tone="green" />
+            <ModeratorStatCard value={String(overdueCount)} label="Overdue" tone="red" />
+          </div>
+
+          <div className="mt-[22px] max-h-[356px] space-y-[12px] overflow-y-auto pr-[2px]">
+            {visibleTasks.length > 0 ? (
+              visibleTasks.map((task) => (
+                <ModeratorTaskCard key={task.id} task={task} member={selectedMember} />
+              ))
+            ) : (
+              <div className="flex h-[160px] items-center justify-center rounded-[13px] border border-dashed border-[#D8D5EA] bg-[#FAF9FF] text-[13px] font-medium text-[#9B96B8]">
+                No {activeTab === 'active' ? 'active' : 'completed'} tasks for {selectedMember.name}.
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+// =============================================
+//  SCREEN SHARE / WATCH OVERLAY
+// =============================================
+
+function SharedScreenPreview({
+  participant,
+  mode,
+  isSharingScreen,
+  isWatchingScreen,
+}: {
+  participant: SharedScreenParticipant;
+  mode: ScreenOverlayMode;
+  isSharingScreen: boolean;
+  isWatchingScreen: boolean;
+}) {
+  const statusText = mode === 'share'
+    ? isSharingScreen ? 'You are sharing your screen' : 'Share preview paused'
+    : isWatchingScreen ? `Watching ${participant.name}'s screen` : 'Watch preview paused';
+
+  return (
+    <div className="relative min-h-0 flex-1 rounded-[16px] border-[3px] border-[#9B96B8] bg-[#F7F7FF] shadow-[0_18px_48px_rgba(34,29,55,0.22)]">
+      <div className="absolute left-[18px] top-[14px] z-10 rounded-full bg-white/88 px-[12px] py-[6px] text-[12px] font-semibold text-[#5C5780] shadow-sm backdrop-blur">
+        {statusText}
+      </div>
+      <div className="absolute inset-[18px] overflow-hidden rounded-[12px] border border-[#E2E0F0] bg-white">
+        <div className="flex h-[32px] items-center gap-[8px] border-b border-[#E2E0F0] bg-[#F6F5FF] px-[12px]">
+          <span className="h-[8px] w-[8px] rounded-full bg-[#FF7675]" />
+          <span className="h-[8px] w-[8px] rounded-full bg-[#FFD166]" />
+          <span className="h-[8px] w-[8px] rounded-full bg-[#6CE0A6]" />
+          <div className="ml-[10px] h-[16px] flex-1 rounded-full bg-white px-[10px] text-[10px] leading-[16px] text-[#9B96B8]">
+            warp.local/projects
+          </div>
+        </div>
+        <div className="grid h-[calc(100%-32px)] grid-cols-[176px_minmax(0,1fr)]">
+          <div className="border-r border-[#E2E0F0] bg-[#FAF9FF] p-[16px]">
+            <p className="text-[18px] font-bold text-[#685EEB]">Projects</p>
+            <div className="mt-[18px] space-y-[8px]">
+              {['All projects', 'Your projects', 'Shared with you', 'Available offline'].map((item, index) => (
+                <div key={item} className={`rounded-[8px] px-[10px] py-[8px] text-[12px] font-medium ${index === 0 ? 'bg-[#EEEAFE] text-[#685EEB]' : 'text-[#787A90]'}`}>
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="p-[28px]">
+            <div className="mx-auto h-[34px] max-w-[340px] rounded-full border border-[#DFDFFF] bg-white" />
+            <div className="mt-[34px] grid grid-cols-4 gap-[14px]">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div key={index} className="h-[74px] rounded-[8px] bg-[#EDEDF2]" />
+              ))}
+            </div>
+            <div className="mt-[28px] h-[18px] w-[92px] rounded bg-[#E2E0F0]" />
+            <div className="mt-[12px] grid grid-cols-3 gap-[12px]">
+              <div className="h-[56px] rounded-[8px] bg-[#F0EFF8]" />
+              <div className="h-[56px] rounded-[8px] bg-[#F0EFF8]" />
+              <div className="h-[56px] rounded-[8px] bg-[#F0EFF8]" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SharedParticipantTile({
+  participant,
+  selected,
+  onSelect,
+}: {
+  participant: SharedScreenParticipant;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`relative h-[105px] min-w-[156px] overflow-hidden rounded-[14px] border-[3px] text-left transition-all ${
+        selected ? 'border-[#7A70FF] bg-[#B4B4B4]' : 'border-transparent bg-[#B4B4B4] hover:border-[#A29BFC]'
+      }`}
+    >
+      {participant.previewType === 'video' ? (
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,#f2d0bc,#6b7280)]" />
+      ) : participant.previewType === 'camera-off' ? (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#B4B4B4] text-white/80">
+          <CameraOff size={25} strokeWidth={2.2} />
+        </div>
+      ) : (
+        <div className="absolute inset-0 bg-[#DCD9F7]">
+          <div className="m-[12px] h-[20px] rounded bg-white/70" />
+          <div className="mx-[12px] grid grid-cols-3 gap-[6px]">
+            <div className="h-[26px] rounded bg-white/65" />
+            <div className="h-[26px] rounded bg-white/65" />
+            <div className="h-[26px] rounded bg-white/65" />
+          </div>
+        </div>
+      )}
+      <div className="absolute bottom-[10px] left-[10px] flex items-center gap-[8px]">
+        <div className="h-[34px] w-[34px] rounded-full border border-white" style={{ background: participant.avatarGradient }} />
+        <div>
+          <p className="text-[12px] font-semibold leading-tight text-white drop-shadow">{participant.name}</p>
+          <p className="text-[10px] font-medium leading-tight text-white/80">{participant.role}</p>
+        </div>
+      </div>
+      {participant.isMuted ? (
+        <span className="absolute bottom-[10px] right-[10px] rounded-[6px] bg-black/35 p-[4px] text-white">
+          <Mic size={14} strokeWidth={2.2} />
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
+function ScreenShareOverlay({
+  open,
+  mode,
+  selectedSharedScreenId,
+  isSharingScreen,
+  isWatchingScreen,
+  onSelectSharedScreen,
+  onClose,
+  onToggleSharing,
+  onToggleWatching,
+}: {
+  open: boolean;
+  mode: ScreenOverlayMode;
+  selectedSharedScreenId: string;
+  isSharingScreen: boolean;
+  isWatchingScreen: boolean;
+  onSelectSharedScreen: (id: string) => void;
+  onClose: () => void;
+  onToggleSharing: () => void;
+  onToggleWatching: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, open]);
+
+  if (!open) return null;
+
+  const selectedParticipant = SHARED_SCREEN_PARTICIPANTS.find((participant) => participant.id === selectedSharedScreenId) ?? SHARED_SCREEN_PARTICIPANTS[1];
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#E2E0F0]/82 px-[116px] pb-[42px] pt-[48px] backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-label="Screen collaboration">
+      <div className="mb-[12px] flex items-center justify-between">
+        <div>
+          <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-[#685EEB]">
+            {mode === 'share' ? 'Share Screen' : 'Watch Screen'}
+          </p>
+          <h2 className="mt-[4px] text-[20px] font-bold leading-tight text-[#252233]">
+            {mode === 'share' ? 'Your screen is ready to share' : `${selectedParticipant.name}'s screen`}
+          </h2>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-[38px] items-center gap-[8px] rounded-full bg-white px-[14px] text-[13px] font-semibold text-[#5C5780] shadow-sm transition-colors hover:text-[#685EEB]"
+        >
+          <X size={17} strokeWidth={2.4} />
+          Close
+        </button>
+      </div>
+
+      <SharedScreenPreview
+        participant={selectedParticipant}
+        mode={mode}
+        isSharingScreen={isSharingScreen}
+        isWatchingScreen={isWatchingScreen}
+      />
+
+      <div className="mt-[14px] flex shrink-0 items-center gap-[14px] overflow-x-auto pb-[2px]">
+        {SHARED_SCREEN_PARTICIPANTS.map((participant) => (
+          <SharedParticipantTile
+            key={participant.id}
+            participant={participant}
+            selected={participant.id === selectedParticipant.id}
+            onSelect={() => onSelectSharedScreen(participant.id)}
+          />
+        ))}
+      </div>
+
+      <div className="mt-[26px] flex shrink-0 items-center justify-center gap-[8px]">
+        <div className="flex h-[41px] items-center gap-[13px] rounded-[16px] bg-[rgba(76,78,98,0.95)] px-[18px] text-white shadow-[0_10px_24px_rgba(39,33,63,0.2)]">
+          <button type="button" title="Mic" aria-label="Mic" className="rounded-full p-[3px] text-white/88 hover:bg-white/10">
+            <Mic size={20} strokeWidth={2.2} />
+          </button>
+          <button type="button" title="Chat" aria-label="Chat" className="rounded-full p-[3px] text-white/88 hover:bg-white/10">
+            <MessageCircle size={20} strokeWidth={2.2} />
+          </button>
+          <button
+            type="button"
+            title={mode === 'share' ? 'Toggle sharing' : 'Request share'}
+            aria-label={mode === 'share' ? 'Toggle sharing' : 'Request share'}
+            onClick={mode === 'share' ? onToggleSharing : undefined}
+            className="rounded-full p-[3px] text-white/88 hover:bg-white/10"
+          >
+            {mode === 'share' ? <Upload size={20} strokeWidth={2.2} /> : <Send size={20} strokeWidth={2.2} />}
+          </button>
+          <button type="button" title="Emote" aria-label="Emote" className="rounded-full p-[3px] text-white/88 hover:bg-white/10">
+            <Smile size={20} strokeWidth={2.2} />
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={mode === 'watch' ? onToggleWatching : onClose}
+          className={`flex h-[41px] w-[41px] items-center justify-center rounded-[14px] text-white shadow-[0_10px_24px_rgba(39,33,63,0.18)] transition-transform active:scale-[0.96] ${
+            mode === 'watch' && !isWatchingScreen ? 'bg-[#685EEB]' : 'bg-[#FF7675]'
+          }`}
+          aria-label={mode === 'watch' && !isWatchingScreen ? 'Resume watching' : 'Leave screen share'}
+        >
+          {mode === 'watch' && !isWatchingScreen ? <Eye size={20} strokeWidth={2.4} /> : <PhoneOff size={20} strokeWidth={2.4} />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// =============================================
 //  CHANGE ROOMS MODAL
 // =============================================
 
@@ -1196,6 +1964,14 @@ export function VirtualRoomLayout() {
   const avatarSelection = useAvatarStore(s => s.selection);
   const [showChangeRooms, setShowChangeRooms] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
+  const [isModeratorTeamModalOpen, setIsModeratorTeamModalOpen] = useState(false);
+  const [selectedModeratorMemberId, setSelectedModeratorMemberId] = useState(MODERATOR_TEAM_MEMBERS[0].id);
+  const [activeModeratorTaskTab, setActiveModeratorTaskTab] = useState<ModeratorTaskTab>('active');
+  const [isScreenOverlayOpen, setIsScreenOverlayOpen] = useState(false);
+  const [screenOverlayMode, setScreenOverlayMode] = useState<ScreenOverlayMode>('watch');
+  const [selectedSharedScreenId, setSelectedSharedScreenId] = useState('coworker-a');
+  const [isSharingScreen, setIsSharingScreen] = useState(false);
+  const [isWatchingScreen, setIsWatchingScreen] = useState(false);
   const [activeRoom, setActiveRoom] = useState<RoomDisplayState>(VIRTUAL_ROOM_OPTIONS[0]);
   const viewportRef = useRef<HTMLDivElement>(null);
 
@@ -1226,6 +2002,21 @@ export function VirtualRoomLayout() {
 
   const sendViewportControl = (action: 'zoom-in' | 'zoom-out') => {
     window.dispatchEvent(new CustomEvent('warp:viewport-control', { detail: { action } }));
+  };
+
+  const openScreenOverlay = (mode: ScreenOverlayMode) => {
+    setScreenOverlayMode(mode);
+    setIsScreenOverlayOpen(true);
+    if (mode === 'share') {
+      setSelectedSharedScreenId('you');
+      setIsSharingScreen(true);
+      setIsWatchingScreen(false);
+      return;
+    }
+
+    setSelectedSharedScreenId('coworker-a');
+    setIsWatchingScreen(true);
+    setIsSharingScreen(false);
   };
 
   const toggleFullscreen = async () => {
@@ -1263,10 +2054,13 @@ export function VirtualRoomLayout() {
             onSwitchRooms={() => setShowChangeRooms(true)}
           />
           <TopRightHud />
-          <UserCardOverlay />
+          <UserCardOverlay onOpenTeamModal={() => setIsModeratorTeamModalOpen(true)} />
           <TomatoWidget />
           <ClapHint />
-          <BottomControlBar />
+          <BottomControlBar
+            onShareScreen={() => openScreenOverlay('share')}
+            onWatchScreen={() => openScreenOverlay('watch')}
+          />
           <ZoomControls
             onZoomIn={() => sendViewportControl('zoom-in')}
             onZoomOut={() => sendViewportControl('zoom-out')}
@@ -1286,6 +2080,25 @@ export function VirtualRoomLayout() {
         activeRoomId={activeRoom.id}
       />
       <SharedCreateNewTaskModal open={showCreateTask} onClose={() => setShowCreateTask(false)} />
+      <ModeratorTeamModal
+        open={isModeratorTeamModalOpen}
+        onClose={() => setIsModeratorTeamModalOpen(false)}
+        selectedMemberId={selectedModeratorMemberId}
+        onSelectMember={setSelectedModeratorMemberId}
+        activeTab={activeModeratorTaskTab}
+        onTabChange={setActiveModeratorTaskTab}
+      />
+      <ScreenShareOverlay
+        open={isScreenOverlayOpen}
+        mode={screenOverlayMode}
+        selectedSharedScreenId={selectedSharedScreenId}
+        isSharingScreen={isSharingScreen}
+        isWatchingScreen={isWatchingScreen}
+        onSelectSharedScreen={setSelectedSharedScreenId}
+        onClose={() => setIsScreenOverlayOpen(false)}
+        onToggleSharing={() => setIsSharingScreen((current) => !current)}
+        onToggleWatching={() => setIsWatchingScreen((current) => !current)}
+      />
     </div>
   );
 }
