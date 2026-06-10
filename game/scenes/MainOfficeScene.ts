@@ -218,6 +218,13 @@ type SittingVisualPose = {
   faceOffsetX: number;
   faceOffsetY: number;
 };
+type SittingLaptopConfig = {
+  textureKey: string;
+  assetPath: string;
+  displaySize: number;
+  offsetX: number;
+  offsetY: number;
+};
 type BodyTone = 'light' | 'medium' | 'dark';
 type OutfitType = 'long' | 'hoodie' | 'short' | 'suit';
 type CoworkerPresenceStatus = 'online' | 'afk';
@@ -435,6 +442,27 @@ const SITTING_BASE_OFFSET_BY_SEAT_VARIANT: Record<SeatVariant, FigmaPoint> = {
 const SITTING_BASE_OFFSET_BY_SEAT_ID: Partial<Record<string, FigmaPoint>> = {
   'front-green': { x: 0, y: 0 },
 };
+const SITTING_LAPTOP_CONFIG_BY_POSE: Record<SittingAssetSide, SittingLaptopConfig> = {
+  front: {
+    textureKey: 'laptop-back-sitting',
+    assetPath: '/assets/avatar/sitting/props/laptop_back%201.png',
+    displaySize: 122,
+    offsetX: -44,
+    offsetY: -116,
+  },
+  back: {
+    textureKey: 'laptop-front-sitting',
+    assetPath: '/assets/avatar/sitting/props/laptop_front%201.png',
+    displaySize: 122,
+    offsetX: 48,
+    offsetY: -128,
+  },
+};
+const SITTING_LAPTOP_OFFSET_BY_SEAT_ID: Partial<Record<string, FigmaPoint>> = {
+  'front-orange': { x: -58, y: -72 },
+  'front-green': { x: -58, y: -72 },
+  'front-blue': { x: -58, y: -72 },
+};
 const SIT_CHIP_STANDING_OFFSET_Y_BY_SEAT_VARIANT: Record<SeatVariant, number> = {
   front: 0.1,
   back: 0.14,
@@ -443,6 +471,7 @@ const SITTING_CHIP_HEAD_CLEARANCE = 14;
 const SITTING_TABLE_BODY_OCCLUSION_GAP = 0;
 const SITTING_TABLE_HEAD_DEPTH_GAP = 2;
 const STATIC_COWORKER_A_SEAT_ID = 'front-green';
+const STATIC_OCCUPIED_SEAT_IDS = new Set<string>([STATIC_COWORKER_A_SEAT_ID]);
 const STATIC_SEATED_COWORKER_DISPLAY_SIZE = 180;
 const STATIC_SEATED_COWORKER: StaticSeatedCoworkerConfig = {
   id: 'static-seated-coworker-a',
@@ -663,6 +692,7 @@ export default class MainOfficeScene extends Phaser.Scene {
   private playerClapFace?: Phaser.GameObjects.Sprite;
   private playerSittingBody?: Phaser.GameObjects.Sprite;
   private playerSittingOutfit?: Phaser.GameObjects.Sprite;
+  private playerSittingLaptop?: Phaser.GameObjects.Image;
   private playerLabel!: Phaser.GameObjects.Text;
   private playerAvatarSelection: Pick<
     AvatarSelection,
@@ -807,6 +837,8 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.load.image('chair_back_hover_green', VIRTUAL_ROOM_ASSETS.chairBackHoverGreen);
     this.load.image('chair_back_hover_blue', VIRTUAL_ROOM_ASSETS.chairBackHoverBlue);
     this.load.image('sit_popup_primary', VIRTUAL_ROOM_ASSETS.sitPopupPrimary);
+    this.load.image(SITTING_LAPTOP_CONFIG_BY_POSE.front.textureKey, SITTING_LAPTOP_CONFIG_BY_POSE.front.assetPath);
+    this.load.image(SITTING_LAPTOP_CONFIG_BY_POSE.back.textureKey, SITTING_LAPTOP_CONFIG_BY_POSE.back.assetPath);
     this.load.image('avatar-shadow', AVATAR_SHADOW_ASSET_PATH);
     [1, 2, 3, 4].forEach((hairIndex) => {
       ['1', '2', '3'].forEach((colorSuffix) => {
@@ -1335,6 +1367,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       this.playerShadow?.setDepth(sittingBodyDepth - 1);
       this.playerSittingBody?.setDepth(sittingBodyDepth);
       this.playerSittingOutfit?.setDepth(sittingBodyDepth + 1);
+      this.playerSittingLaptop?.setDepth(this.getSittingLaptopDepth(sittingBodyDepth));
       this.playerHair?.setDepth(this.getSittingHeadDepth(sittingBodyDepth));
       this.playerFace?.setDepth(this.getSittingHeadDepth(sittingBodyDepth) + 1);
       this.playerLabel?.setDepth(this.getSittingHeadDepth(sittingBodyDepth) + 2);
@@ -1352,6 +1385,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.playerClapFace?.setDepth(this.player.depth + 3);
     this.playerSittingBody?.setDepth(this.player.depth);
     this.playerSittingOutfit?.setDepth(this.player.depth + 1);
+    this.playerSittingLaptop?.setDepth(this.player.depth + 2);
     this.playerLabel?.setDepth(this.player.depth + 4);
   }
 
@@ -1511,6 +1545,10 @@ export default class MainOfficeScene extends Phaser.Scene {
     let nearestDistance = Number.POSITIVE_INFINITY;
 
     for (const seat of this.seats) {
+      if (this.isSeatOccupiedByStaticCoworker(seat)) {
+        continue;
+      }
+
       const anchor = this.getSeatAnchor(seat);
       const distance = Phaser.Math.Distance.Between(origin.x, origin.y, anchor.x, anchor.y);
       if (distance < nearestDistance) {
@@ -1522,6 +1560,10 @@ export default class MainOfficeScene extends Phaser.Scene {
     return nearestSeat && nearestDistance <= AVATAR_SITTING_INTERACTION_RANGE
       ? nearestSeat
       : null;
+  }
+
+  private isSeatOccupiedByStaticCoworker(seat: SeatData): boolean {
+    return STATIC_OCCUPIED_SEAT_IDS.has(seat.id);
   }
 
   private getSeatAnchor(seat: SeatData): Phaser.Math.Vector2 {
@@ -1540,6 +1582,36 @@ export default class MainOfficeScene extends Phaser.Scene {
       anchor.x + baseOffset.x + localOffset.x,
       anchor.y + baseOffset.y + localOffset.y,
     );
+  }
+
+  private getSittingLaptopConfig(seat: SeatData): SittingLaptopConfig {
+    const pose = SITTING_VISUAL_POSE_BY_SEAT_VARIANT[seat.variant];
+    return SITTING_LAPTOP_CONFIG_BY_POSE[pose.assetDirection];
+  }
+
+  private getSittingLaptopPosition(seat: SeatData): Phaser.Math.Vector2 {
+    const base = this.getSeatSittingBasePoint(seat);
+    const config = this.getSittingLaptopConfig(seat);
+    const seatOffset = SITTING_LAPTOP_OFFSET_BY_SEAT_ID[seat.id];
+    const offset = seatOffset ?? { x: config.offsetX, y: config.offsetY };
+    return new Phaser.Math.Vector2(base.x + offset.x, base.y + offset.y);
+  }
+
+  private getSittingLaptopDepth(bodyDepth: number): number {
+    if (this.mainRoomTableDepth === null) {
+      return bodyDepth + 2;
+    }
+
+    return this.mainRoomTableDepth + 4;
+  }
+
+  private createSittingLaptop(seat: SeatData, bodyDepth: number): Phaser.GameObjects.Image {
+    const config = this.getSittingLaptopConfig(seat);
+    const position = this.getSittingLaptopPosition(seat);
+    return this.add.image(position.x, position.y, config.textureKey)
+      .setOrigin(0.5, 0.5)
+      .setDisplaySize(config.displaySize, config.displaySize)
+      .setDepth(this.getSittingLaptopDepth(bodyDepth));
   }
 
   private sitPlayerAtSeat(seat: SeatData) {
@@ -1561,6 +1633,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.playerSittingOutfit = this.add.sprite(this.player.x, this.player.y, avatarSittingOutfitVisualTextureKey(this.playerOutfitType, pose.assetDirection));
     this.applySittingLayerTransform(this.playerSittingBody, pose, 0);
     this.applySittingLayerTransform(this.playerSittingOutfit, pose, 1);
+    this.playerSittingLaptop = this.createSittingLaptop(seat, this.getSittingBodyDepth());
 
     this.applyHairLayerConfig();
     this.applyFaceLayerConfig();
@@ -1577,8 +1650,10 @@ export default class MainOfficeScene extends Phaser.Scene {
     const previousSeat = this.activeSittingSeat;
     this.playerSittingBody?.destroy();
     this.playerSittingOutfit?.destroy();
+    this.playerSittingLaptop?.destroy();
     this.playerSittingBody = undefined;
     this.playerSittingOutfit = undefined;
+    this.playerSittingLaptop = undefined;
     this.isPlayerSitting = false;
     this.activeSittingPose = null;
     this.activeSittingSeat = null;
@@ -1640,6 +1715,12 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.playerShadow.setPosition(this.player.x, this.player.y);
     this.playerSittingBody?.setPosition(this.player.x + pose.offsetX, this.player.y + pose.offsetY);
     this.playerSittingOutfit?.setPosition(this.player.x + pose.offsetX, this.player.y + pose.offsetY);
+    if (this.playerSittingLaptop && this.activeSittingSeat) {
+      const laptopPosition = this.getSittingLaptopPosition(this.activeSittingSeat);
+      this.playerSittingLaptop
+        .setPosition(laptopPosition.x, laptopPosition.y)
+        .setDepth(this.getSittingLaptopDepth(sittingBodyDepth));
+    }
     this.player.setDepth(sittingBodyDepth);
     this.playerShadow.setDepth(sittingBodyDepth - 1);
     if (this.playerSittingBody) {
@@ -2316,6 +2397,11 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   private handleSeatHover(seat: SeatData) {
+    if (this.isSeatOccupiedByStaticCoworker(seat)) {
+      this.setSeatState(seat, 'idle');
+      return;
+    }
+
     if (this.isPlayerSitting && this.activeSittingSeat && seat !== this.activeSittingSeat) {
       this.setSeatState(this.activeSittingSeat, 'selected');
       return;
@@ -2335,6 +2421,11 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   private handleSeatHoverEnd(seat: SeatData) {
+    if (this.isSeatOccupiedByStaticCoworker(seat)) {
+      this.setSeatState(seat, 'idle');
+      return;
+    }
+
     if (this.isPlayerSitting && seat === this.activeSittingSeat) {
       this.hoveredSeat = seat;
       this.setSeatState(seat, 'selected');
@@ -2349,6 +2440,17 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   private selectSeat(seat: SeatData) {
+    if (this.isSeatOccupiedByStaticCoworker(seat)) {
+      if (this.selectedSeat === seat) {
+        this.selectedSeat = null;
+      }
+      if (this.hoveredSeat === seat) {
+        this.hoveredSeat = null;
+      }
+      this.setSeatState(seat, 'idle');
+      return;
+    }
+
     if (this.selectedSeat && this.selectedSeat !== seat) {
       this.setSeatState(this.selectedSeat, 'idle');
     }
@@ -2487,6 +2589,8 @@ export default class MainOfficeScene extends Phaser.Scene {
     }
     this.staticSeatedCoworkerBlinkEvent?.remove(false);
     this.staticSeatedCoworkerBlinkEvent = undefined;
+    this.playerSittingLaptop?.destroy();
+    this.playerSittingLaptop = undefined;
 
     // Destroy all room-specific objects
     for (const obj of this.roomObjects) {
@@ -2747,6 +2851,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       .setPosition(base.x + pose.offsetX, base.y + pose.offsetY);
     this.applySittingLayerTransformAtDepth(body, pose, bodyDepth);
     this.applySittingLayerTransformAtDepth(outfit, pose, bodyDepth + 1);
+    const laptop = this.createSittingLaptop(seat, bodyDepth);
 
     const hairConfig = this.getHairLayerConfig(pose.avatarDirection);
     const hair = this.add.sprite(
@@ -2780,7 +2885,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       headDepth + 20,
     );
 
-    this.roomObjects.push(shadow, body, outfit, hair, face, nameBadge);
+    this.roomObjects.push(shadow, body, outfit, laptop, hair, face, nameBadge);
   }
 
   private getStaticCoworkerFaceTexture(textureKey: string): string {
