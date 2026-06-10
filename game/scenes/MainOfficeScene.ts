@@ -375,6 +375,18 @@ const MAIN_ROOM_COWORKER_CONFIGS: Omit<RoomCoworkerConfig, 'x' | 'y'>[] = [
     faceFlipX: false,
   },
 ];
+const COWORKER_ROLE_BY_NAME: Record<string, string> = {
+  'Coworker A': 'UI/UX Designer',
+  'Coworker B': 'UI Designer',
+  'Coworker C': 'Animator',
+  'Coworker D': 'Illustrator',
+};
+const COWORKER_PROFILE_ASSET_BY_NAME: Record<string, string> = {
+  'Coworker A': '/assets/avatar/profile/Frame%203866.png',
+  'Coworker B': '/assets/avatar/profile/Frame%203865.png',
+  'Coworker C': '/assets/avatar/profile/Frame%203867.png',
+  'Coworker D': '/assets/avatar/profile/Frame%203868.png',
+};
 const PLAYER_MAIN_ROOM_BOUNDS_RATIO = {
   left: 0.1,
   right: 0.86,
@@ -2891,8 +2903,21 @@ export default class MainOfficeScene extends Phaser.Scene {
       base.y - STATIC_COWORKER_NAME_BADGE_OFFSET_Y - 24,
       headDepth + 19,
     );
+    const interactionZone = this.add.rectangle(base.x, base.y - 80, 150, 150, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(headDepth + 25);
+    interactionZone.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      pointer.event.stopPropagation();
+      this.dispatchTeammateSelected(
+        config.id,
+        config.name,
+        COWORKER_ROLE_BY_NAME[config.name] ?? 'UI/UX Designer',
+        pointer,
+        COWORKER_PROFILE_ASSET_BY_NAME[config.name],
+      );
+    });
 
-    this.roomObjects.push(shadow, body, outfit, laptop, hair, face, nameBadge, pomodoroIndicator);
+    this.roomObjects.push(shadow, body, outfit, laptop, hair, face, nameBadge, pomodoroIndicator, interactionZone);
   }
 
   private createStaticCoworkerPomodoroIndicator(
@@ -3064,7 +3089,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     coworker.outfit.setPosition(x, y).setDepth(baseDepth + 1);
     coworker.hair?.setPosition(x, y).setDepth(baseDepth + 2);
     coworker.face?.setPosition(x, y).setDepth(baseDepth + 3);
-    coworker.hitArea?.setPosition(x, y).setDepth(baseDepth + 4);
+    coworker.hitArea?.setPosition(x, y - 72).setDepth(baseDepth + 4);
     coworker.nameBadge?.setPosition(x, y - COWORKER_NAME_BADGE_OFFSET_Y).setDepth(baseDepth + 24);
   }
 
@@ -3111,8 +3136,8 @@ export default class MainOfficeScene extends Phaser.Scene {
     displayRect?: FigmaRect,
     coworkerConfig?: RoomCoworkerConfig,
   ) {
-    const teammate = this.add.circle(x, y, 12, color);
     const hasCustomVisual = Boolean(assetKey || coworkerConfig);
+    const teammate = this.add.circle(x, hasCustomVisual ? y - 72 : y, hasCustomVisual ? 88 : 12, color);
     teammate.setStrokeStyle(2, 0xffffff, hasCustomVisual ? 0 : 0.5);
     teammate.setAlpha(hasCustomVisual ? 0.001 : 1);
     teammate.setInteractive({ useHandCursor: true });
@@ -3136,8 +3161,10 @@ export default class MainOfficeScene extends Phaser.Scene {
       this.roomObjects.push(shadow);
     }
 
+    const teammateName = coworkerConfig?.name ?? name;
+    const teammateRole = COWORKER_ROLE_BY_NAME[teammateName] ?? role;
     const tmData: TeammateData = {
-      circle: teammate, sprite, coworkerLayers, name, role, color, x, y,
+      circle: teammate, sprite, coworkerLayers, name: teammateName, role: teammateRole, color, x, y,
       inCall: false, playerJoined: false,
     };
     this.teammates.push(tmData);
@@ -3150,8 +3177,42 @@ export default class MainOfficeScene extends Phaser.Scene {
     });
     teammate.on('pointerdown', (p: Phaser.Input.Pointer) => {
       p.event.stopPropagation();
-      this.showTeammateMenu(tmData);
+      this.dismissAllOverlays();
+      this.dispatchTeammateSelected(
+        coworkerConfig?.id ?? tmData.name.toLowerCase().replace(/\s+/g, '-'),
+        tmData.name,
+        tmData.role,
+        p,
+        COWORKER_PROFILE_ASSET_BY_NAME[tmData.name],
+      );
     });
+  }
+
+  private dispatchTeammateSelected(
+    id: string,
+    name: string,
+    role: string,
+    pointer: Phaser.Input.Pointer,
+    avatarSrc?: string,
+  ) {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const pointerEvent = pointer.event;
+    const clientX = 'clientX' in pointerEvent ? pointerEvent.clientX : undefined;
+    const clientY = 'clientY' in pointerEvent ? pointerEvent.clientY : undefined;
+
+    window.dispatchEvent(new CustomEvent('warp:teammate-selected', {
+      detail: {
+        id,
+        name,
+        role,
+        avatarSrc,
+        clientX,
+        clientY,
+      },
+    }));
   }
 
   private showTeammateMenu(tm: TeammateData) {

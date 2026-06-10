@@ -8,7 +8,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useAvatarStore } from '@/stores/useAvatarStore';
 import { useOfficeStore } from '@/stores/useOfficeStore';
 import { type Task } from '@/lib/types';
-import { CalendarClock, CameraOff, ChevronRight, Eye, ListTodo, MessageCircle, Mic, MonitorUp, Pause, PhoneOff, Send, SkipForward, Smile, Upload, X } from 'lucide-react';
+import { CalendarClock, ChevronRight, Eye, ListTodo, MessageCircle, Mic, MonitorUp, Pause, PhoneOff, Send, SkipForward, Smile, Upload, X } from 'lucide-react';
 
 // =============================================
 //  DESIGN TOKENS (Figma typography + colors)
@@ -104,6 +104,17 @@ interface RoomDisplayState {
 
 type ModeratorTaskTab = 'active' | 'completed';
 type ScreenOverlayMode = 'share' | 'watch';
+
+interface TeammateInteractionSelection {
+  id: string;
+  name: string;
+  role: string;
+  avatarSrc?: string;
+  x: number;
+  y: number;
+  viewportWidth: number;
+  viewportHeight: number;
+}
 
 interface ModeratorMember {
   id: string;
@@ -238,10 +249,12 @@ interface SharedScreenParticipant {
   name: string;
   role: string;
   avatarGradient: string;
+  avatarSrc: string;
   isMuted: boolean;
   isSharing: boolean;
-  hasVideo: boolean;
-  previewType: 'screen' | 'video' | 'camera-off';
+  screenTitle: string;
+  screenSubtitle: string;
+  screenPreviewLabel: string;
 }
 
 const SHARED_SCREEN_PARTICIPANTS: SharedScreenParticipant[] = [
@@ -250,50 +263,60 @@ const SHARED_SCREEN_PARTICIPANTS: SharedScreenParticipant[] = [
     name: 'You',
     role: 'Moderator',
     avatarGradient: 'linear-gradient(135deg, #c4b5fd, #6cb5ff)',
+    avatarSrc: '/assets/avatar/profile/Frame%203869.png',
     isMuted: false,
     isSharing: true,
-    hasVideo: false,
-    previewType: 'screen',
+    screenTitle: 'All Projects',
+    screenSubtitle: 'Current sprint board and milestone tracking',
+    screenPreviewLabel: 'WARP Project Hub',
   },
   {
     id: 'coworker-a',
     name: 'Coworker A',
     role: '2D Artist',
     avatarGradient: 'linear-gradient(135deg, #ffe082, #b08dff)',
+    avatarSrc: '/assets/avatar/profile/Frame%203866.png',
     isMuted: true,
     isSharing: true,
-    hasVideo: false,
-    previewType: 'screen',
+    screenTitle: 'Design Board',
+    screenSubtitle: 'Character sprite animation references',
+    screenPreviewLabel: 'Figma Review',
   },
   {
     id: 'coworker-b',
     name: 'Coworker B',
     role: 'UI Designer',
     avatarGradient: 'linear-gradient(135deg, #f4b191, #9d7be8)',
+    avatarSrc: '/assets/avatar/profile/Frame%203865.png',
     isMuted: true,
-    isSharing: false,
-    hasVideo: false,
-    previewType: 'camera-off',
+    isSharing: true,
+    screenTitle: 'Sprint Tasks',
+    screenSubtitle: 'Interaction polish checklist',
+    screenPreviewLabel: 'Task Planner',
   },
   {
     id: 'coworker-c',
     name: 'Coworker C',
     role: 'Animator',
     avatarGradient: 'linear-gradient(135deg, #4b5563, #111827)',
+    avatarSrc: '/assets/avatar/profile/Frame%203867.png',
     isMuted: true,
     isSharing: true,
-    hasVideo: false,
-    previewType: 'screen',
+    screenTitle: 'Motion Pass',
+    screenSubtitle: 'Avatar animation timing notes',
+    screenPreviewLabel: 'Animation Timeline',
   },
   {
     id: 'coworker-d',
     name: 'Coworker D',
-    role: 'Producer',
+    role: 'Illustrator',
     avatarGradient: 'linear-gradient(135deg, #f7d1b8, #f3a0c2)',
+    avatarSrc: '/assets/avatar/profile/Frame%203868.png',
     isMuted: true,
     isSharing: false,
-    hasVideo: true,
-    previewType: 'video',
+    screenTitle: 'Dashboard Review',
+    screenSubtitle: 'Visual audit notes and asset status',
+    screenPreviewLabel: 'Review Deck',
   },
 ];
 
@@ -1502,6 +1525,127 @@ function ModeratorTaskCard({ task, member }: { task: ModeratorTask; member: Mode
   );
 }
 
+function RoomActiveTaskCard({ member }: { member: ModeratorMember }) {
+  return (
+    <div className="absolute right-[18px] top-[76px] z-30 w-[276px] rounded-[16px] border border-[#CECEFA] bg-white px-[13px] py-[10px] shadow-[0_12px_32px_rgba(84,86,106,0.16)]">
+      <div className="flex items-start gap-[9px]">
+        <ModeratorAvatar member={member} size="task" />
+        <div className="min-w-0 flex-1 pt-[1px]">
+          <p className="truncate text-[11px] font-semibold leading-tight text-black">{member.name}</p>
+          <p className="mt-[2px] truncate text-[10px] font-medium leading-tight text-[#9B96B8]">{member.role}</p>
+        </div>
+        <span className="mt-[6px] rounded-full bg-[#EDFDF7] px-[6px] py-[2px] text-[8px] font-medium leading-none text-[#20A875]">
+          Online
+        </span>
+      </div>
+
+      <div className="mt-[8px] rounded-[10px] bg-[#F8F7FC] px-[13px] py-[10px]">
+        <p className="truncate text-[10px] font-medium leading-tight text-black">Character Sprite Animation</p>
+        <div className="mt-[9px] h-[5px] rounded-full bg-[#E2E0F0]">
+          <div className="h-full w-[47%] rounded-full bg-[#685EEB]" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TeammateInteractionCard({
+  selection,
+  onClose,
+}: {
+  selection: TeammateInteractionSelection | null;
+  onClose: () => void;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!selection) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      document.addEventListener('mousedown', handlePointerDown);
+    }, 0);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose, selection]);
+
+  if (!selection) return null;
+
+  const cardWidth = 170;
+  const cardHeight = 138;
+  const minLeft = 24;
+  const minTop = 90;
+  const maxLeft = Math.max(minLeft, selection.viewportWidth - cardWidth - 24);
+  const maxTop = Math.max(minTop, selection.viewportHeight - 190);
+  const topTaskCardLeft = selection.viewportWidth - 318;
+  const topTaskCardBottom = 204;
+  const shouldPlaceLeft = selection.x + 16 + cardWidth > maxLeft || selection.x > selection.viewportWidth - 360;
+  let left = shouldPlaceLeft ? selection.x - cardWidth - 16 : selection.x + 16;
+  let top = selection.y - 20;
+
+  if (left > topTaskCardLeft - cardWidth && top < topTaskCardBottom) {
+    left = Math.min(left, topTaskCardLeft - cardWidth - 18);
+    top = Math.max(top, topTaskCardBottom + 12);
+  }
+
+  left = Math.min(Math.max(left, minLeft), maxLeft);
+  top = Math.min(Math.max(top, minTop), maxTop);
+
+  const handlePrivateCall = () => {
+    console.log('Private call teammate', selection.name);
+  };
+
+  const handleSendKudos = () => {
+    console.log('Send kudos to teammate', selection.name);
+  };
+
+  return (
+    <div
+      ref={cardRef}
+      className="absolute z-40 w-[170px] rounded-[22px] bg-white/95 px-[19px] pb-[18px] pt-[20px] shadow-[0_10px_28px_rgba(84,86,106,0.2)] ring-1 ring-[#E8E5F5]/80 backdrop-blur"
+      style={{ left, top }}
+      role="dialog"
+      aria-label={`${selection.name} actions`}
+    >
+      <p className="truncate text-[16px] font-bold leading-tight text-black">{selection.name}</p>
+      <p className="mt-[5px] truncate text-[11px] font-normal leading-tight text-[#A5A4A4]">{selection.role}</p>
+
+      <div className="mt-[15px] space-y-[7px]">
+        <button
+          type="button"
+          onClick={handlePrivateCall}
+          className="h-[24px] w-full rounded-[9px] bg-[#F8F7FC] text-[12px] font-semibold leading-none text-[#7C5CFC] shadow-[0_2px_8px_rgba(104,94,235,0.18)] transition-colors hover:bg-[#F0ECFF]"
+        >
+          Private Call
+        </button>
+        <button
+          type="button"
+          onClick={handleSendKudos}
+          className="h-[24px] w-full rounded-[9px] bg-[#7C5CFC] text-[12px] font-semibold leading-none text-white shadow-[0_2px_8px_rgba(104,94,235,0.28)] transition-colors hover:bg-[#685EEB]"
+        >
+          Send Kudos
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ModeratorTeamModal({
   open,
   onClose,
@@ -1666,6 +1810,24 @@ function SharedScreenPreview({
   const statusText = mode === 'share'
     ? isSharingScreen ? 'You are sharing your screen' : 'Share preview paused'
     : isWatchingScreen ? `Watching ${participant.name}'s screen` : 'Watch preview paused';
+  const metricCards = participant.id === 'you'
+    ? ['8 active', '3 reviews', '72% done']
+    : participant.id === 'coworker-a'
+      ? ['12 frames', '4 notes', '70% done']
+      : participant.id === 'coworker-b'
+        ? ['5 tasks', '2 blockers', '62% done']
+        : participant.id === 'coworker-c'
+          ? ['24 clips', '6 passes', '81% done']
+          : ['9 screens', '3 fixes', '46% done'];
+  const contentRows = participant.id === 'coworker-a'
+    ? ['Idle pose cleanup', 'Walk cycle timing', 'Laptop prop alignment']
+    : participant.id === 'coworker-b'
+      ? ['Control bar polish', 'Overlay spacing', 'Responsive pass']
+      : participant.id === 'coworker-c'
+        ? ['Clap animation pass', 'Blink timing', 'Transition easing']
+        : participant.id === 'coworker-d'
+          ? ['Dashboard contrast', 'Profile crop check', 'Illustration export']
+          : ['Virtual room QA', 'Team status review', 'Collaboration overlay'];
 
   return (
     <div className="relative min-h-0 flex-1 rounded-[16px] border-[3px] border-[#9B96B8] bg-[#F7F7FF] shadow-[0_18px_48px_rgba(34,29,55,0.22)]">
@@ -1678,14 +1840,23 @@ function SharedScreenPreview({
           <span className="h-[8px] w-[8px] rounded-full bg-[#FFD166]" />
           <span className="h-[8px] w-[8px] rounded-full bg-[#6CE0A6]" />
           <div className="ml-[10px] h-[16px] flex-1 rounded-full bg-white px-[10px] text-[10px] leading-[16px] text-[#9B96B8]">
-            warp.local/projects
+            warp.local/{participant.screenPreviewLabel.toLowerCase().replace(/\s+/g, '-')}
           </div>
         </div>
         <div className="grid h-[calc(100%-32px)] grid-cols-[176px_minmax(0,1fr)]">
           <div className="border-r border-[#E2E0F0] bg-[#FAF9FF] p-[16px]">
-            <p className="text-[18px] font-bold text-[#685EEB]">Projects</p>
+            <div className="flex items-center gap-[9px]">
+              <div className="h-[34px] w-[34px] overflow-hidden rounded-full border border-white shadow-sm" style={{ background: participant.avatarGradient }}>
+                <img src={participant.avatarSrc} alt={`${participant.name} avatar`} className="h-full w-full object-cover" />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-bold leading-tight text-[#252233]">{participant.name}</p>
+                <p className="truncate text-[10px] font-medium leading-tight text-[#9B96B8]">{participant.role}</p>
+              </div>
+            </div>
+            <p className="mt-[18px] text-[18px] font-bold text-[#685EEB]">{participant.screenPreviewLabel}</p>
             <div className="mt-[18px] space-y-[8px]">
-              {['All projects', 'Your projects', 'Shared with you', 'Available offline'].map((item, index) => (
+              {[participant.screenTitle, 'Activity', 'Files', 'Comments'].map((item, index) => (
                 <div key={item} className={`rounded-[8px] px-[10px] py-[8px] text-[12px] font-medium ${index === 0 ? 'bg-[#EEEAFE] text-[#685EEB]' : 'text-[#787A90]'}`}>
                   {item}
                 </div>
@@ -1693,17 +1864,41 @@ function SharedScreenPreview({
             </div>
           </div>
           <div className="p-[28px]">
-            <div className="mx-auto h-[34px] max-w-[340px] rounded-full border border-[#DFDFFF] bg-white" />
-            <div className="mt-[34px] grid grid-cols-4 gap-[14px]">
-              {Array.from({ length: 8 }).map((_, index) => (
-                <div key={index} className="h-[74px] rounded-[8px] bg-[#EDEDF2]" />
+            <div className="flex items-start justify-between gap-[20px]">
+              <div>
+                <p className="text-[22px] font-bold leading-tight text-[#252233]">{participant.screenTitle}</p>
+                <p className="mt-[6px] text-[12px] font-medium leading-tight text-[#9B96B8]">{participant.screenSubtitle}</p>
+              </div>
+              <span className={`shrink-0 rounded-full px-[10px] py-[5px] text-[11px] font-semibold ${participant.isSharing ? 'bg-[#EDFDF7] text-[#20A875]' : 'bg-[#F4F1FF] text-[#685EEB]'}`}>
+                {participant.isSharing ? 'Sharing now' : 'Preview'}
+              </span>
+            </div>
+
+            <div className="mt-[24px] grid grid-cols-3 gap-[12px]">
+              {metricCards.map((item) => (
+                <div key={item} className="rounded-[10px] border border-[#E2E0F0] bg-[#FAF9FF] px-[14px] py-[12px]">
+                  <p className="text-[15px] font-bold leading-tight text-[#685EEB]">{item.split(' ')[0]}</p>
+                  <p className="mt-[3px] text-[10px] font-medium uppercase tracking-[0.08em] text-[#9B96B8]">{item.split(' ').slice(1).join(' ')}</p>
+                </div>
               ))}
             </div>
-            <div className="mt-[28px] h-[18px] w-[92px] rounded bg-[#E2E0F0]" />
-            <div className="mt-[12px] grid grid-cols-3 gap-[12px]">
-              <div className="h-[56px] rounded-[8px] bg-[#F0EFF8]" />
-              <div className="h-[56px] rounded-[8px] bg-[#F0EFF8]" />
-              <div className="h-[56px] rounded-[8px] bg-[#F0EFF8]" />
+
+            <div className="mt-[24px] rounded-[12px] border border-[#E2E0F0] bg-white p-[14px] shadow-[0_8px_20px_rgba(84,86,106,0.08)]">
+              <div className="mb-[12px] flex items-center justify-between">
+                <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-[#9B96B8]">Live workspace</p>
+                <div className="h-[6px] w-[84px] rounded-full bg-[#E2E0F0]">
+                  <div className="h-full w-[68%] rounded-full bg-[#685EEB]" />
+                </div>
+              </div>
+              <div className="space-y-[9px]">
+                {contentRows.map((row, index) => (
+                  <div key={row} className="flex items-center gap-[10px] rounded-[9px] bg-[#F8F7FC] px-[12px] py-[10px]">
+                    <span className={`h-[8px] w-[8px] rounded-full ${index === 0 ? 'bg-[#685EEB]' : index === 1 ? 'bg-[#6CB5FF]' : 'bg-[#20A875]'}`} />
+                    <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-[#5C5780]">{row}</span>
+                    <span className="h-[5px] w-[54px] rounded-full bg-[#DFDFFF]" />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -1729,24 +1924,24 @@ function SharedParticipantTile({
         selected ? 'border-[#7A70FF] bg-[#B4B4B4]' : 'border-transparent bg-[#B4B4B4] hover:border-[#A29BFC]'
       }`}
     >
-      {participant.previewType === 'video' ? (
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,#f2d0bc,#6b7280)]" />
-      ) : participant.previewType === 'camera-off' ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#B4B4B4] text-white/80">
-          <CameraOff size={25} strokeWidth={2.2} />
-        </div>
-      ) : (
-        <div className="absolute inset-0 bg-[#DCD9F7]">
-          <div className="m-[12px] h-[20px] rounded bg-white/70" />
-          <div className="mx-[12px] grid grid-cols-3 gap-[6px]">
-            <div className="h-[26px] rounded bg-white/65" />
-            <div className="h-[26px] rounded bg-white/65" />
-            <div className="h-[26px] rounded bg-white/65" />
+      <div className="absolute inset-0 bg-[linear-gradient(145deg,#F4F1FF_0%,#DDEEFF_100%)]">
+        <div className="m-[10px] rounded-[8px] bg-white/78 p-[8px] shadow-sm">
+          <div className="mb-[7px] h-[6px] w-[66px] rounded-full bg-[#A29BFC]" />
+          <div className="grid grid-cols-3 gap-[5px]">
+            <div className="h-[19px] rounded bg-[#E8E5FF]" />
+            <div className="h-[19px] rounded bg-[#E8F4FF]" />
+            <div className="h-[19px] rounded bg-[#E8E5FF]" />
           </div>
+          <div className="mt-[7px] h-[5px] w-[96px] rounded-full bg-[#DFDFFF]" />
         </div>
-      )}
+      </div>
+      <div className="absolute right-[9px] top-[9px] rounded-full bg-white/88 px-[7px] py-[3px] text-[9px] font-semibold text-[#685EEB] shadow-sm">
+        {participant.isSharing ? 'Sharing' : 'Ready'}
+      </div>
       <div className="absolute bottom-[10px] left-[10px] flex items-center gap-[8px]">
-        <div className="h-[34px] w-[34px] rounded-full border border-white" style={{ background: participant.avatarGradient }} />
+        <div className="h-[34px] w-[34px] overflow-hidden rounded-full border border-white shadow-sm" style={{ background: participant.avatarGradient }}>
+          <img src={participant.avatarSrc} alt={`${participant.name} avatar`} className="h-full w-full object-cover" />
+        </div>
         <div>
           <p className="text-[12px] font-semibold leading-tight text-white drop-shadow">{participant.name}</p>
           <p className="text-[10px] font-medium leading-tight text-white/80">{participant.role}</p>
@@ -1972,6 +2167,7 @@ export function VirtualRoomLayout() {
   const [selectedSharedScreenId, setSelectedSharedScreenId] = useState('coworker-a');
   const [isSharingScreen, setIsSharingScreen] = useState(false);
   const [isWatchingScreen, setIsWatchingScreen] = useState(false);
+  const [selectedTeammateAction, setSelectedTeammateAction] = useState<TeammateInteractionSelection | null>(null);
   const [activeRoom, setActiveRoom] = useState<RoomDisplayState>(VIRTUAL_ROOM_OPTIONS[0]);
   const viewportRef = useRef<HTMLDivElement>(null);
 
@@ -1993,6 +2189,45 @@ export function VirtualRoomLayout() {
 
     window.addEventListener('warp:room-changed', handleRoomChanged as EventListener);
     return () => window.removeEventListener('warp:room-changed', handleRoomChanged as EventListener);
+  }, []);
+
+  useEffect(() => {
+    const handleTeammateSelected = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        id?: string;
+        name?: string;
+        role?: string;
+        avatarSrc?: string;
+        clientX?: number;
+        clientY?: number;
+      }>;
+      const name = customEvent.detail?.name || 'Coworker A';
+      const viewportBounds = viewportRef.current?.getBoundingClientRect();
+      const x = viewportBounds && typeof customEvent.detail?.clientX === 'number'
+        ? customEvent.detail.clientX - viewportBounds.left
+        : 640;
+      const y = viewportBounds && typeof customEvent.detail?.clientY === 'number'
+        ? customEvent.detail.clientY - viewportBounds.top
+        : 520;
+
+      setSelectedTeammateAction({
+        id: customEvent.detail?.id || name.toLowerCase().replace(/\s+/g, '-'),
+        name,
+        role: customEvent.detail?.role || 'UI/UX Designer',
+        avatarSrc: customEvent.detail?.avatarSrc,
+        x,
+        y,
+        viewportWidth: viewportBounds?.width ?? 960,
+        viewportHeight: viewportBounds?.height ?? 720,
+      });
+      setSelectedModeratorMemberId((current) => {
+        const matchedMember = MODERATOR_TEAM_MEMBERS.find((member) => member.name === name);
+        return matchedMember?.id || current;
+      });
+    };
+
+    window.addEventListener('warp:teammate-selected', handleTeammateSelected as EventListener);
+    return () => window.removeEventListener('warp:teammate-selected', handleTeammateSelected as EventListener);
   }, []);
 
   const handleRoomSelection = (roomId: string) => {
@@ -2033,6 +2268,8 @@ export function VirtualRoomLayout() {
     }
   };
 
+  const activeTaskMember = MODERATOR_TEAM_MEMBERS.find((member) => member.id === selectedModeratorMemberId) ?? MODERATOR_TEAM_MEMBERS[0];
+
   return (
     <div className="warp-font-ui flex h-[100svh] w-full overflow-hidden bg-[#F9FBFD]" style={VIRTUAL_ROOM_SHELL_STYLE}>
       {/* Left Nav Rail */}
@@ -2054,7 +2291,12 @@ export function VirtualRoomLayout() {
             onSwitchRooms={() => setShowChangeRooms(true)}
           />
           <TopRightHud />
+          <RoomActiveTaskCard member={activeTaskMember} />
           <UserCardOverlay onOpenTeamModal={() => setIsModeratorTeamModalOpen(true)} />
+          <TeammateInteractionCard
+            selection={selectedTeammateAction}
+            onClose={() => setSelectedTeammateAction(null)}
+          />
           <TomatoWidget />
           <ClapHint />
           <BottomControlBar
