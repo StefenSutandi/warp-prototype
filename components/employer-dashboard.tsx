@@ -497,7 +497,7 @@ function SidebarNav({
       <WarpMark />
 
       <div className="space-y-5">
-        <p className="warp-font-display text-[13px] font-extrabold uppercase tracking-[0.04em] text-[#9b96b8]">
+        <p className="warp-font-header text-[13px] font-extrabold uppercase tracking-[0.04em] text-[#9b96b8]">
           Main Menu
         </p>
 
@@ -540,7 +540,7 @@ function TopBar({
 }) {
   return (
     <div className="flex h-[80px] flex-wrap items-center justify-between gap-4 border-b border-[#e2e0f0] bg-white px-[26px] py-[16px] lg:px-[27px]">
-      <h1 className="warp-font-display text-[24px] font-extrabold tracking-[-0.03em] text-[#111111]">
+      <h1 className="warp-font-header text-[24px] font-extrabold tracking-[-0.03em] text-[#111111]">
         {title ? (
           title
         ) : (
@@ -585,7 +585,7 @@ function HeroPanel({
   return (
     <section className="relative min-h-[332px] overflow-hidden rounded-[17px] bg-[linear-gradient(145deg,#eeeaff_0%,#dfd7ff_42%,#fbf8ff_100%)] px-[42px] py-[38px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
       <div className="relative z-10 max-w-[430px]">
-        <h2 className="warp-font-display text-[32px] font-extrabold leading-[0.99] tracking-[-0.04em] text-black">
+        <h2 className="warp-font-header text-[32px] font-extrabold leading-[0.99] tracking-[-0.04em] text-black">
           Ready to Start <span className="text-[#685eeb]">Warping?</span>
         </h2>
         <p className="mt-[18px] max-w-xl text-[14px] font-medium text-[#858585]">

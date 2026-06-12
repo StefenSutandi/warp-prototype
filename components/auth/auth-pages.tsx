@@ -29,7 +29,7 @@ function AuthShell({
 
             <div className="mt-auto">
               <p className="text-[13px] font-bold uppercase tracking-[0.08em] text-[#685eeb]">{eyebrow}</p>
-              <h1 className="warp-font-display mt-[14px] max-w-[460px] text-[44px] font-extrabold leading-[0.98] tracking-[-0.04em] text-black">
+              <h1 className="warp-font-header mt-[14px] max-w-[460px] text-[44px] font-extrabold leading-[0.98] tracking-[-0.04em] text-black">
                 {title}
               </h1>
               <p className="mt-[18px] max-w-[390px] text-[15px] font-medium leading-[1.55] text-[#5c5780]">
@@ -91,7 +91,7 @@ function AuthCard({
         <Image src={WARP_LOGO} alt="Warp" width={119} height={29} priority className="h-[29px] w-auto" />
       </div>
       <div className="rounded-[28px] border border-[#e2e0f0] bg-white px-[28px] py-[30px] shadow-[0_20px_46px_rgba(104,94,235,0.10)] sm:px-[38px] sm:py-[38px]">
-        <h2 className="warp-font-display text-[36px] font-extrabold leading-none tracking-[-0.04em] text-black">{title}</h2>
+        <h2 className="warp-font-header text-[36px] font-extrabold leading-none tracking-[-0.04em] text-black">{title}</h2>
         <p className="mt-[10px] text-[14px] font-medium leading-[1.45] text-[#858585]">{description}</p>
         {children}
       </div>

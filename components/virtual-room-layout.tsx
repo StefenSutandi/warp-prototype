@@ -567,7 +567,7 @@ function RoomTitle({
   return (
     <div className="absolute inset-x-0 top-0 z-30 flex h-[85px] items-start justify-center pt-[18px] pointer-events-none">
       <div className="pointer-events-auto text-center">
-        <h1 className="warp-font-display text-[24px] font-bold leading-none text-black">
+        <h1 className="warp-font-header text-[24px] font-bold leading-none text-black">
           {roomTitle}
         </h1>
         <p className="warp-font-ui mt-[6px] text-[14px] font-normal leading-none text-[#838383]">
@@ -1273,7 +1273,7 @@ function RightPanel({ onCreateTask }: { onCreateTask: () => void }) {
         {/* TASK LIST HEADER */}
         <div className="flex items-center justify-between px-[22px] pb-[14px] pt-[27px]">
           <div className="flex items-center gap-2.5">
-          <span className="warp-font-display text-[13px] font-bold uppercase tracking-[0.04em] text-[#9B96B8]">Task List</span>
+          <span className="warp-font-header text-[13px] font-bold uppercase tracking-[0.04em] text-[#9B96B8]">Task List</span>
           <span className="flex h-[16px] min-w-[16px] items-center justify-center rounded-[11px] bg-[#FB7675] px-[3px] text-[10px] font-bold text-white">{activeCount}</span>
           </div>
           <button
@@ -1294,7 +1294,7 @@ function RightPanel({ onCreateTask }: { onCreateTask: () => void }) {
 
       {/* ROOM CHAT */}
       <div className="flex h-[413px] flex-col bg-[#fcfcff]">
-        <p className="warp-font-display px-[22px] pb-[16px] pt-[18px] text-[13px] font-bold uppercase tracking-[0.04em] text-[#9B96B8]">Room Chat</p>
+        <p className="warp-font-header px-[22px] pb-[16px] pt-[18px] text-[13px] font-bold uppercase tracking-[0.04em] text-[#9B96B8]">Room Chat</p>
 
         <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-[22px] pb-[12px]">
           {chatMessages.map(msg => (
