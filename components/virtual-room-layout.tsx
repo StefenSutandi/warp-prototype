@@ -551,6 +551,20 @@ function TopBarBackdrop() {
   );
 }
 
+function LevelPhaseBadge() {
+  return (
+    <div className="absolute left-[22px] top-[15px] z-30 flex h-[56px] max-w-[450px] items-center gap-[16px] rounded-full border border-[#d8d3f2] bg-white px-[10px] pr-[24px] shadow-[0_8px_22px_rgba(104,94,235,0.12)] pointer-events-none">
+      <span className="warp-font-ui inline-flex h-[38px] shrink-0 items-center rounded-full bg-[#dfdfff] px-[24px] text-[15px] font-extrabold leading-none text-[#685EEB]">
+        Level 1
+      </span>
+      <span className="h-[34px] w-px shrink-0 bg-[#d8d3f2]" />
+      <span className="warp-font-ui min-w-0 truncate text-[15px] font-bold leading-none text-[#5C5780]">
+        Phase: Research &amp; Concepting
+      </span>
+    </div>
+  );
+}
+
 // =============================================
 //  ROOM TITLE (center-top, Figma: "Artist Room" + "working hour")
 // =============================================
@@ -2285,6 +2299,7 @@ export function VirtualRoomLayout() {
 
         {/* Overlays */}
         <TopBarBackdrop />
+        <LevelPhaseBadge />
         <RoomTitle
           roomTitle={activeRoom.name}
           roomSubtitle={activeRoom.subtitle}
