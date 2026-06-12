@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -41,7 +41,6 @@ import {
 import { cn } from '@/lib/utils';
 import { useAvatarStore } from '@/stores/useAvatarStore';
 import { useRoomStore } from '@/stores/useRoomStore';
-import { useTaskStore } from '@/stores/useTaskStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { EmployerTaskManagementPage } from './employer-task-management-page';
 import { VirtualOfficePlaceholder } from './virtual-office-placeholder';
@@ -119,6 +118,14 @@ const onlineMembers = [
   { name: 'Baskara Putra', role: 'UI/UX Designer', task: 'Icon Set Exploration', status: 'In Review', progress: 70, avatar: PROFILE_THUMBNAILS[6] },
   { name: 'Nadira Salma', role: 'Illustrator', task: 'Character Pose Cleanup', status: 'In Progress', progress: 55, avatar: PROFILE_THUMBNAILS[7] },
   { name: 'Kenzo Pratama', role: 'Motion Designer', task: 'Micro-interaction Pass', status: 'Review Today', progress: 82, avatar: PROFILE_THUMBNAILS[0] },
+] as const;
+
+const teamActivityItems = [
+  { id: 'bastian-putra', name: 'Bastian Putra', taskTitle: 'Membuat wireframe dashboard' },
+  { id: 'sekar-putri', name: 'Sekar Putri', taskTitle: 'Menyusun user flow workspace' },
+  { id: 'dimas-pratama', name: 'Dimas Pratama', taskTitle: 'Review desain avatar' },
+  { id: 'nabila-sari', name: 'Nabila Sari', taskTitle: 'Menyiapkan asset virtual room' },
+  { id: 'arka-wijaya', name: 'Arka Wijaya', taskTitle: 'Update project timeline' },
 ] as const;
 
 const teamMembers = [
@@ -1241,11 +1248,11 @@ function ProjectTimelineWarpSection() {
 
 function ActivityItem({
   name,
-  role,
+  taskTitle,
   index,
 }: {
   name: string;
-  role: string;
+  taskTitle: string;
   index: number;
 }) {
   const thumbnail = PROFILE_THUMBNAILS[index % PROFILE_THUMBNAILS.length];
@@ -1263,7 +1270,7 @@ function ActivityItem({
         <p className="truncate text-[15px] font-bold text-[#111111]">{name}</p>
         <div className="mt-[2px] flex items-center gap-[4px]">
           <span className="h-[12px] w-[12px] rounded-full border border-[#9b96b8]" />
-          <p className="truncate text-[11px] text-[#5c5780]">{role}</p>
+          <p className="truncate text-[11px] text-[#5c5780]">{taskTitle}</p>
         </div>
       </div>
 
@@ -1276,13 +1283,11 @@ function ProfilePanel({
   displayName,
   roleLabel,
   interests,
-  teammates,
   onEditProfile,
 }: {
   displayName: string;
   roleLabel: string;
   interests: string[];
-  teammates: Array<{ id: string; name: string; role: string }>;
   onEditProfile: () => void;
 }) {
   const visibleInterests = interests.length > 0 ? interests : ['Add interests'];
@@ -1337,8 +1342,8 @@ function ProfilePanel({
         </p>
 
         <div className="mt-[20px] space-y-[19px]">
-          {teammates.map((teammate, index) => (
-            <ActivityItem key={teammate.id} name={teammate.name} role={teammate.role} index={index} />
+          {teamActivityItems.map((activity, index) => (
+            <ActivityItem key={activity.id} name={activity.name} taskTitle={activity.taskTitle} index={index} />
           ))}
         </div>
       </div>
@@ -2981,19 +2986,8 @@ export function EmployerDashboard() {
   const [isRoomCodeModalOpen, setIsRoomCodeModalOpen] = useState(false);
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
   const [roomCode, setRoomCode] = useState('');
-  const teammates = useTaskStore((state) => state.teammates);
   const currentUser = useUserStore((state) => state.currentUser);
   const avatarProfile = useAvatarStore((state) => state.profile);
-
-  const visibleTeammates = useMemo(
-    () =>
-      teammates.slice(0, 6).map((teammate) => ({
-        id: teammate.id,
-        name: teammate.name,
-        role: teammate.role || 'Current activity',
-      })),
-    [teammates]
-  );
 
   const displayName = avatarProfile.displayName.trim() || currentUser?.name || 'Your Name';
   const roleLabel = avatarProfile.position.trim() || 'Your Position';
@@ -3065,7 +3059,6 @@ export function EmployerDashboard() {
             displayName={displayName}
             roleLabel={roleLabel}
             interests={avatarProfile.interests}
-            teammates={visibleTeammates}
             onEditProfile={() => router.push('/avatar')}
           />
         ) : null}
