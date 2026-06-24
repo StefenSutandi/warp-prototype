@@ -161,6 +161,7 @@ interface SeatData {
 
 const VIRTUAL_ROOM_ASSETS = {
   roomBase: '/assets/virtual-room/base/room_base.svg',
+  teamLoungeRoom: '/assets/figma-export/team-lounge/team-lounge-room.png',
   table: '/assets/virtual-room/furniture/table.svg',
   tv: '/assets/virtual-room/furniture/tv_console.svg',
   door: '/assets/virtual-room/furniture/door 3.svg',
@@ -676,6 +677,12 @@ const FIGMA_MAIN_ROOM = {
   ] as Array<FigmaRect & { id: string; row: SeatRow; variant: SeatVariant; color: SeatColor }>,
 } as const;
 
+const TEAM_LOUNGE_SOURCE = {
+  width: 2560,
+  height: 1440,
+  door: { x: 1840, y: 315, w: 225, h: 435 },
+} as const;
+
 interface DeskData {
   rect: Phaser.GameObjects.Rectangle;
   label: string;
@@ -833,6 +840,7 @@ export default class MainOfficeScene extends Phaser.Scene {
 
   preload() {
     this.load.image('room_base', VIRTUAL_ROOM_ASSETS.roomBase);
+    this.load.image('team_lounge_room', VIRTUAL_ROOM_ASSETS.teamLoungeRoom);
     this.load.image('table', VIRTUAL_ROOM_ASSETS.table);
     this.load.image('tv', VIRTUAL_ROOM_ASSETS.tv);
     this.load.image('door_main', VIRTUAL_ROOM_ASSETS.door);
@@ -2118,6 +2126,9 @@ export default class MainOfficeScene extends Phaser.Scene {
     if (roomId === 'main') {
       // ===== MAIN OFFICE: Use image assets =====
       this.loadMainOfficeAssets(width, height, room);
+    } else if (roomId === 'lounge') {
+      // ===== TEAM LOUNGE: Use the exported full-room composition =====
+      this.loadTeamLoungeAssets(width, height);
     } else {
       this.mainRoomBounds = new Phaser.Geom.Rectangle(0, 0, width, height);
       this.playerMovementBounds = new Phaser.Geom.Rectangle(0, 0, width, height);
@@ -2157,8 +2168,35 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   // =============================================
-  //  MAIN OFFICE: Image-based room layout
+  //  IMAGE-BASED ROOM LAYOUTS
   // =============================================
+
+  private loadTeamLoungeAssets(width: number, height: number) {
+    const roomScale = Math.min(width / TEAM_LOUNGE_SOURCE.width, height / TEAM_LOUNGE_SOURCE.height) * 0.96;
+    const roomWidth = TEAM_LOUNGE_SOURCE.width * roomScale;
+    const roomHeight = TEAM_LOUNGE_SOURCE.height * roomScale;
+    const roomLeft = (width - roomWidth) / 2;
+    const roomTop = (height - roomHeight) / 2;
+
+    const roomArtwork = this.add.image(width / 2, height / 2, 'team_lounge_room')
+      .setScale(roomScale)
+      .setDepth(0);
+    this.roomObjects.push(roomArtwork);
+
+    this.mainRoomBounds = new Phaser.Geom.Rectangle(roomLeft, roomTop, roomWidth, roomHeight);
+    // Preserve the existing full-canvas lounge movement behavior for this visual-only pass.
+    this.playerMovementBounds = new Phaser.Geom.Rectangle(0, 0, width, height);
+
+    const returnDoor = ROOMS.lounge.doors[0];
+    if (returnDoor) {
+      returnDoor.x = roomLeft + (TEAM_LOUNGE_SOURCE.door.x + TEAM_LOUNGE_SOURCE.door.w / 2) * roomScale;
+      returnDoor.y = roomTop + (TEAM_LOUNGE_SOURCE.door.y + TEAM_LOUNGE_SOURCE.door.h / 2) * roomScale;
+      returnDoor.w = TEAM_LOUNGE_SOURCE.door.w * roomScale;
+      returnDoor.h = TEAM_LOUNGE_SOURCE.door.h * roomScale;
+    }
+
+    this.applySceneViewport();
+  }
 
   private loadMainOfficeAssets(width: number, height: number, room: RoomDef) {
     const baseScale = Math.min(width / 1970, height / 1205) * 0.98;
@@ -2598,6 +2636,8 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   private clearRoom() {
+    this.input.setDefaultCursor('default');
+
     for (const coworker of this.roomCoworkers) {
       coworker.blinkEvent?.remove(false);
     }
@@ -2667,8 +2707,9 @@ export default class MainOfficeScene extends Phaser.Scene {
       return;
     }
 
+    const visualCameraYOffset = this.currentRoomId === 'lounge' ? 0 : MainOfficeScene.VISUAL_CAMERA_Y_OFFSET;
     camera.setZoom(this.sceneZoom);
-    camera.centerOn(mainRoomBounds.centerX, mainRoomBounds.centerY - MainOfficeScene.VISUAL_CAMERA_Y_OFFSET);
+    camera.centerOn(mainRoomBounds.centerX, mainRoomBounds.centerY - visualCameraYOffset);
   }
 
   private getRoomSafeSpawnPosition(roomId: string): Phaser.Math.Vector2 {
@@ -2760,10 +2801,49 @@ export default class MainOfficeScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
       .setDepth(1);
+
+    const isTeamLoungeReturnDoor = this.currentRoomId === 'lounge' && targetRoom === 'main';
+    const hoverHighlight = isTeamLoungeReturnDoor
+      ? this.add.rectangle(x, y, w, h, 0x685eeb, 0.055)
+        .setDepth(900)
+        .setVisible(false)
+      : null;
+    const hoverLabel = isTeamLoungeReturnDoor
+      ? this.add.container(x, y - h / 2 - 22, [
+        this.add.rectangle(0, 0, 146, 30, 0x27213f, 0.94)
+          .setStrokeStyle(1, 0xffffff, 0.24),
+        this.add.text(0, 0, 'Back to Main Office', {
+          fontFamily: 'Funnel Sans, Arial, sans-serif',
+          fontSize: '11px',
+          color: '#ffffff',
+          fontStyle: 'bold',
+        }).setOrigin(0.5),
+      ])
+        .setDepth(901)
+        .setVisible(false)
+      : null;
+
     this.roomObjects.push(doorHitbox);
+    if (hoverHighlight) this.roomObjects.push(hoverHighlight);
+    if (hoverLabel) this.roomObjects.push(hoverLabel);
+
+    doorHitbox.on('pointerover', () => {
+      if (!isTeamLoungeReturnDoor) return;
+      this.input.setDefaultCursor('pointer');
+      hoverHighlight?.setVisible(true);
+      hoverLabel?.setVisible(true);
+    });
+
+    doorHitbox.on('pointerout', () => {
+      if (!isTeamLoungeReturnDoor) return;
+      this.input.setDefaultCursor('default');
+      hoverHighlight?.setVisible(false);
+      hoverLabel?.setVisible(false);
+    });
 
     doorHitbox.on('pointerdown', (p: Phaser.Input.Pointer) => {
       p.event.stopPropagation();
+      this.input.setDefaultCursor('default');
       this.switchRoom(targetRoom);
     });
   }
