@@ -40,10 +40,9 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAvatarStore } from '@/stores/useAvatarStore';
-import { useRoomStore } from '@/stores/useRoomStore';
+import { type RoomCapacity, type WorkspaceRoom, useRoomStore } from '@/stores/useRoomStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { EmployerTaskManagementPage } from './employer-task-management-page';
-import { VirtualOfficePlaceholder } from './virtual-office-placeholder';
 
 const EMPLOYER_DASHBOARD_ASSETS = {
   logo: '/assets/dashboard-employer/branding/warp-logo.svg',
@@ -2757,54 +2756,108 @@ function EmployerChatPage({ selectedTeammate }: { selectedTeammate: TeamMemberPr
   );
 }
 
+const ROOM_CAPACITY_OPTIONS = [
+  { value: 6, label: 'Small' },
+  { value: 10, label: 'Medium' },
+  { value: 16, label: 'Large' },
+] as const;
+
+const DEFAULT_WORKSPACE_ROOMS: WorkspaceRoom[] = [
+  { id: 'artist-room', name: 'Artist Room', capacity: 6 },
+  { id: 'programmer-room', name: 'Programmer Room', capacity: 10 },
+];
+
 function EmployerCreateRoomFlow({
   onBack,
 }: {
   onBack: () => void;
 }) {
-  const isRoomBuilt = useRoomStore((state) => state.isRoomBuilt);
-  const isBuilding = useRoomStore((state) => state.isBuilding);
-  const roomConfig = useRoomStore((state) => state.roomConfig);
-  const buildRoom = useRoomStore((state) => state.buildRoom);
-  const resetRoom = useRoomStore((state) => state.resetRoom);
+  const savedSetup = useRoomStore((state) => state.roomConfig);
+  const saveRoomSetup = useRoomStore((state) => state.saveRoomSetup);
 
-  const [employees, setEmployees] = useState(5);
-  const [rooms, setRooms] = useState(2);
-  const [workingHours, setWorkingHours] = useState('09:00 - 17:00');
-  const [timeline, setTimeline] = useState('3 Months');
-  const [copied, setCopied] = useState(false);
+  const [flowStep, setFlowStep] = useState<'setup' | 'timeline'>('setup');
+  const [projectName, setProjectName] = useState(savedSetup?.projectName ?? '');
+  const [workingHours, setWorkingHours] = useState(savedSetup?.workingHours ?? '09:00 – 17:00');
+  const [projectDuration, setProjectDuration] = useState(savedSetup?.projectDuration ?? '9 months');
+  const [rooms, setRooms] = useState<WorkspaceRoom[]>(savedSetup?.rooms ?? DEFAULT_WORKSPACE_ROOMS);
+  const [projectNameError, setProjectNameError] = useState('');
+  const [roomErrors, setRoomErrors] = useState<Record<string, string>>({});
 
-  const inviteLink = 'https://warp.app/invite/x7y9zAlpha';
+  const updateRoom = (roomId: string, updates: Partial<Pick<WorkspaceRoom, 'name' | 'capacity'>>) => {
+    setRooms((currentRooms) => currentRooms.map((room) => (room.id === roomId ? { ...room, ...updates } : room)));
+    if (updates.name?.trim()) {
+      setRoomErrors((currentErrors) => {
+        const nextErrors = { ...currentErrors };
+        delete nextErrors[roomId];
+        return nextErrors;
+      });
+    }
+  };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const addRoom = () => {
+    setRooms((currentRooms) => [
+      ...currentRooms,
+      {
+        id: `room-${Date.now()}`,
+        name: `Room ${currentRooms.length + 1}`,
+        capacity: 6,
+      },
+    ]);
+  };
+
+  const deleteRoom = (roomId: string) => {
+    setRooms((currentRooms) => {
+      if (currentRooms.length === 1) return currentRooms;
+      return currentRooms.filter((room) => room.id !== roomId);
+    });
+    setRoomErrors((currentErrors) => {
+      const nextErrors = { ...currentErrors };
+      delete nextErrors[roomId];
+      return nextErrors;
+    });
+  };
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await buildRoom({ employees, rooms, workingHours, timeline });
-  };
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(inviteLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+    const normalizedProjectName = projectName.trim();
+    const nextRoomErrors: Record<string, string> = {};
 
-  const handleStartOver = () => {
-    resetRoom();
-    setCopied(false);
+    rooms.forEach((room) => {
+      if (!room.name.trim()) {
+        nextRoomErrors[room.id] = 'Room name is required.';
+      } else if (![6, 10, 16].includes(room.capacity)) {
+        nextRoomErrors[room.id] = 'Choose a valid room capacity.';
+      }
+    });
+
+    setProjectNameError(normalizedProjectName ? '' : 'Project or studio name is required.');
+    setRoomErrors(nextRoomErrors);
+
+    if (!normalizedProjectName || rooms.length === 0 || Object.keys(nextRoomErrors).length > 0) return;
+
+    saveRoomSetup({
+      projectName: normalizedProjectName,
+      workingHours,
+      projectDuration,
+      rooms: rooms.map((room) => ({ ...room, name: room.name.trim() })),
+    });
+    setFlowStep('timeline');
   };
 
   return (
     <div className="space-y-6 px-6 py-6 lg:px-8 lg:py-7">
       <section className="rounded-[21px] border border-[#e2e0f0] bg-white px-7 py-6 shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-5">
           <div>
             <p className="warp-font-display text-[13px] font-extrabold uppercase tracking-[0.08em] text-[#9b96b8]">
-              Employer Flow
+              Create Room
             </p>
             <h2 className="warp-font-display mt-2 text-[2rem] font-extrabold tracking-[-0.03em] text-[#111111]">
-              Create Room
+              Set up your workspace
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-[#5c5780]">
-              This preserves the original agreed flow: create your room setup, build the summary, then share the invite link.
+              Define the project basics and the rooms your team will use.
             </p>
           </div>
 
@@ -2816,168 +2869,191 @@ function EmployerCreateRoomFlow({
             Back to Dashboard
           </button>
         </div>
+
+        <div className="mt-6 flex max-w-[620px] items-center gap-3" aria-label="Create room progress">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#685eeb] text-sm font-bold text-white">1</span>
+            <span className="text-sm font-semibold text-[#111111]">Workspace setup</span>
+          </div>
+          <div className="h-px flex-1 bg-[#ded9f2]" />
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold', flowStep === 'timeline' ? 'bg-[#685eeb] text-white' : 'bg-[#f0eff8] text-[#9b96b8]')}>2</span>
+            <span className={cn('text-sm font-semibold', flowStep === 'timeline' ? 'text-[#111111]' : 'text-[#9b96b8]')}>Build project timeline</span>
+          </div>
+        </div>
       </section>
 
-      {isBuilding ? (
-        <section className="flex min-h-[420px] flex-col items-center justify-center rounded-[21px] border border-[#e2e0f0] bg-white px-8 py-12 text-center shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
-          <div className="h-16 w-16 animate-spin rounded-full border-4 border-[#ece8ff] border-t-[#7c5cfc]" />
-          <h3 className="mt-6 text-[1.8rem] font-bold tracking-[-0.03em] text-[#111111]">Building Workspace Engine...</h3>
-          <p className="mt-2 max-w-md text-sm text-[#5c5780]">
-            Instantiating virtual models and logic paths for your team.
+      {flowStep === 'timeline' && savedSetup ? (
+        <section className="rounded-[21px] border border-[#e2e0f0] bg-white px-8 py-10 text-center shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#eeeaff] text-[#685eeb]">
+            <CalendarClock className="h-6 w-6" strokeWidth={2} />
+          </span>
+          <p className="mt-5 text-sm font-bold uppercase tracking-[0.08em] text-[#9b96b8]">Stage A complete</p>
+          <h3 className="mt-2 text-[1.8rem] font-bold tracking-[-0.03em] text-[#111111]">Timeline setup coming next</h3>
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#5c5780]">
+            The workspace setup for <strong className="text-[#685eeb]">{savedSetup.projectName}</strong> is saved in memory with {savedSetup.rooms.length} {savedSetup.rooms.length === 1 ? 'room' : 'rooms'}. The timeline builder will be added in Stage B.
           </p>
-        </section>
-      ) : isRoomBuilt && roomConfig ? (
-        <section className="space-y-6">
-          <div className="rounded-[21px] border border-[#e2e0f0] bg-white px-7 py-6 shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
-            <div className="flex flex-wrap items-start justify-between gap-5">
-              <div>
-                <h3 className="text-[1.7rem] font-bold tracking-[-0.03em] text-[#111111]">Build Room Summary</h3>
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-[#5c5780]">
-                  <span><strong className="text-[#685eeb]">{roomConfig.employees}</strong> Employees</span>
-                  <span className="text-[#c9c4e3]">•</span>
-                  <span><strong className="text-[#685eeb]">{roomConfig.rooms}</strong> Rooms</span>
-                  <span className="text-[#c9c4e3]">•</span>
-                  <span><strong className="text-[#685eeb]">{roomConfig.workingHours}</strong></span>
-                  <span className="text-[#c9c4e3]">•</span>
-                  <span><strong className="text-[#685eeb]">{roomConfig.timeline}</strong></span>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="rounded-[13px] border border-[#e2e0f0] bg-[#f0eff8] px-4 py-2 text-sm text-[#5c5780]">
-                  {inviteLink}
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  className={cn(
-                    'rounded-[13px] px-4 py-2 text-sm font-semibold transition',
-                    copied
-                      ? 'border border-[#87d9b5] bg-[#edfff5] text-[#1f8f59]'
-                      : 'border border-[#a29bfc] bg-[#ebe9fe] text-[#685eeb] hover:bg-[#e2defd]'
-                  )}
-                >
-                  {copied ? 'Copied' : 'Copy Invite Link'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="overflow-hidden rounded-[21px] border border-[#e2e0f0] bg-white shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
-            <div className="flex items-center justify-between border-b border-[#ece8ff] px-7 py-5">
-              <div>
-                <h4 className="text-xl font-semibold text-[#111111]">Invite Link</h4>
-                <p className="mt-1 text-sm text-[#5c5780]">Your room is built and ready to share with the team.</p>
-              </div>
-              <button
-                type="button"
-                onClick={handleStartOver}
-                className="rounded-full border border-[#d8d3f2] px-4 py-2 text-sm font-medium text-[#685eeb] transition hover:bg-[#f6f4ff]"
-              >
-                Create Another Room
-              </button>
-            </div>
-
-            <div className="h-[420px]">
-              <VirtualOfficePlaceholder />
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={() => setFlowStep('setup')}
+            className="mt-7 rounded-[13px] border border-[#a29bfc] bg-white px-5 py-2.5 text-sm font-semibold text-[#685eeb] transition hover:bg-[#f7f5ff]"
+          >
+            Edit workspace setup
+          </button>
         </section>
       ) : (
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
-          <form
-            onSubmit={handleSubmit}
-            className="rounded-[21px] border border-[#e2e0f0] bg-white px-7 py-6 shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]"
-          >
-            <div>
-              <h3 className="text-[1.7rem] font-bold tracking-[-0.03em] text-[#111111]">Create Room Form</h3>
-              <p className="mt-2 text-sm text-[#5c5780]">
-                Configure your workspace, then continue into the original build summary and invite flow.
-              </p>
+        <form onSubmit={handleSubmit} noValidate className="rounded-[21px] border border-[#e2e0f0] bg-white px-7 py-7 shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
+          <div className="grid gap-5 lg:grid-cols-3">
+            <label className="block lg:col-span-1">
+              <span className="mb-2 block text-sm font-semibold text-[#3f3a5f]">Project / studio name</span>
+              <input
+                value={projectName}
+                onChange={(event) => {
+                  setProjectName(event.target.value);
+                  if (event.target.value.trim()) setProjectNameError('');
+                }}
+                aria-invalid={Boolean(projectNameError)}
+                aria-describedby={projectNameError ? 'project-name-error' : undefined}
+                placeholder="e.g. Paper Studio"
+                className={cn(
+                  'h-[48px] w-full rounded-[13px] border bg-[#fbfaff] px-4 text-sm font-medium text-[#111111] outline-none transition placeholder:text-[#aaa6bf] focus:ring-2 focus:ring-[#685eeb]/10',
+                  projectNameError ? 'border-[#e36b6b]' : 'border-[#ded9f2] focus:border-[#685eeb]'
+                )}
+              />
+              {projectNameError ? <span id="project-name-error" className="mt-2 block text-xs font-medium text-[#c84d4d]">{projectNameError}</span> : null}
+            </label>
+
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-[#3f3a5f]">Working hours</span>
+              <select
+                value={workingHours}
+                onChange={(event) => setWorkingHours(event.target.value)}
+                className="h-[48px] w-full rounded-[13px] border border-[#ded9f2] bg-[#fbfaff] px-4 text-sm font-medium text-[#111111] outline-none transition focus:border-[#685eeb] focus:ring-2 focus:ring-[#685eeb]/10"
+              >
+                <option value="09:00 – 17:00">09:00 – 17:00</option>
+                <option value="10:00 – 18:00">10:00 – 18:00</option>
+                <option value="Flexible">Flexible</option>
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-[#3f3a5f]">Project duration</span>
+              <select
+                value={projectDuration}
+                onChange={(event) => setProjectDuration(event.target.value)}
+                className="h-[48px] w-full rounded-[13px] border border-[#ded9f2] bg-[#fbfaff] px-4 text-sm font-medium text-[#111111] outline-none transition focus:border-[#685eeb] focus:ring-2 focus:ring-[#685eeb]/10"
+              >
+                <option value="3 months">3 months</option>
+                <option value="6 months">6 months</option>
+                <option value="9 months">9 months</option>
+                <option value="12 months">12 months</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="mt-8 border-t border-[#ece8ff] pt-7">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h3 className="text-xl font-bold tracking-[-0.02em] text-[#111111]">Rooms</h3>
+                <p className="mt-1 text-sm text-[#85809d]">Create at least one room and choose how many teammates it can hold.</p>
+              </div>
+              <span className="rounded-full bg-[#f0eff8] px-3 py-1.5 text-xs font-bold text-[#685eeb]">{rooms.length} {rooms.length === 1 ? 'room' : 'rooms'}</span>
             </div>
 
-            <div className="mt-6 space-y-5">
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[#5c5780]">Number of Employees</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={employees}
-                  onChange={(event) => setEmployees(parseInt(event.target.value, 10) || 1)}
-                  className="w-full rounded-[14px] border border-[#ded9f2] bg-[#fbfaff] px-4 py-3 text-[#111111] outline-none transition focus:border-[#7c5cfc]"
-                />
-              </label>
+            <div className="mt-5 space-y-4">
+              {rooms.map((room, index) => (
+                <article key={room.id} data-testid={`workspace-room-${room.id}`} className="rounded-[17px] border border-[#e2e0f0] bg-[#fbfaff] p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#9b96b8]">Room {index + 1}</p>
+                      <h4 className="mt-1 text-base font-bold text-[#111111]">{room.name.trim() || 'Untitled room'}</h4>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => deleteRoom(room.id)}
+                      disabled={rooms.length === 1}
+                      aria-label={`Delete ${room.name.trim() || `room ${index + 1}`}`}
+                      title={rooms.length === 1 ? 'At least one room is required' : 'Delete room'}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-[#ddd8ef] bg-white text-[#9b96b8] transition hover:border-[#efb0b0] hover:bg-[#fff5f5] hover:text-[#d85555] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Trash2 className="h-4 w-4" strokeWidth={2} />
+                    </button>
+                  </div>
 
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[#5c5780]">Number of Rooms</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={rooms}
-                  onChange={(event) => setRooms(parseInt(event.target.value, 10) || 1)}
-                  className="w-full rounded-[14px] border border-[#ded9f2] bg-[#fbfaff] px-4 py-3 text-[#111111] outline-none transition focus:border-[#7c5cfc]"
-                />
-              </label>
+                  <div className="mt-4 grid gap-5 xl:grid-cols-[minmax(220px,1fr)_minmax(390px,1.3fr)]">
+                    <label className="block">
+                      <span className="mb-2 block text-sm font-semibold text-[#3f3a5f]">Room name</span>
+                      <input
+                        value={room.name}
+                        onChange={(event) => updateRoom(room.id, { name: event.target.value })}
+                        aria-invalid={Boolean(roomErrors[room.id])}
+                        aria-describedby={roomErrors[room.id] ? `${room.id}-error` : undefined}
+                        className={cn(
+                          'h-[46px] w-full rounded-[12px] border bg-white px-4 text-sm font-medium text-[#111111] outline-none transition focus:ring-2 focus:ring-[#685eeb]/10',
+                          roomErrors[room.id] ? 'border-[#e36b6b]' : 'border-[#ded9f2] focus:border-[#685eeb]'
+                        )}
+                      />
+                      {roomErrors[room.id] ? <span id={`${room.id}-error`} className="mt-2 block text-xs font-medium text-[#c84d4d]">{roomErrors[room.id]}</span> : null}
+                    </label>
 
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[#5c5780]">Working Hours</span>
-                <select
-                  value={workingHours}
-                  onChange={(event) => setWorkingHours(event.target.value)}
-                  className="w-full rounded-[14px] border border-[#ded9f2] bg-[#fbfaff] px-4 py-3 text-[#111111] outline-none transition focus:border-[#7c5cfc]"
-                >
-                  <option value="Flexible (Async)">Flexible (Async)</option>
-                  <option value="09:00 - 17:00">09:00 - 17:00</option>
-                  <option value="10:00 - 18:00">10:00 - 18:00</option>
-                  <option value="Night Shift">Night Shift</option>
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[#5c5780]">Project Timeline</span>
-                <input
-                  type="text"
-                  value={timeline}
-                  onChange={(event) => setTimeline(event.target.value)}
-                  className="w-full rounded-[14px] border border-[#ded9f2] bg-[#fbfaff] px-4 py-3 text-[#111111] outline-none transition focus:border-[#7c5cfc]"
-                  placeholder="e.g. 3 Months, Q4 Sprint"
-                />
-              </label>
+                    <fieldset>
+                      <legend className="mb-2 text-sm font-semibold text-[#3f3a5f]">Capacity seats</legend>
+                      <div className="grid grid-cols-3 gap-2.5">
+                        {ROOM_CAPACITY_OPTIONS.map((option) => {
+                          const isSelected = room.capacity === option.value;
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => updateRoom(room.id, { capacity: option.value as RoomCapacity })}
+                              aria-pressed={isSelected}
+                              aria-label={`Set ${room.name.trim() || `room ${index + 1}`} capacity to ${option.value} seats (${option.label.toLowerCase()})`}
+                              className={cn(
+                                'min-h-[46px] rounded-[11px] border px-2 py-2 text-center transition',
+                                isSelected
+                                  ? 'border-[#685eeb] bg-[#eeebff] text-[#554bd2] shadow-[0_5px_12px_rgba(104,94,235,0.10)]'
+                                  : 'border-[#ded9f2] bg-white text-[#5c5780] hover:border-[#a29bfc] hover:bg-[#f8f6ff]'
+                              )}
+                            >
+                              <span className="block text-base font-bold leading-none">{option.value}</span>
+                              <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.05em]">{option.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
+                  </div>
+                </article>
+              ))}
             </div>
 
             <button
-              type="submit"
-              className="mt-6 inline-flex items-center gap-2 rounded-[14px] bg-[linear-gradient(90deg,#7c5cfc_0%,#56efc4_140%)] px-5 py-3 text-base font-semibold text-white shadow-[0_12px_24px_rgba(124,92,252,0.24)] transition hover:opacity-95"
+              type="button"
+              onClick={addRoom}
+              className="mt-4 inline-flex h-[43px] items-center gap-2 rounded-[12px] border border-[#a29bfc] bg-white px-4 text-sm font-semibold text-[#685eeb] transition hover:bg-[#f7f5ff]"
             >
-              <Plus className="h-4 w-4" strokeWidth={2.4} />
-              Build Room Structure
+              <Plus className="h-4 w-4" strokeWidth={2.2} />
+              Add another room
             </button>
-          </form>
-
-          <div className="rounded-[21px] border border-[#e2e0f0] bg-white px-7 py-6 shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
-            <h3 className="text-[1.7rem] font-bold tracking-[-0.03em] text-[#111111]">Flow Preview</h3>
-            <ol className="mt-6 space-y-4">
-              {[
-                'Employer Dashboard acts as the landing layer',
-                'Create a Room opens the original room configuration form',
-                'Build Room Summary confirms employees, rooms, hours, and timeline',
-                'Invite Link is generated after the room build completes',
-              ].map((step, index) => (
-                <li key={step} className="flex items-start gap-3 rounded-[16px] bg-[#f8f7fc] px-4 py-4">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#ebe9fe] font-semibold text-[#685eeb]">
-                    {index + 1}
-                  </span>
-                  <p className="pt-1 text-sm text-[#5c5780]">{step}</p>
-                </li>
-              ))}
-            </ol>
           </div>
-        </section>
+
+          <div className="mt-7 flex justify-end border-t border-[#ece8ff] pt-6">
+            <button
+              type="submit"
+              className={cn(
+                'inline-flex h-[46px] items-center gap-2 rounded-[13px] bg-[#685eeb] px-6 text-sm font-bold text-white shadow-[0_12px_24px_rgba(104,94,235,0.22)] hover:bg-[#5d54df]',
+                purplePressClass
+              )}
+            >
+              Continue to timeline
+              <ArrowRight className="h-4 w-4" strokeWidth={2.2} />
+            </button>
+          </div>
+        </form>
       )}
     </div>
   );
 }
-
 export function EmployerDashboard() {
   const router = useRouter();
   const [stage, setStage] = useState<EmployerStage>('dashboard');
