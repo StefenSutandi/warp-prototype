@@ -682,6 +682,7 @@ const TEAM_LOUNGE_SOURCE = {
   height: 1440,
   door: { x: 1840, y: 315, w: 225, h: 435 },
 } as const;
+const TEAM_LOUNGE_ARTWORK_Y_OFFSET = 65;
 
 interface DeskData {
   rect: Phaser.GameObjects.Rectangle;
@@ -2176,14 +2177,15 @@ export default class MainOfficeScene extends Phaser.Scene {
     const roomWidth = TEAM_LOUNGE_SOURCE.width * roomScale;
     const roomHeight = TEAM_LOUNGE_SOURCE.height * roomScale;
     const roomLeft = (width - roomWidth) / 2;
-    const roomTop = (height - roomHeight) / 2;
+    const centeredRoomTop = (height - roomHeight) / 2;
+    const roomTop = centeredRoomTop + TEAM_LOUNGE_ARTWORK_Y_OFFSET;
 
-    const roomArtwork = this.add.image(width / 2, height / 2, 'team_lounge_room')
+    const roomArtwork = this.add.image(width / 2, height / 2 + TEAM_LOUNGE_ARTWORK_Y_OFFSET, 'team_lounge_room')
       .setScale(roomScale)
       .setDepth(0);
     this.roomObjects.push(roomArtwork);
 
-    this.mainRoomBounds = new Phaser.Geom.Rectangle(roomLeft, roomTop, roomWidth, roomHeight);
+    this.mainRoomBounds = new Phaser.Geom.Rectangle(roomLeft, centeredRoomTop, roomWidth, roomHeight);
     // Preserve the existing full-canvas lounge movement behavior for this visual-only pass.
     this.playerMovementBounds = new Phaser.Geom.Rectangle(0, 0, width, height);
 
@@ -2803,42 +2805,17 @@ export default class MainOfficeScene extends Phaser.Scene {
       .setDepth(1);
 
     const isTeamLoungeReturnDoor = this.currentRoomId === 'lounge' && targetRoom === 'main';
-    const hoverHighlight = isTeamLoungeReturnDoor
-      ? this.add.rectangle(x, y, w, h, 0x685eeb, 0.055)
-        .setDepth(900)
-        .setVisible(false)
-      : null;
-    const hoverLabel = isTeamLoungeReturnDoor
-      ? this.add.container(x, y - h / 2 - 22, [
-        this.add.rectangle(0, 0, 146, 30, 0x27213f, 0.94)
-          .setStrokeStyle(1, 0xffffff, 0.24),
-        this.add.text(0, 0, 'Back to Main Office', {
-          fontFamily: 'Funnel Sans, Arial, sans-serif',
-          fontSize: '11px',
-          color: '#ffffff',
-          fontStyle: 'bold',
-        }).setOrigin(0.5),
-      ])
-        .setDepth(901)
-        .setVisible(false)
-      : null;
 
     this.roomObjects.push(doorHitbox);
-    if (hoverHighlight) this.roomObjects.push(hoverHighlight);
-    if (hoverLabel) this.roomObjects.push(hoverLabel);
 
     doorHitbox.on('pointerover', () => {
       if (!isTeamLoungeReturnDoor) return;
       this.input.setDefaultCursor('pointer');
-      hoverHighlight?.setVisible(true);
-      hoverLabel?.setVisible(true);
     });
 
     doorHitbox.on('pointerout', () => {
       if (!isTeamLoungeReturnDoor) return;
       this.input.setDefaultCursor('default');
-      hoverHighlight?.setVisible(false);
-      hoverLabel?.setVisible(false);
     });
 
     doorHitbox.on('pointerdown', (p: Phaser.Input.Pointer) => {
