@@ -184,6 +184,8 @@ const teamMembers = [
   },
 ] as const;
 
+const COLLAPSED_MEMBER_COUNT = 3;
+
 type TeamMemberProfile = (typeof teamMembers)[number];
 type ProfileModalTab = 'activity' | 'completed';
 
@@ -1830,7 +1832,9 @@ function EmployerTeamPage({ onMessageTeammate }: { onMessageTeammate: (teammate:
   const [selectedStudioId, setSelectedStudioId] = useState<(typeof studioTabs)[number]['id']>('papers-studio');
   const [selectedTeammate, setSelectedTeammate] = useState<TeamMemberProfile | null>(null);
   const [activeProfileTab, setActiveProfileTab] = useState<ProfileModalTab>('activity');
+  const [isMembersExpanded, setIsMembersExpanded] = useState(false);
   const selectedStudio = studioTabs.find((studio) => studio.id === selectedStudioId) ?? studioTabs[0];
+  const visibleMembers = isMembersExpanded ? teamMembers : teamMembers.slice(0, COLLAPSED_MEMBER_COUNT);
   const statusToneClass = {
     'In Review': 'bg-[#e4e0ff] text-[#685eeb]',
     'In Progress': 'bg-[#e7fbf5] text-[#20a875]',
@@ -1892,14 +1896,14 @@ function EmployerTeamPage({ onMessageTeammate }: { onMessageTeammate: (teammate:
           </span>
         </div>
 
-        <div className="mt-[14px] grid gap-[16px] xl:grid-cols-3">
+        <div className="mt-[14px] flex gap-[16px] overflow-x-auto overscroll-x-contain pb-3">
           {onlineMembers.map((member) => (
             <article
               key={member.name}
               tabIndex={0}
               onClick={() => openProfileModal(member.name)}
               onKeyDown={(event) => handleProfileCardKeyDown(event, member.name)}
-              className="group cursor-pointer rounded-[26px] bg-white p-[18px] shadow-[0_12px_26px_rgba(104,94,235,0.08)] ring-1 ring-[#e2e0f0]/70 transition hover:-translate-y-[1px] hover:shadow-[0_16px_30px_rgba(104,94,235,0.11)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685eeb]/30 focus-visible:ring-offset-2"
+              className="group min-w-[300px] flex-1 cursor-pointer rounded-[26px] bg-white p-[18px] shadow-[0_12px_26px_rgba(104,94,235,0.08)] ring-1 ring-[#e2e0f0]/70 transition hover:-translate-y-[1px] hover:shadow-[0_16px_30px_rgba(104,94,235,0.11)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685eeb]/30 focus-visible:ring-offset-2"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex min-w-0 items-center gap-[16px]">
@@ -1949,7 +1953,7 @@ function EmployerTeamPage({ onMessageTeammate }: { onMessageTeammate: (teammate:
           <span className="text-[12px] font-semibold text-[#858585]">{selectedStudio.name}</span>
         </div>
         <div className="mt-[13px] grid gap-[14px] md:grid-cols-2 xl:grid-cols-3">
-          {teamMembers.map((member) => (
+          {visibleMembers.map((member) => (
             <article
               key={member.name}
               tabIndex={0}
@@ -1975,6 +1979,21 @@ function EmployerTeamPage({ onMessageTeammate }: { onMessageTeammate: (teammate:
             </article>
           ))}
         </div>
+        {teamMembers.length > COLLAPSED_MEMBER_COUNT ? (
+          <div className="mt-[16px] flex justify-center">
+            <button
+              type="button"
+              onClick={() => setIsMembersExpanded((current) => !current)}
+              aria-expanded={isMembersExpanded}
+              className={cn(
+                'rounded-[11px] border border-[#d8d3f2] bg-white px-[16px] py-[8px] text-[12px] font-bold text-[#685eeb] hover:bg-[#f7f5ff]',
+                purplePressClass
+              )}
+            >
+              {isMembersExpanded ? 'See less' : 'See more'}
+            </button>
+          </div>
+        ) : null}
       </section>
 
       <ProjectTimelineWarpSection />
