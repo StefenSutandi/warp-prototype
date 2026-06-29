@@ -228,8 +228,8 @@ const reviewTask = {
 
 type ReviewTaskData = typeof reviewTask;
 
-function formatTaskDueDate(value: string) {
-  const parsed = new Date(value + 'T17:00:00');
+function formatTaskDueDate(value: string, time = '17:00') {
+  const parsed = new Date(`${value}T${time}:00`);
   if (Number.isNaN(parsed.getTime())) return value;
   return new Intl.DateTimeFormat('en-GB', {
     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
@@ -262,7 +262,7 @@ function toTaskCardData(task: Task): TaskCardData {
     assignee: task.assignee,
     assigneeRole: template?.assigneeRole,
     avatarGradient: template?.avatarGradient ?? 'linear-gradient(135deg,#A29BFC 0%,#82ECEC 100%)',
-    due: formatTaskDueDate(task.dueDate),
+    due: formatTaskDueDate(task.dueDate, task.dueTime),
     progress: getTaskProgress(task),
     status,
     title: task.title,
@@ -288,7 +288,7 @@ function toReviewTaskData(task: Task): ReviewTaskData {
     id: task.id,
     submittedBy: task.assignee,
     assignee: task.assignee,
-    due: formatTaskDueDate(task.dueDate),
+    due: formatTaskDueDate(task.dueDate, task.dueTime),
     title: task.title,
     description: task.description,
     detailDescription: task.description,
@@ -1601,7 +1601,7 @@ function ReviewTasksView({
   );
 }
 
-export function EmployerTaskManagementPage() {
+export function EmployerTaskManagementPage({ initialTaskId }: { initialTaskId?: string } = {}) {
   const currentUser = useUserStore((state) => state.currentUser);
   const tasks = useTaskStore((state) => state.tasks);
   const approveTask = useTaskStore((state) => state.approveTask);
@@ -1629,6 +1629,13 @@ export function EmployerTaskManagementPage() {
       setSelectedReviewTaskId(null);
     }
   }, [activeTab, canReview]);
+
+  useEffect(() => {
+    if (!initialTaskId || !tasks.some((task) => task.id === initialTaskId)) return;
+    setSelectedTaskId(initialTaskId);
+    setActiveTab('my');
+    setView('detail');
+  }, [initialTaskId, tasks]);
 
   const handleOpenTask = (task: TaskCardData) => {
     setSelectedTaskId(task.id);

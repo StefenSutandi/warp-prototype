@@ -35,6 +35,7 @@ export interface Task {
   priority: 'high' | 'medium' | 'low';
   status: TaskStatus;
   dueDate: string;
+  dueTime?: string;
   submissionNote?: string;
   revisionNote?: string;
   submittedAt?: string;

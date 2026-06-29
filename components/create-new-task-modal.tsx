@@ -8,6 +8,10 @@ import { useUserStore } from '@/stores/useUserStore';
 
 const PURPLE_GRADIENT = 'linear-gradient(97.74deg, #685EEB 1.64%, #7970F0 55.6%, #A29BFC 110.61%)';
 
+function getDefaultDueDate() {
+  return new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0];
+}
+
 export function CreateNewTaskModal({
   open,
   onClose,
@@ -17,6 +21,8 @@ export function CreateNewTaskModal({
 }) {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
+  const [dueDate, setDueDate] = useState(getDefaultDueDate);
+  const [dueTime, setDueTime] = useState('17:00');
   const addTask = useTaskStore((state) => state.addTask);
   const addXp = useUserStore((state) => state.addXp);
   const teammates = [
@@ -31,20 +37,25 @@ export function CreateNewTaskModal({
   if (!open) return null;
 
   const handleConfirm = () => {
-    if (title.trim()) {
+    if (title.trim() && dueDate) {
+      const selectedAssignee = teammates.find((teammate) => teammate.id === selectedAssigneeIds[0]);
       const newTask: Task = {
         id: `task-${Date.now()}`,
         title: title.trim(),
         description: desc.trim() || 'Created from virtual room.',
-        assignee: 'You',
+        assignee: selectedAssignee?.name || 'Unassigned',
         priority: 'medium',
         status: 'todo',
-        dueDate: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
+        dueDate,
+        dueTime,
       };
       addTask(newTask);
       addXp(10);
       setTitle('');
       setDesc('');
+      setDueDate(getDefaultDueDate());
+      setDueTime('17:00');
+      setSelectedAssigneeIds(['baskara']);
       onClose();
     }
   };
@@ -52,9 +63,7 @@ export function CreateNewTaskModal({
   const toggleAssignee = (id: string, assignable: boolean) => {
     if (!assignable) return;
 
-    setSelectedAssigneeIds((current) =>
-      current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id]
-    );
+    setSelectedAssigneeIds((current) => current.includes(id) ? [] : [id]);
   };
 
   return (
@@ -111,23 +120,20 @@ export function CreateNewTaskModal({
           <div>
             <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Deadline</label>
             <div className="mt-1.5 flex items-center gap-3">
-              <div className="flex flex-1 items-center justify-between rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-400">
-                <span>15 / 04 / 2026</span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="4" width="18" height="18" rx="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
-              </div>
+              <input
+                type="date"
+                required
+                value={dueDate}
+                onChange={(event) => setDueDate(event.target.value)}
+                className="min-w-0 flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-600 focus:border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-200"
+              />
               <span className="text-gray-300">-</span>
-              <div className="flex flex-1 items-center justify-between rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-400">
-                <span>17:00</span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12,6 12,12 16,14" />
-                </svg>
-              </div>
+              <input
+                type="time"
+                value={dueTime}
+                onChange={(event) => setDueTime(event.target.value)}
+                className="min-w-0 flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-600 focus:border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-200"
+              />
             </div>
           </div>
           <div>

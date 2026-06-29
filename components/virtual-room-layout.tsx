@@ -1150,7 +1150,17 @@ function ZoomControls({
 //  RIGHT PANEL — TASK CARD (Figma-precise)
 // =============================================
 
-function TaskCard({ task, onAction, index }: { task: Task; onAction: (t: Task) => void; index: number }) {
+function TaskCard({
+  task,
+  onAction,
+  onOpen,
+  index,
+}: {
+  task: Task;
+  onAction: (task: Task) => void;
+  onOpen: (taskId: string) => void;
+  index: number;
+}) {
   const isCompleted = task.status === 'approved';
   const isStarted = task.status === 'in_progress';
   const isInReview = task.status === 'in_review';
@@ -1163,12 +1173,24 @@ function TaskCard({ task, onAction, index }: { task: Task; onAction: (t: Task) =
 
   if (isCompleted) {
     return (
-      <div className="min-h-[98px] rounded-[19px] bg-[linear-gradient(180deg,#F4F5F8_0%,#ECEEF3_100%)] px-[18px] pb-[18px] pt-[15px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onOpen(task.id)}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget) return;
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onOpen(task.id);
+          }
+        }}
+        className="min-h-[98px] cursor-pointer rounded-[19px] bg-[linear-gradient(180deg,#F4F5F8_0%,#ECEEF3_100%)] px-[18px] pb-[18px] pt-[15px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]"
+      >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-[6px] text-[12px] leading-[1.2] tracking-[-0.12px] text-[#9B96B8]">
               <span className="warp-font-ui font-medium">Due</span>
-              <span className="warp-font-ui font-normal">{task.dueDate || '26/03/2026'} 17.00 PM</span>
+              <span className="warp-font-ui font-normal">{task.dueDate || '26/03/2026'} {task.dueTime || '17:00'}</span>
             </div>
             <p className="warp-font-ui mt-[12px] truncate text-[14px] font-medium leading-[1.2] tracking-[-0.14px] text-[#5C5780]">
               {task.title}
@@ -1181,19 +1203,33 @@ function TaskCard({ task, onAction, index }: { task: Task; onAction: (t: Task) =
           </div>
         </div>
         <p className="warp-font-ui mt-[11px] text-[12px] font-normal leading-[1.2] tracking-[-0.12px] text-[#7C5CFC]">
-          completed
+          Approved / Completed
         </p>
       </div>
     );
   }
 
-  // Active task (assigned or started) — Figma shows a purple "Start" button
+  // Active tasks expose only lifecycle-safe actions; approval remains reviewer-only.
   return (
-    <div className={`rounded-[19px] px-[18px] py-[15px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)] transition-all ${cardBackgroundClass}`}>
-      <p className="warp-font-ui text-[12px] font-medium text-[#9B96B8]">Due <span className="font-normal">{task.dueDate || '26/03/2026'} 17.00 PM</span></p>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(task.id)}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen(task.id);
+        }
+      }}
+      className={`cursor-pointer rounded-[19px] px-[18px] py-[15px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)] transition-all ${cardBackgroundClass}`}
+    >
+      <p className="warp-font-ui text-[12px] font-medium text-[#9B96B8]">Due <span className="font-normal">{task.dueDate || '26/03/2026'} {task.dueTime || '17:00'}</span></p>
       <p className="warp-font-ui mt-[12px] text-[14px] font-medium leading-[1.2] text-[#5C5780]">{task.title}</p>
 
-      {isStarted || isInReview ? (
+      {isInReview ? (
+        <p className="warp-font-ui mt-[16px] text-[12px] font-semibold text-[#685EEB]">Waiting for Review</p>
+      ) : isStarted ? (
         <>
           <div className="mt-5 flex items-center gap-3">
             <div className="flex flex-1 gap-1">
@@ -1203,20 +1239,29 @@ function TaskCard({ task, onAction, index }: { task: Task; onAction: (t: Task) =
             </div>
             <span className="warp-font-ui text-[11px] font-medium text-[#9B96B8] tabular-nums">1/3</span>
           </div>
-          <div className="mt-[10px] flex items-center justify-between">
-            <p className={`warp-font-ui text-[12px] font-normal ${isInReview ? 'text-[#685EEB]' : 'text-[#39B54A]'}`}>
-              {isInReview ? 'waiting for review' : 'in progress'}
-            </p>
-            <span className="text-gray-300">›</span>
-          </div>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onAction(task);
+            }}
+            className="warp-font-ui mt-[12px] rounded-[15px] px-[14px] py-[6px] text-[12px] font-bold text-white shadow-sm transition-all hover:shadow-md active:scale-[0.97]"
+            style={{ background: SHELL_TOKENS.purple.gradient }}
+          >
+            Submit for Review
+          </button>
         </>
       ) : (
         <button
-          onClick={(e) => { e.stopPropagation(); onAction(task); }}
-          className="warp-font-ui mt-[16px] w-[122px] rounded-[15px] py-[6px] text-[13px] font-bold text-white shadow-sm transition-all hover:shadow-md active:scale-[0.97]"
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onAction(task);
+          }}
+          className="warp-font-ui mt-[16px] rounded-[15px] px-[14px] py-[6px] text-[13px] font-bold text-white shadow-sm transition-all hover:shadow-md active:scale-[0.97]"
           style={{ background: SHELL_TOKENS.purple.gradient }}
         >
-          {isRevisionRequested ? 'Continue' : 'Start'}
+          {isRevisionRequested ? 'Continue Revision' : 'Start Task'}
         </button>
       )}
     </div>
@@ -1227,12 +1272,23 @@ function TaskCard({ task, onAction, index }: { task: Task; onAction: (t: Task) =
 //  RIGHT PANEL
 // =============================================
 
-function RightPanel({ onCreateTask }: { onCreateTask: () => void }) {
+function RightPanel({
+  onCreateTask,
+  onOpenTask,
+}: {
+  onCreateTask: () => void;
+  onOpenTask: (taskId: string) => void;
+}) {
   const tasks = useTaskStore(s => s.tasks);
   const startTask = useTaskStore(s => s.startTask);
+  const submitForReview = useTaskStore(s => s.submitForReview);
 
   const handleTaskAction = (task: Task) => {
-    startTask(task.id);
+    if (task.status === 'todo' || task.status === 'revision_requested') {
+      startTask(task.id);
+    } else if (task.status === 'in_progress') {
+      submitForReview(task.id);
+    }
   };
 
   const activeCount = tasks.filter(t => t.status !== 'approved').length;
@@ -1320,7 +1376,7 @@ function RightPanel({ onCreateTask }: { onCreateTask: () => void }) {
         {/* TASK LIST */}
         <div className="h-[calc(486px-69px)] overflow-y-auto px-[22px] pb-[20px] space-y-[14px]">
           {tasks.slice(0, 5).map((task, index) => (
-            <TaskCard key={task.id} task={task} index={index} onAction={handleTaskAction} />
+            <TaskCard key={task.id} task={task} index={index} onAction={handleTaskAction} onOpen={onOpenTask} />
           ))}
         </div>
       </div>
@@ -2192,10 +2248,12 @@ function MemberSectionPage({
   section,
   user,
   onOpenChat,
+  selectedTaskId,
 }: {
   section: Exclude<MemberSection, 'dashboard'>;
   user: User;
   onOpenChat: () => void;
+  selectedTaskId?: string;
 }) {
   const sectionTitle = MEMBER_NAV_ITEMS.find((item) => item.id === section)?.label ?? 'Workspace';
 
@@ -2212,7 +2270,7 @@ function MemberSectionPage({
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {section === 'stats' ? <WorkspaceStatsPage /> : null}
-        {section === 'todo' ? <EmployerTaskManagementPage /> : null}
+        {section === 'todo' ? <EmployerTaskManagementPage initialTaskId={selectedTaskId} /> : null}
         {section === 'chat' ? <WorkspaceChatPage /> : null}
         {section === 'team' ? <WorkspaceTeamPage onMessageTeammate={onOpenChat} /> : null}
         {section === 'settings' ? <WorkspaceSettingsPage role={user.role} /> : null}
@@ -2224,6 +2282,7 @@ function MemberSectionPage({
 export function VirtualRoomLayout({ user, onBackToDashboard }: { user: User; onBackToDashboard?: () => void }) {
   const avatarSelection = useAvatarStore(s => s.selection);
   const [activeSection, setActiveSection] = useState<MemberSection>('dashboard');
+  const [selectedTaskId, setSelectedTaskId] = useState<string>();
   const [showChangeRooms, setShowChangeRooms] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [isModeratorTeamModalOpen, setIsModeratorTeamModalOpen] = useState(false);
@@ -2336,11 +2395,19 @@ export function VirtualRoomLayout({ user, onBackToDashboard }: { user: User; onB
   };
 
   const activeTaskMember = MODERATOR_TEAM_MEMBERS.find((member) => member.id === selectedModeratorMemberId) ?? MODERATOR_TEAM_MEMBERS[0];
+  const selectSection = (section: MemberSection) => {
+    setSelectedTaskId(undefined);
+    setActiveSection(section);
+  };
+  const openTaskDetail = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    setActiveSection('todo');
+  };
 
   return (
     <div className="warp-font-ui flex h-[100svh] w-full overflow-hidden bg-[#F9FBFD]" style={VIRTUAL_ROOM_SHELL_STYLE}>
       {/* Left Nav Rail */}
-      <NavRail active={activeSection} onSelect={setActiveSection} onExit={onBackToDashboard} />
+      <NavRail active={activeSection} onSelect={selectSection} onExit={onBackToDashboard} />
 
       {activeSection === 'dashboard' ? (
         <>
@@ -2382,10 +2449,15 @@ export function VirtualRoomLayout({ user, onBackToDashboard }: { user: User; onB
           </div>
 
           {/* Right Panel */}
-          <RightPanel onCreateTask={() => setShowCreateTask(true)} />
+          <RightPanel onCreateTask={() => setShowCreateTask(true)} onOpenTask={openTaskDetail} />
         </>
       ) : (
-        <MemberSectionPage section={activeSection} user={user} onOpenChat={() => setActiveSection('chat')} />
+        <MemberSectionPage
+          section={activeSection}
+          user={user}
+          onOpenChat={() => setActiveSection('chat')}
+          selectedTaskId={selectedTaskId}
+        />
       )}
 
       {/* Modals */}

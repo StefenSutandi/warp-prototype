@@ -10,12 +10,15 @@ interface TaskListProps {
 export function TaskList({ role = 'member' }: TaskListProps) {
   const tasks = useTaskStore(state => state.tasks);
   const startTask = useTaskStore(state => state.startTask);
+  const submitForReview = useTaskStore(state => state.submitForReview);
 
   const handleTaskClick = (task: Task) => {
     if (role !== 'member' && role !== 'employee') return; // Management roles are read-only here.
     
     if (task.status === 'todo' || task.status === 'revision_requested') {
       startTask(task.id);
+    } else if (task.status === 'in_progress') {
+      submitForReview(task.id);
     }
   };
 
