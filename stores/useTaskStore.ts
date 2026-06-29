@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Task, Teammate } from '@/lib/types';
+import { normalizeTaskStatus, type LegacyTaskStatus, type Task, type TaskStatus, type Teammate } from '@/lib/types';
 import { mockEmployeeTasks, mockTeammates } from '@/lib/mock-data';
 
 interface TaskState {
@@ -8,7 +8,7 @@ interface TaskState {
   isInitialized: boolean;
   initialize: (tasks: Task[], teammates: Teammate[]) => void;
   addTask: (task: Task) => void;
-  updateTaskStatus: (taskId: string, newStatus: Task['status']) => void;
+  updateTaskStatus: (taskId: string, newStatus: TaskStatus | LegacyTaskStatus) => void;
   assignRandomTask: () => void;
 }
 
@@ -17,7 +17,11 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   teammates: mockTeammates,
   isInitialized: false,
   
-  initialize: (tasks, teammates) => set({ tasks, teammates, isInitialized: true }),
+  initialize: (tasks, teammates) => set({
+    tasks: tasks.map((task) => ({ ...task, status: normalizeTaskStatus(task.status) })),
+    teammates,
+    isInitialized: true,
+  }),
   
   addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
   
@@ -26,14 +30,15 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       tasks: state.tasks.map(t => {
         if (t.id !== taskId) return t;
         
-        // Enforce strict state machine transitions
-        if (t.status === 'assigned' && newStatus === 'started') {
-          return { ...t, status: 'started' };
+        // Enforce strict state machine transitions while accepting legacy callers.
+        const normalizedStatus = normalizeTaskStatus(newStatus);
+        if (t.status === 'todo' && normalizedStatus === 'in_progress') {
+          return { ...t, status: 'in_progress' };
         }
-        if (t.status === 'started' && newStatus === 'completed') {
-          return { ...t, status: 'completed' };
+        if (t.status === 'in_progress' && normalizedStatus === 'approved') {
+          return { ...t, status: 'approved' };
         }
-        
+
         return t; // Fallback no-op
       })
     })),
@@ -58,7 +63,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       description: 'Automatically assigned from the management dashboard.',
       assignee: assignedTeammate,
       priority: 'medium',
-      status: 'assigned',
+      status: 'todo',
       dueDate: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0] // 3 days from now
     };
     

@@ -18,10 +18,10 @@ export function TaskList({ role = 'member' }: TaskListProps) {
   const handleTaskClick = (task: Task) => {
     if (role !== 'member' && role !== 'employee') return; // Management roles are read-only here.
     
-    if (task.status === 'assigned') {
-      updateTaskStatus(task.id, 'started');
-    } else if (task.status === 'started') {
-      updateTaskStatus(task.id, 'completed');
+    if (task.status === 'todo') {
+      updateTaskStatus(task.id, 'in_progress');
+    } else if (task.status === 'in_progress') {
+      updateTaskStatus(task.id, 'approved');
       addXp(50); // XP Reward on completion
       addOfficeXp(50); // Global Office Progression
     }
@@ -34,16 +34,18 @@ export function TaskList({ role = 'member' }: TaskListProps) {
   };
 
   const statusColors = {
-    'assigned': 'border-slate-500 hover:border-purple-400 group-hover:border-purple-400 bg-transparent',
-    'started': 'border-purple-500 hover:border-cyan-400 bg-purple-600/20 text-purple-300',
-    'completed': 'bg-green-600/60 border-green-400 text-green-300',
+    todo: 'border-slate-500 hover:border-purple-400 group-hover:border-purple-400 bg-transparent',
+    in_progress: 'border-purple-500 hover:border-cyan-400 bg-purple-600/20 text-purple-300',
+    in_review: 'border-violet-500 bg-violet-600/20 text-violet-300',
+    approved: 'bg-green-600/60 border-green-400 text-green-300',
+    revision_requested: 'border-amber-500 bg-amber-600/20 text-amber-300',
   };
 
   return (
     <div className="space-y-2 max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-800">
       {tasks.map((task) => {
-        const isCompleted = task.status === 'completed';
-        const isStarted = task.status === 'started';
+        const isCompleted = task.status === 'approved';
+        const isStarted = task.status === 'in_progress';
         
         return (
           <div

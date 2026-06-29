@@ -7,7 +7,7 @@ export const mockEmployeeTasks: Task[] = [
     description: 'Create wireframes and high-fidelity mockups for the main landing page',
     assignee: 'Maya Chen',
     priority: 'high',
-    status: 'started',
+    status: 'in_progress',
     dueDate: '2024-04-10',
   },
   {
@@ -16,7 +16,7 @@ export const mockEmployeeTasks: Task[] = [
     description: 'Analyze feedback from beta testers and compile report',
     assignee: 'Alex Rivera',
     priority: 'medium',
-    status: 'started',
+    status: 'in_progress',
     dueDate: '2024-04-08',
   },
   {
@@ -25,7 +25,7 @@ export const mockEmployeeTasks: Task[] = [
     description: 'Implement analytics tracking for user interactions',
     assignee: 'Jordan Lee',
     priority: 'medium',
-    status: 'assigned',
+    status: 'todo',
     dueDate: '2024-04-15',
   },
   {
@@ -34,7 +34,7 @@ export const mockEmployeeTasks: Task[] = [
     description: 'Design custom icons for the workspace interface',
     assignee: 'Casey Park',
     priority: 'low',
-    status: 'completed',
+    status: 'approved',
     dueDate: '2024-04-05',
   },
   {
@@ -43,7 +43,7 @@ export const mockEmployeeTasks: Task[] = [
     description: 'Write comprehensive documentation for API endpoints',
     assignee: 'Morgan Smith',
     priority: 'medium',
-    status: 'started',
+    status: 'in_progress',
     dueDate: '2024-04-12',
   },
   {
@@ -52,7 +52,7 @@ export const mockEmployeeTasks: Task[] = [
     description: 'Optimize bundle size and improve page load times',
     assignee: 'Sam Johnson',
     priority: 'high',
-    status: 'assigned',
+    status: 'todo',
     dueDate: '2024-04-20',
   },
 ];
@@ -157,7 +157,7 @@ export const mockEmployerTasks: Task[] = [
     description: 'Evaluate team performance metrics and set new KPIs',
     assignee: 'Jordan Quinn',
     priority: 'high',
-    status: 'started',
+    status: 'in_progress',
     dueDate: '2024-04-08',
   },
   {
@@ -166,7 +166,7 @@ export const mockEmployerTasks: Task[] = [
     description: 'Create and assign tasks for the upcoming sprint',
     assignee: 'Jordan Quinn',
     priority: 'high',
-    status: 'started',
+    status: 'in_progress',
     dueDate: '2024-04-07',
   },
   {
@@ -175,7 +175,7 @@ export const mockEmployerTasks: Task[] = [
     description: 'Conduct daily standup meeting with the team',
     assignee: 'Jordan Quinn',
     priority: 'medium',
-    status: 'assigned',
+    status: 'todo',
     dueDate: '2024-04-04',
   },
   {
@@ -184,7 +184,7 @@ export const mockEmployerTasks: Task[] = [
     description: 'Review and approve budget for tools and resources',
     assignee: 'Jordan Quinn',
     priority: 'high',
-    status: 'assigned',
+    status: 'todo',
     dueDate: '2024-04-15',
   },
   {
@@ -193,7 +193,7 @@ export const mockEmployerTasks: Task[] = [
     description: 'Schedule and conduct individual check-ins with team members',
     assignee: 'Jordan Quinn',
     priority: 'medium',
-    status: 'started',
+    status: 'in_progress',
     dueDate: '2024-04-12',
   },
 ];

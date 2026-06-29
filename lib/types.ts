@@ -17,13 +17,23 @@ export function getRoleDestination(role: unknown, fallback: RoleDestination = '/
   return canonicalRole ? `/${canonicalRole}` : fallback;
 }
 
+export type TaskStatus = 'todo' | 'in_progress' | 'in_review' | 'approved' | 'revision_requested';
+export type LegacyTaskStatus = 'assigned' | 'started' | 'completed';
+
+export function normalizeTaskStatus(status: TaskStatus | LegacyTaskStatus): TaskStatus {
+  if (status === 'assigned') return 'todo';
+  if (status === 'started') return 'in_progress';
+  if (status === 'completed') return 'approved';
+  return status;
+}
+
 export interface Task {
   id: string;
   title: string;
   description: string;
   assignee: string;
   priority: 'high' | 'medium' | 'low';
-  status: 'assigned' | 'started' | 'completed';
+  status: TaskStatus;
   dueDate: string;
 }
 

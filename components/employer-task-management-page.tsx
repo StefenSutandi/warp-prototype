@@ -20,12 +20,14 @@ import {
   X,
 } from 'lucide-react';
 import { CreateNewTaskModal } from '@/components/create-new-task-modal';
+import { useTaskStore } from '@/stores/useTaskStore';
 import { useUserStore } from '@/stores/useUserStore';
+import { normalizeAppRole, type Task } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 type EmployerTaskView = 'list' | 'detail' | 'review-detail';
 type EmployerTaskTab = 'my' | 'review';
-type TaskStatus = 'IN REVIEW' | 'IN PROGRESS' | 'TO DO' | 'OVERDUE';
+type TaskStatus = 'IN REVIEW' | 'IN PROGRESS' | 'TO DO' | 'APPROVED' | 'REVISION REQUESTED' | 'OVERDUE';
 type TaskActivityItem = {
   title: string;
   time: string;
@@ -215,9 +217,73 @@ const reviewTask = {
     { name: 'Icon_Design_Exploration.zip', size: '8.1 MB' },
     { name: 'Design_Notes_v3.docx', size: '1.2 MB' },
   ],
-} as const;
+};
 
 type ReviewTaskData = typeof reviewTask;
+
+function formatTaskDueDate(value: string) {
+  const parsed = new Date(value + 'T17:00:00');
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(parsed).replace(',', '');
+}
+
+function getTaskDisplayStatus(task: Task): TaskStatus {
+  if (task.status === 'approved') return 'APPROVED';
+  if (task.status === 'in_review') return 'IN REVIEW';
+  if (task.status === 'revision_requested') return 'REVISION REQUESTED';
+  if (task.status === 'in_progress') return 'IN PROGRESS';
+  const due = new Date(task.dueDate + 'T23:59:59');
+  return !Number.isNaN(due.getTime()) && due.getTime() < Date.now() ? 'OVERDUE' : 'TO DO';
+}
+
+function getTaskProgress(task: Task) {
+  if (task.status === 'approved') return 100;
+  if (task.status === 'in_review') return 85;
+  if (task.status === 'revision_requested') return 60;
+  if (task.status === 'in_progress') return 45;
+  return 0;
+}
+
+function toTaskCardData(task: Task): TaskCardData {
+  const template = taskCards.find((item) => item.title === task.title);
+  const status = getTaskDisplayStatus(task);
+  return {
+    id: task.id,
+    assignee: task.assignee,
+    assigneeRole: template?.assigneeRole,
+    avatarGradient: template?.avatarGradient ?? 'linear-gradient(135deg,#A29BFC 0%,#82ECEC 100%)',
+    due: formatTaskDueDate(task.dueDate),
+    progress: getTaskProgress(task),
+    status,
+    title: task.title,
+    description: task.description,
+    detailDescription: template?.detailDescription ?? task.description,
+    bullets: template?.bullets ?? [],
+    currentActionTitle: status === 'TO DO' ? 'This task is ready to be picked up.'
+      : status === 'IN PROGRESS' ? 'This task is actively in progress.'
+      : status === 'IN REVIEW' ? 'This task is waiting for approval.'
+      : status === 'REVISION REQUESTED' ? 'Revisions have been requested.'
+      : status === 'APPROVED' ? 'This task has been approved.' : 'This task is overdue.',
+    currentActionSubtitle: template?.currentActionSubtitle ?? 'Current shared status: ' + status.toLowerCase() + '.',
+    activity: template?.activity ?? [],
+  };
+}
+
+function toReviewTaskData(task: Task): ReviewTaskData {
+  return {
+    ...reviewTask,
+    id: task.id,
+    submittedBy: task.assignee,
+    assignee: task.assignee,
+    due: formatTaskDueDate(task.dueDate),
+    title: task.title,
+    description: task.description,
+    detailDescription: task.description,
+    bullets: [],
+  };
+}
 
 const attachmentAccept = '.pdf,.doc,.docx,.png,.jpg,.jpeg,.svg,.zip';
 const allowedAttachmentExtensions = new Set(['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'svg', 'zip']);
@@ -521,49 +587,39 @@ function AttachmentUploadCard({
 function HeaderTabs({
   activeTab,
   onChangeTab,
+  canReview,
+  myTaskCount,
+  reviewTaskCount,
 }: {
   activeTab: EmployerTaskTab;
   onChangeTab: (tab: EmployerTaskTab) => void;
+  canReview: boolean;
+  myTaskCount: number;
+  reviewTaskCount: number;
 }) {
   return (
     <div className="relative flex h-[80px] items-end border-b border-[#e2e0f0] bg-white px-[49px]">
-      <button
-        type="button"
-        onClick={() => onChangeTab('my')}
-        className={cn(
-          'relative mb-[20px] inline-flex items-center gap-[10px] px-[8px] pb-[18px] text-[16px] font-extrabold transition-colors',
-          activeTab === 'my' ? 'text-[#685eeb]' : 'text-black/50 hover:text-black/70'
-        )}
-      >
+      <button type="button" onClick={() => onChangeTab('my')} className={cn(
+        'relative mb-[20px] inline-flex items-center gap-[10px] px-[8px] pb-[18px] text-[16px] font-extrabold transition-colors',
+        activeTab === 'my' ? 'text-[#685eeb]' : 'text-black/50 hover:text-black/70'
+      )}>
         <span className="warp-font-display">My Tasks</span>
-        {activeTab === 'my' ? (
-          <>
-            <span className="inline-flex h-[14px] min-w-[13px] items-center justify-center rounded-[9px] bg-[#ff7675] px-[3px] text-[11px] font-medium text-white">
-              4
-            </span>
-            <span className="absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-[#685eeb]" />
-          </>
-        ) : null}
+        {activeTab === 'my' ? <>
+          <span className="inline-flex h-[14px] min-w-[13px] items-center justify-center rounded-[9px] bg-[#ff7675] px-[3px] text-[11px] font-medium text-white">{myTaskCount}</span>
+          <span className="absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-[#685eeb]" />
+        </> : null}
       </button>
-
-      <button
-        type="button"
-        onClick={() => onChangeTab('review')}
-        className={cn(
-          'relative mb-[20px] ml-[75px] inline-flex items-center gap-[8px] px-[8px] pb-[18px] text-[16px] font-extrabold transition-colors',
-          activeTab === 'review' ? 'text-[#685eeb]' : 'text-black/50 hover:text-black/70'
-        )}
-      >
+      {canReview ? <button type="button" onClick={() => onChangeTab('review')} className={cn(
+        'relative mb-[20px] ml-[75px] inline-flex items-center gap-[8px] px-[8px] pb-[18px] text-[16px] font-extrabold transition-colors',
+        activeTab === 'review' ? 'text-[#685eeb]' : 'text-black/50 hover:text-black/70'
+      )}>
         <span className="warp-font-display">Review Tasks</span>
-        <span className={cn('inline-flex h-[14px] min-w-[13px] items-center justify-center rounded-[9px] px-[3px] text-[11px] font-medium', activeTab === 'review' ? 'bg-[#ff7675] text-white' : 'bg-[#f6dede] text-[#ff7675]')}>
-          1
-        </span>
+        <span className={cn('inline-flex h-[14px] min-w-[13px] items-center justify-center rounded-[9px] px-[3px] text-[11px] font-medium', activeTab === 'review' ? 'bg-[#ff7675] text-white' : 'bg-[#f6dede] text-[#ff7675]')}>{reviewTaskCount}</span>
         {activeTab === 'review' ? <span className="absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-[#685eeb]" /> : null}
-      </button>
+      </button> : null}
     </div>
   );
 }
-
 function DetailHeader({ onBack }: { onBack: () => void }) {
   return (
     <div className="relative flex h-[80px] items-center border-b border-[#e2e0f0] bg-white px-[28px]">
@@ -581,32 +637,27 @@ function DetailHeader({ onBack }: { onBack: () => void }) {
 
 function getStatusClasses(status: TaskStatus, interactive = false) {
   switch (status) {
-    case 'IN PROGRESS':
-      return interactive ? 'bg-[#6CB5FF] text-white group-hover:bg-[#59a4f2]' : 'bg-[#6CB5FF] text-white';
-    case 'TO DO':
-      return interactive ? 'bg-[#82ECEC] text-[#2d5f75] group-hover:bg-[#70dddd]' : 'bg-[#82ECEC] text-[#2d5f75]';
-    case 'OVERDUE':
-      return interactive ? 'bg-[#FF7675] text-white group-hover:bg-[#f06261]' : 'bg-[#FF7675] text-white';
+    case 'IN PROGRESS': return interactive ? 'bg-[#6CB5FF] text-white group-hover:bg-[#59a4f2]' : 'bg-[#6CB5FF] text-white';
+    case 'APPROVED': return interactive ? 'bg-[#54B499] text-white group-hover:bg-[#48a188]' : 'bg-[#54B499] text-white';
+    case 'REVISION REQUESTED': return interactive ? 'bg-[#f2b45f] text-white group-hover:bg-[#dfa34f]' : 'bg-[#f2b45f] text-white';
+    case 'TO DO': return interactive ? 'bg-[#82ECEC] text-[#2d5f75] group-hover:bg-[#70dddd]' : 'bg-[#82ECEC] text-[#2d5f75]';
+    case 'OVERDUE': return interactive ? 'bg-[#FF7675] text-white group-hover:bg-[#f06261]' : 'bg-[#FF7675] text-white';
     case 'IN REVIEW':
-    default:
-      return interactive ? 'bg-[#A29BFC] text-white group-hover:bg-[#8b83f8]' : 'bg-[#A29BFC] text-white';
+    default: return interactive ? 'bg-[#A29BFC] text-white group-hover:bg-[#8b83f8]' : 'bg-[#A29BFC] text-white';
   }
 }
 
 function getProgressColor(status: TaskStatus) {
   switch (status) {
-    case 'IN PROGRESS':
-      return '#6CB5FF';
-    case 'TO DO':
-      return '#46D8D8';
-    case 'OVERDUE':
-      return '#FF7675';
+    case 'IN PROGRESS': return '#6CB5FF';
+    case 'APPROVED': return '#54B499';
+    case 'REVISION REQUESTED': return '#f2b45f';
+    case 'TO DO': return '#46D8D8';
+    case 'OVERDUE': return '#FF7675';
     case 'IN REVIEW':
-    default:
-      return '#685EEB';
+    default: return '#685EEB';
   }
 }
-
 function TopActions({ rewardBalance }: { rewardBalance: number }) {
   return (
     <div className="absolute right-[25px] top-[21px] z-10 flex items-center gap-[11px]">
@@ -708,10 +759,16 @@ function TaskCard({
   );
 }
 
-function OverallProgressCard() {
-  const completed = 10;
-  const total = 20;
-  const progress = completed / total;
+function OverallProgressCard({ tasks }: { tasks: TaskCardData[] }) {
+  const completed = tasks.filter((task) => task.status === 'APPROVED').length;
+  const total = tasks.length;
+  const progress = total === 0 ? 0 : completed / total;
+  const stats = [
+    { ...progressStats[0], value: completed },
+    { ...progressStats[1], value: tasks.filter((task) => task.status === 'IN PROGRESS' || task.status === 'IN REVIEW' || task.status === 'REVISION REQUESTED').length },
+    { ...progressStats[2], value: tasks.filter((task) => task.status === 'TO DO').length },
+    { ...progressStats[3], value: tasks.filter((task) => task.status === 'OVERDUE').length },
+  ];
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference * (1 - progress);
@@ -758,7 +815,7 @@ function OverallProgressCard() {
       <div className="mt-[22px] border-t border-[#ece8f4] pt-[12px]" />
 
       <div className="grid grid-cols-2 gap-[12px]">
-        {progressStats.map((stat) => (
+        {stats.map((stat) => (
           <article key={stat.label} className="rounded-[8px] border border-[#e2e0f0] bg-white px-[10px] py-[10px]">
             <div className="flex items-start gap-[14px]">
               <span className={cn('mt-[2px] inline-flex h-[18px] w-[18px] items-center justify-center rounded-full', stat.tone)}>
@@ -776,8 +833,8 @@ function OverallProgressCard() {
   );
 }
 
-function UpcomingDeadlinesCard() {
-  const deadlines = buildUpcomingDeadlines(taskCards);
+function UpcomingDeadlinesCard({ tasks }: { tasks: TaskCardData[] }) {
+  const deadlines = buildUpcomingDeadlines(tasks.filter((task) => task.status !== 'APPROVED'));
 
   return (
     <section className="rounded-[13px] border border-[#e2e0f0] bg-white px-[27px] py-[24px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
@@ -1339,15 +1396,21 @@ function ListView({
   onOpenCreateTask,
   activeTab,
   onChangeTab,
+  tasks,
+  canReview,
+  reviewTaskCount,
 }: {
   onOpenTask: (task: TaskCardData) => void;
   onOpenCreateTask: () => void;
   activeTab: EmployerTaskTab;
   onChangeTab: (tab: EmployerTaskTab) => void;
+  tasks: TaskCardData[];
+  canReview: boolean;
+  reviewTaskCount: number;
 }) {
   return (
     <>
-      <HeaderTabs activeTab={activeTab} onChangeTab={onChangeTab} />
+      <HeaderTabs activeTab={activeTab} onChangeTab={onChangeTab} canReview={canReview} myTaskCount={tasks.length} reviewTaskCount={reviewTaskCount} />
 
       <div className="grid min-h-[calc(100vh-80px)] w-full grid-cols-[minmax(0,1fr)_360px] gap-[38px] px-[26px] pb-[32px] pt-[36px]">
         <section className="min-w-0">
@@ -1386,15 +1449,15 @@ function ListView({
           </div>
 
           <div className="mt-[16px] space-y-[12px]">
-            {taskCards.map((task) => (
+            {tasks.map((task) => (
               <TaskCard key={task.id} task={task} onOpen={onOpenTask} />
             ))}
           </div>
         </section>
 
         <aside className="space-y-[23px]">
-          <OverallProgressCard />
-          <UpcomingDeadlinesCard />
+          <OverallProgressCard tasks={tasks} />
+          <UpcomingDeadlinesCard tasks={tasks} />
         </aside>
       </div>
     </>
@@ -1405,14 +1468,18 @@ function ReviewTasksView({
   activeTab,
   onChangeTab,
   onOpenReviewTask,
+  tasks,
+  allTasks,
 }: {
   activeTab: EmployerTaskTab;
   onChangeTab: (tab: EmployerTaskTab) => void;
   onOpenReviewTask: (task: ReviewTaskData) => void;
+  tasks: ReviewTaskData[];
+  allTasks: TaskCardData[];
 }) {
   return (
     <>
-      <HeaderTabs activeTab={activeTab} onChangeTab={onChangeTab} />
+      <HeaderTabs activeTab={activeTab} onChangeTab={onChangeTab} canReview myTaskCount={allTasks.length} reviewTaskCount={tasks.length} />
 
       <div className="grid min-h-[calc(100vh-80px)] w-full grid-cols-[minmax(0,1fr)_360px] gap-[22px] px-[26px] pb-[32px] pt-[36px]">
         <section className="min-w-0">
@@ -1443,13 +1510,21 @@ function ReviewTasksView({
           </div>
 
           <div className="mt-[16px]">
-            <ReviewTaskCard task={reviewTask} onOpen={onOpenReviewTask} />
+            {tasks.length > 0 ? (
+              <div className="space-y-[12px]">
+                {tasks.map((task) => <ReviewTaskCard key={task.id} task={task} onOpen={onOpenReviewTask} />)}
+              </div>
+            ) : (
+              <div className="flex min-h-[220px] items-center justify-center rounded-[16px] border border-dashed border-[#d8d5ea] bg-white/70 px-6 text-center text-[13px] font-medium text-[#9b96b8]">
+                No tasks are waiting for review.
+              </div>
+            )}
           </div>
         </section>
 
         <aside className="space-y-[23px]">
-          <OverallProgressCard />
-          <UpcomingDeadlinesCard />
+          <OverallProgressCard tasks={allTasks} />
+          <UpcomingDeadlinesCard tasks={allTasks} />
         </aside>
       </div>
     </>
@@ -1458,46 +1533,67 @@ function ReviewTasksView({
 
 export function EmployerTaskManagementPage() {
   const currentUser = useUserStore((state) => state.currentUser);
+  const tasks = useTaskStore((state) => state.tasks);
+  const appRole = normalizeAppRole(currentUser?.role);
+  const canReview = appRole === 'owner' || appRole === 'coordinator';
+  const taskCardsFromStore = tasks.map(toTaskCardData);
+  const reviewTasks = tasks.filter((task) => task.status === 'in_review').map(toReviewTaskData);
   const rewardBalance = Math.max(200, Math.round((currentUser?.xp ?? 5200) / 26));
   const [activeTab, setActiveTab] = useState<EmployerTaskTab>('my');
   const [view, setView] = useState<EmployerTaskView>('list');
-  const [selectedTask, setSelectedTask] = useState<TaskCardData>(taskCards[0]);
-  const [selectedReviewTask, setSelectedReviewTask] = useState<ReviewTaskData>(reviewTask);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedReviewTaskId, setSelectedReviewTaskId] = useState<string | null>(null);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
 
+  const selectedTask = selectedTaskId ? taskCardsFromStore.find((task) => task.id === selectedTaskId) : undefined;
+  const selectedReviewTask = selectedReviewTaskId ? reviewTasks.find((task) => task.id === selectedReviewTaskId) : undefined;
+
+  useEffect(() => {
+    if (!canReview && activeTab === 'review') {
+      setActiveTab('my');
+      setView('list');
+      setSelectedReviewTaskId(null);
+    }
+  }, [activeTab, canReview]);
+
   const handleOpenTask = (task: TaskCardData) => {
-    setSelectedTask(task);
+    setSelectedTaskId(task.id);
     setView('detail');
   };
 
   const handleChangeTab = (tab: EmployerTaskTab) => {
+    if (tab === 'review' && !canReview) return;
     setActiveTab(tab);
     setView('list');
   };
 
   const handleOpenReviewTask = (task: ReviewTaskData) => {
-    setSelectedReviewTask(task);
+    if (!canReview) return;
+    setSelectedReviewTaskId(task.id);
     setView('review-detail');
   };
 
   return (
     <div className="relative min-h-screen w-full bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)]">
       <TopActions rewardBalance={rewardBalance} />
-      {activeTab === 'review' ? (
-        view === 'review-detail' ? (
+      {canReview && activeTab === 'review' ? (
+        view === 'review-detail' && selectedReviewTask ? (
           <ReviewTaskDetailView task={selectedReviewTask} onBack={() => setView('list')} />
         ) : (
-          <ReviewTasksView activeTab={activeTab} onChangeTab={handleChangeTab} onOpenReviewTask={handleOpenReviewTask} />
+          <ReviewTasksView activeTab={activeTab} onChangeTab={handleChangeTab} onOpenReviewTask={handleOpenReviewTask} tasks={reviewTasks} allTasks={taskCardsFromStore} />
         )
-      ) : view === 'list' ? (
+      ) : view === 'detail' && selectedTask ? (
+        <DetailView task={selectedTask} onBack={() => setView('list')} />
+      ) : (
         <ListView
           onOpenTask={handleOpenTask}
           onOpenCreateTask={() => setIsCreateTaskOpen(true)}
-          activeTab={activeTab}
+          activeTab="my"
           onChangeTab={handleChangeTab}
+          tasks={taskCardsFromStore}
+          canReview={canReview}
+          reviewTaskCount={reviewTasks.length}
         />
-      ) : (
-        <DetailView task={selectedTask} onBack={() => setView('list')} />
       )}
       <CreateNewTaskModal open={isCreateTaskOpen} onClose={() => setIsCreateTaskOpen(false)} />
     </div>

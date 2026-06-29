@@ -38,7 +38,7 @@ export function CreateNewTaskModal({
         description: desc.trim() || 'Created from virtual room.',
         assignee: 'You',
         priority: 'medium',
-        status: 'assigned',
+        status: 'todo',
         dueDate: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
       };
       addTask(newTask);

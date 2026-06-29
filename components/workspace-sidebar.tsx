@@ -22,7 +22,7 @@ export function WorkspaceSidebar({ role }: WorkspaceSidebarProps) {
   const currentUser = useUserStore(state => state.currentUser);
 
   // Derived properties for Employee footer
-  const completedTasks = tasks.filter(t => t.status === 'completed').length;
+  const completedTasks = tasks.filter(t => t.status === 'approved').length;
   const totalTasks = tasks.length;
   const currentXp = currentUser?.xp || 0;
   

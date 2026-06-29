@@ -1152,8 +1152,8 @@ function ZoomControls({
 // =============================================
 
 function TaskCard({ task, onAction, index }: { task: Task; onAction: (t: Task) => void; index: number }) {
-  const isCompleted = task.status === 'completed';
-  const isStarted = task.status === 'started';
+  const isCompleted = task.status === 'approved';
+  const isStarted = task.status === 'in_progress';
   const cardBackgrounds = [
     'bg-[linear-gradient(180deg,#F0F0FF_0%,#EBF3FE_100%)]',
     'bg-[linear-gradient(180deg,#FFECEE_0%,#FFE7E7_100%)]',
@@ -1231,16 +1231,16 @@ function RightPanel({ onCreateTask }: { onCreateTask: () => void }) {
   const addOfficeXp = useOfficeStore(s => s.addOfficeXp);
 
   const handleTaskAction = (task: Task) => {
-    if (task.status === 'assigned') {
-      updateTaskStatus(task.id, 'started');
-    } else if (task.status === 'started') {
-      updateTaskStatus(task.id, 'completed');
+    if (task.status === 'todo') {
+      updateTaskStatus(task.id, 'in_progress');
+    } else if (task.status === 'in_progress') {
+      updateTaskStatus(task.id, 'approved');
       addXp(50);
       addOfficeXp(50);
     }
   };
 
-  const activeCount = tasks.filter(t => t.status !== 'completed').length;
+  const activeCount = tasks.filter(t => t.status !== 'approved').length;
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState([
     { id: 1, sender: 'You', text: 'On it matee', time: '13.35', isMe: true },
