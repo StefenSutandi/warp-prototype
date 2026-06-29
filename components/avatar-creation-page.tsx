@@ -5,7 +5,9 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Pencil, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getRoleDestination, normalizeAppRole, ROLE_STORAGE_KEY } from '@/lib/types';
 import { useAvatarStore } from '@/stores/useAvatarStore';
+import { useUserStore } from '@/stores/useUserStore';
 
 type AvatarTab = 'face' | 'hair' | 'outfit';
 type HairColorId = 'dark' | 'brown' | 'blonde';
@@ -468,6 +470,7 @@ function ProfileInfoCard({
 
 export function AvatarCreationPage() {
   const router = useRouter();
+  const currentUserRole = useUserStore((state) => state.isInitialized ? state.currentUser?.role : null);
   const avatarProfile = useAvatarStore((state) => state.profile);
   const avatarSelection = useAvatarStore((state) => state.selection);
   const updateAvatarProfile = useAvatarStore((state) => state.updateProfile);
@@ -537,7 +540,10 @@ export function AvatarCreationPage() {
       interests,
       bio: bio.trim(),
     });
-    router.push('/employer');
+    const storedRole = normalizeAppRole(localStorage.getItem(ROLE_STORAGE_KEY));
+    const canonicalRole = normalizeAppRole(currentUserRole) ?? storedRole ?? 'member';
+    localStorage.setItem(ROLE_STORAGE_KEY, canonicalRole);
+    router.push(getRoleDestination(canonicalRole));
   };
 
   const handleHairColorSelect = (colorId: HairColorId) => {

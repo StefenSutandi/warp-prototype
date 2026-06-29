@@ -3,9 +3,10 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { type FormEvent, type ReactNode, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import { Check, Eye, EyeOff, Lock, Mail, ShieldCheck, UserRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { type AppRole, normalizeAppRole, ROLE_STORAGE_KEY } from '@/lib/types';
 
 const WARP_LOGO = '/assets/dashboard-employer/branding/warp-logo.svg';
 
@@ -16,6 +17,12 @@ const DEMO_CREDENTIALS = {
   employer: { password: 'employer', role: 'owner', destination: '/owner' },
   employee: { password: 'employee', role: 'member', destination: '/member' },
 } as const;
+
+const SIGNUP_ROLES: { id: AppRole; label: string; description: string }[] = [
+  { id: 'owner', label: 'Owner', description: 'Create and manage the workspace' },
+  { id: 'coordinator', label: 'Coordinator', description: 'Coordinate projects and reviews' },
+  { id: 'member', label: 'Member', description: 'Collaborate and complete tasks' },
+];
 
 function AuthShell({
   children,
@@ -156,7 +163,7 @@ export function LoginPage() {
     const credential = DEMO_CREDENTIALS[normalizedUsername as keyof typeof DEMO_CREDENTIALS];
 
     if (credential && password === credential.password) {
-      localStorage.setItem('warpRole', credential.role);
+      localStorage.setItem(ROLE_STORAGE_KEY, credential.role);
       localStorage.setItem('warpLoggedIn', 'true');
       router.push(credential.destination);
       return;
@@ -264,6 +271,12 @@ export function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<AppRole>('member');
+
+  useEffect(() => {
+    const storedRole = normalizeAppRole(localStorage.getItem(ROLE_STORAGE_KEY));
+    if (storedRole) setSelectedRole(storedRole);
+  }, []);
 
   return (
     <AuthShell
@@ -275,6 +288,7 @@ export function SignupPage() {
         <form
           onSubmit={(event) => {
             event.preventDefault();
+            localStorage.setItem(ROLE_STORAGE_KEY, selectedRole);
             router.push('/verify');
           }}
           className="mt-[30px] space-y-[18px]"
@@ -299,6 +313,31 @@ export function SignupPage() {
               </button>
             }
           />
+          <fieldset>
+            <legend className="mb-[8px] text-[13px] font-semibold text-[#5c5780]">Workspace role</legend>
+            <div className="grid gap-[8px] sm:grid-cols-3">
+              {SIGNUP_ROLES.map((role) => {
+                const isSelected = selectedRole === role.id;
+                return (
+                  <button
+                    key={role.id}
+                    type="button"
+                    onClick={() => setSelectedRole(role.id)}
+                    aria-pressed={isSelected}
+                    className={cn(
+                      'rounded-[13px] border px-[10px] py-[11px] text-left transition',
+                      isSelected
+                        ? 'border-[#685eeb] bg-[#f0eff8] shadow-[0_6px_16px_rgba(104,94,235,0.10)]'
+                        : 'border-[#e2e0f0] bg-white hover:bg-[#f9fbfd]'
+                    )}
+                  >
+                    <span className={cn('block text-[12px] font-bold', isSelected ? 'text-[#685eeb]' : 'text-[#111111]')}>{role.label}</span>
+                    <span className="mt-[3px] block text-[9px] leading-[1.3] text-[#858585]">{role.description}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
           <button
             type="submit"
             className="flex h-[48px] w-full items-center justify-center rounded-[14px] bg-[linear-gradient(97deg,#685eeb_2%,#7970f0_56%,#a29bfc_111%)] text-[15px] font-extrabold text-white shadow-[0_14px_28px_rgba(104,94,235,0.22)] transition-all hover:brightness-[1.03] active:translate-y-[1px] active:scale-[0.99] active:brightness-95"
@@ -331,7 +370,9 @@ export function VerifyPage() {
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            router.push('/login');
+            const storedRole = normalizeAppRole(localStorage.getItem(ROLE_STORAGE_KEY)) ?? 'member';
+            localStorage.setItem(ROLE_STORAGE_KEY, storedRole);
+            router.push('/avatar');
           }}
           className="mt-[30px]"
         >
