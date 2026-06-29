@@ -35,6 +35,12 @@ export interface Task {
   priority: 'high' | 'medium' | 'low';
   status: TaskStatus;
   dueDate: string;
+  submissionNote?: string;
+  revisionNote?: string;
+  submittedAt?: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  approvalXpAwarded?: boolean;
 }
 
 export interface Teammate {

@@ -13,7 +13,6 @@ import {
 import { useTaskStore } from '@/stores/useTaskStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useAvatarStore } from '@/stores/useAvatarStore';
-import { useOfficeStore } from '@/stores/useOfficeStore';
 import { type Task, type User } from '@/lib/types';
 import { CalendarClock, ChevronRight, Eye, ListTodo, MessageCircle, Mic, MonitorUp, Pause, PhoneOff, Send, SkipForward, Smile, Upload, X } from 'lucide-react';
 
@@ -1154,6 +1153,8 @@ function ZoomControls({
 function TaskCard({ task, onAction, index }: { task: Task; onAction: (t: Task) => void; index: number }) {
   const isCompleted = task.status === 'approved';
   const isStarted = task.status === 'in_progress';
+  const isInReview = task.status === 'in_review';
+  const isRevisionRequested = task.status === 'revision_requested';
   const cardBackgrounds = [
     'bg-[linear-gradient(180deg,#F0F0FF_0%,#EBF3FE_100%)]',
     'bg-[linear-gradient(180deg,#FFECEE_0%,#FFE7E7_100%)]',
@@ -1192,7 +1193,7 @@ function TaskCard({ task, onAction, index }: { task: Task; onAction: (t: Task) =
       <p className="warp-font-ui text-[12px] font-medium text-[#9B96B8]">Due <span className="font-normal">{task.dueDate || '26/03/2026'} 17.00 PM</span></p>
       <p className="warp-font-ui mt-[12px] text-[14px] font-medium leading-[1.2] text-[#5C5780]">{task.title}</p>
 
-      {isStarted ? (
+      {isStarted || isInReview ? (
         <>
           <div className="mt-5 flex items-center gap-3">
             <div className="flex flex-1 gap-1">
@@ -1203,7 +1204,9 @@ function TaskCard({ task, onAction, index }: { task: Task; onAction: (t: Task) =
             <span className="warp-font-ui text-[11px] font-medium text-[#9B96B8] tabular-nums">1/3</span>
           </div>
           <div className="mt-[10px] flex items-center justify-between">
-            <p className="warp-font-ui text-[12px] font-normal text-[#39B54A]">completed</p>
+            <p className={`warp-font-ui text-[12px] font-normal ${isInReview ? 'text-[#685EEB]' : 'text-[#39B54A]'}`}>
+              {isInReview ? 'waiting for review' : 'in progress'}
+            </p>
             <span className="text-gray-300">›</span>
           </div>
         </>
@@ -1213,7 +1216,7 @@ function TaskCard({ task, onAction, index }: { task: Task; onAction: (t: Task) =
           className="warp-font-ui mt-[16px] w-[122px] rounded-[15px] py-[6px] text-[13px] font-bold text-white shadow-sm transition-all hover:shadow-md active:scale-[0.97]"
           style={{ background: SHELL_TOKENS.purple.gradient }}
         >
-          Start
+          {isRevisionRequested ? 'Continue' : 'Start'}
         </button>
       )}
     </div>
@@ -1226,18 +1229,10 @@ function TaskCard({ task, onAction, index }: { task: Task; onAction: (t: Task) =
 
 function RightPanel({ onCreateTask }: { onCreateTask: () => void }) {
   const tasks = useTaskStore(s => s.tasks);
-  const updateTaskStatus = useTaskStore(s => s.updateTaskStatus);
-  const addXp = useUserStore(s => s.addXp);
-  const addOfficeXp = useOfficeStore(s => s.addOfficeXp);
+  const startTask = useTaskStore(s => s.startTask);
 
   const handleTaskAction = (task: Task) => {
-    if (task.status === 'todo') {
-      updateTaskStatus(task.id, 'in_progress');
-    } else if (task.status === 'in_progress') {
-      updateTaskStatus(task.id, 'approved');
-      addXp(50);
-      addOfficeXp(50);
-    }
+    startTask(task.id);
   };
 
   const activeCount = tasks.filter(t => t.status !== 'approved').length;

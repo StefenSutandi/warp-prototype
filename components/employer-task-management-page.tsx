@@ -22,7 +22,8 @@ import {
 import { CreateNewTaskModal } from '@/components/create-new-task-modal';
 import { useTaskStore } from '@/stores/useTaskStore';
 import { useUserStore } from '@/stores/useUserStore';
-import { normalizeAppRole, type Task } from '@/lib/types';
+import { useOfficeStore } from '@/stores/useOfficeStore';
+import { normalizeAppRole, type Task, type TaskStatus as CanonicalTaskStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 type EmployerTaskView = 'list' | 'detail' | 'review-detail';
@@ -54,6 +55,7 @@ type CommentItem = {
 
 type TaskCardData = {
   id: string;
+  canonicalStatus: CanonicalTaskStatus;
   assignee: string;
   assigneeRole?: string;
   avatarGradient: string;
@@ -66,12 +68,14 @@ type TaskCardData = {
   bullets: string[];
   currentActionTitle: string;
   currentActionSubtitle: string;
+  revisionNote?: string;
   activity: TaskActivityItem[];
 };
 
 const taskCards: TaskCardData[] = [
   {
     id: 'task-card-1',
+    canonicalStatus: 'in_review',
     assignee: 'Kevin',
     assigneeRole: 'Frontend',
     avatarGradient: 'linear-gradient(135deg,#A29BFC 0%,#82ECEC 100%)',
@@ -98,6 +102,7 @@ const taskCards: TaskCardData[] = [
   },
   {
     id: 'task-card-2',
+    canonicalStatus: 'in_progress',
     assignee: 'Nadine',
     assigneeRole: 'Project Manager',
     avatarGradient: 'linear-gradient(135deg,#6CB5FF 0%,#D9FFF4 100%)',
@@ -124,6 +129,7 @@ const taskCards: TaskCardData[] = [
   },
   {
     id: 'task-card-3',
+    canonicalStatus: 'in_review',
     assignee: 'Farhan',
     assigneeRole: 'Backend',
     avatarGradient: 'linear-gradient(135deg,#8B83F8 0%,#FFEEEE 100%)',
@@ -150,6 +156,7 @@ const taskCards: TaskCardData[] = [
   },
   {
     id: 'task-card-4',
+    canonicalStatus: 'todo',
     assignee: 'Salsa',
     assigneeRole: 'Product',
     avatarGradient: 'linear-gradient(135deg,#46D8D8 0%,#A29BFC 100%)',
@@ -251,6 +258,7 @@ function toTaskCardData(task: Task): TaskCardData {
   const status = getTaskDisplayStatus(task);
   return {
     id: task.id,
+    canonicalStatus: task.status,
     assignee: task.assignee,
     assigneeRole: template?.assigneeRole,
     avatarGradient: template?.avatarGradient ?? 'linear-gradient(135deg,#A29BFC 0%,#82ECEC 100%)',
@@ -266,7 +274,10 @@ function toTaskCardData(task: Task): TaskCardData {
       : status === 'IN REVIEW' ? 'This task is waiting for approval.'
       : status === 'REVISION REQUESTED' ? 'Revisions have been requested.'
       : status === 'APPROVED' ? 'This task has been approved.' : 'This task is overdue.',
-    currentActionSubtitle: template?.currentActionSubtitle ?? 'Current shared status: ' + status.toLowerCase() + '.',
+    currentActionSubtitle: task.status === 'revision_requested'
+      ? task.revisionNote || 'Open the task, continue the work, and resubmit it for review.'
+      : template?.currentActionSubtitle ?? 'Current shared status: ' + status.toLowerCase() + '.',
+    revisionNote: task.revisionNote,
     activity: template?.activity ?? [],
   };
 }
@@ -282,6 +293,7 @@ function toReviewTaskData(task: Task): ReviewTaskData {
     description: task.description,
     detailDescription: task.description,
     bullets: [],
+    notes: task.submissionNote || reviewTask.notes,
   };
 }
 
@@ -392,10 +404,16 @@ function createCommentId() {
 function AttachmentUploadCard({
   initialFiles,
   submitState = 'idle',
+  actionLabel = 'Submit for Review',
+  submittedLabel = 'Submitted for Review',
+  submittedMessage = 'Your task has been submitted and is now waiting for review.',
   onSubmit,
 }: {
   initialFiles: readonly { name: string; size: string }[];
   submitState?: SubmitState;
+  actionLabel?: string;
+  submittedLabel?: string;
+  submittedMessage?: string;
   onSubmit?: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -478,7 +496,7 @@ function AttachmentUploadCard({
   };
 
   const submitButtonContent =
-    submitState === 'submitting' ? 'Submitting...' : submitState === 'submitted' ? 'Submitted for Review' : 'Submit for Review';
+    submitState === 'submitting' ? 'Submitting...' : submitState === 'submitted' ? submittedLabel : actionLabel;
 
   return (
     <>
@@ -576,7 +594,7 @@ function AttachmentUploadCard({
           </button>
 
           {submitState === 'submitted' ? (
-            <p className="mt-[10px] text-[12px] text-[#5f5a7b]">Your task has been submitted and is now waiting for review.</p>
+            <p className="mt-[10px] text-[12px] text-[#5f5a7b]">{submittedMessage}</p>
           ) : null}
         </div>
       ) : null}
@@ -962,16 +980,22 @@ function ImagePreviewModal({
 function ReviewTaskCard({
   task,
   onOpen,
+  onApprove,
+  onRequestRevision,
 }: {
   task: ReviewTaskData;
   onOpen: (task: ReviewTaskData) => void;
+  onApprove: (taskId: string) => void;
+  onRequestRevision: (taskId: string) => void;
 }) {
   const handleApprove = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
+    onApprove(task.id);
   };
 
   const handleRequestRevision = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
+    onRequestRevision(task.id);
   };
 
   return (
@@ -1164,9 +1188,13 @@ function ReviewDetailAttachmentsCard({ attachments }: { attachments: ReviewTaskD
 function ReviewTaskDetailView({
   task,
   onBack,
+  onApprove,
+  onRequestRevision,
 }: {
   task: ReviewTaskData;
   onBack: () => void;
+  onApprove: (taskId: string) => void;
+  onRequestRevision: (taskId: string) => void;
 }) {
   const [previewImage, setPreviewImage] = useState<{ src: string; alt: string; variant: 'light' | 'purple' } | null>(null);
 
@@ -1227,6 +1255,7 @@ function ReviewTaskDetailView({
             <div className="mt-[28px] flex flex-wrap gap-[10px]">
               <button
                 type="button"
+                onClick={() => onApprove(task.id)}
                 className="inline-flex h-[42px] items-center gap-[8px] rounded-[10px] bg-[#685EEB] px-[18px] text-[14px] font-semibold text-white shadow-[0_8px_18px_rgba(104,94,235,0.2)] transition hover:bg-[#5d53df]"
               >
                 <Check className="h-4 w-4" strokeWidth={2.4} />
@@ -1234,6 +1263,7 @@ function ReviewTaskDetailView({
               </button>
               <button
                 type="button"
+                onClick={() => onRequestRevision(task.id)}
                 className="inline-flex h-[42px] items-center gap-[8px] rounded-[10px] border border-[#685EEB] bg-white px-[18px] text-[14px] font-semibold text-[#685EEB] transition hover:bg-[#f7f4ff]"
               >
                 <RotateCcw className="h-4 w-4" strokeWidth={2.1} />
@@ -1271,20 +1301,34 @@ function DetailView({
   task: TaskCardData;
   onBack: () => void;
 }) {
-  const [submitState, setSubmitState] = useState<SubmitState>('idle');
+  const currentUser = useUserStore((state) => state.currentUser);
+  const startTask = useTaskStore((state) => state.startTask);
+  const submitForReview = useTaskStore((state) => state.submitForReview);
+  const [isActionPending, setIsActionPending] = useState(false);
+  const isFinalState = task.canonicalStatus === 'in_review' || task.canonicalStatus === 'approved';
+  const submitState: SubmitState = isActionPending ? 'submitting' : isFinalState ? 'submitted' : 'idle';
+  const actionLabel = task.canonicalStatus === 'todo'
+    ? 'Start Task'
+    : task.canonicalStatus === 'revision_requested'
+      ? 'Resubmit for Review'
+      : 'Submit for Review';
+  const submittedLabel = task.canonicalStatus === 'approved' ? 'Approved' : 'Waiting for Review';
+  const submittedMessage = task.canonicalStatus === 'approved'
+    ? 'This task has been approved and marked complete.'
+    : 'Your task has been submitted and is now waiting for review.';
 
-  const currentActionTitle =
-    submitState === 'submitted' ? 'This task is waiting for approval.' : task.currentActionTitle;
-  const currentActionSubtitle =
-    submitState === 'submitted' ? 'The creator will review your submission.' : task.currentActionSubtitle;
-
-  const handleSubmitForReview = () => {
+  const handlePrimaryAction = () => {
     if (submitState !== 'idle') return;
 
-    setSubmitState('submitting');
+    setIsActionPending(true);
     window.setTimeout(() => {
-      setSubmitState('submitted');
-    }, 850);
+      if (task.canonicalStatus === 'todo') {
+        startTask(task.id, currentUser?.id);
+      } else {
+        submitForReview(task.id, currentUser?.id);
+      }
+      setIsActionPending(false);
+    }, 450);
   };
 
   return (
@@ -1336,8 +1380,8 @@ function DetailView({
                     <Hourglass className="h-6 w-6" strokeWidth={1.9} />
                   </div>
                   <div>
-                    <p className="text-[14px] font-medium text-black">{currentActionTitle}</p>
-                    <p className="mt-[5px] text-[11px] text-black">{currentActionSubtitle}</p>
+                    <p className="text-[14px] font-medium text-black">{task.currentActionTitle}</p>
+                    <p className="mt-[5px] text-[11px] text-black">{task.currentActionSubtitle}</p>
                   </div>
                 </div>
               </div>
@@ -1367,11 +1411,25 @@ function DetailView({
                 </div>
               </div>
             </div>
+
+            {task.canonicalStatus === 'revision_requested' && task.revisionNote ? (
+              <div className="mt-[20px] rounded-[10px] border border-[#f2b45f]/50 bg-[#fff8eb] px-[20px] py-[16px]">
+                <p className="text-[12px] font-bold uppercase tracking-[0.08em] text-[#b77720]">Revision feedback</p>
+                <p className="mt-[6px] text-[12px] leading-[1.5] text-[#6f542f]">{task.revisionNote}</p>
+              </div>
+            ) : null}
           </article>
         </section>
 
         <aside className="space-y-[13px]">
-          <AttachmentUploadCard initialFiles={attachmentFiles} submitState={submitState} onSubmit={handleSubmitForReview} />
+          <AttachmentUploadCard
+            initialFiles={attachmentFiles}
+            submitState={submitState}
+            actionLabel={actionLabel}
+            submittedLabel={submittedLabel}
+            submittedMessage={submittedMessage}
+            onSubmit={handlePrimaryAction}
+          />
           <div className="pt-[81px]">
             <CommentsCard
               initialComments={[
@@ -1470,12 +1528,16 @@ function ReviewTasksView({
   onOpenReviewTask,
   tasks,
   allTasks,
+  onApprove,
+  onRequestRevision,
 }: {
   activeTab: EmployerTaskTab;
   onChangeTab: (tab: EmployerTaskTab) => void;
   onOpenReviewTask: (task: ReviewTaskData) => void;
   tasks: ReviewTaskData[];
   allTasks: TaskCardData[];
+  onApprove: (taskId: string) => void;
+  onRequestRevision: (taskId: string) => void;
 }) {
   return (
     <>
@@ -1512,7 +1574,15 @@ function ReviewTasksView({
           <div className="mt-[16px]">
             {tasks.length > 0 ? (
               <div className="space-y-[12px]">
-                {tasks.map((task) => <ReviewTaskCard key={task.id} task={task} onOpen={onOpenReviewTask} />)}
+                {tasks.map((task) => (
+                  <ReviewTaskCard
+                    key={task.id}
+                    task={task}
+                    onOpen={onOpenReviewTask}
+                    onApprove={onApprove}
+                    onRequestRevision={onRequestRevision}
+                  />
+                ))}
               </div>
             ) : (
               <div className="flex min-h-[220px] items-center justify-center rounded-[16px] border border-dashed border-[#d8d5ea] bg-white/70 px-6 text-center text-[13px] font-medium text-[#9b96b8]">
@@ -1534,6 +1604,10 @@ function ReviewTasksView({
 export function EmployerTaskManagementPage() {
   const currentUser = useUserStore((state) => state.currentUser);
   const tasks = useTaskStore((state) => state.tasks);
+  const approveTask = useTaskStore((state) => state.approveTask);
+  const requestRevision = useTaskStore((state) => state.requestRevision);
+  const addXp = useUserStore((state) => state.addXp);
+  const addOfficeXp = useOfficeStore((state) => state.addOfficeXp);
   const appRole = normalizeAppRole(currentUser?.role);
   const canReview = appRole === 'owner' || appRole === 'coordinator';
   const taskCardsFromStore = tasks.map(toTaskCardData);
@@ -1573,14 +1647,52 @@ export function EmployerTaskManagementPage() {
     setView('review-detail');
   };
 
+  const handleApproveTask = (taskId: string) => {
+    if (!canReview) return;
+    if (approveTask(taskId, currentUser?.id)) {
+      addXp(50);
+      addOfficeXp(50);
+      setSelectedReviewTaskId(null);
+      setView('list');
+    }
+  };
+
+  const handleRequestRevision = (taskId: string) => {
+    if (!canReview) return;
+    const note = window.prompt(
+      'Add revision feedback for the member:',
+      'Please address the review feedback and resubmit the task.'
+    );
+    if (note === null) return;
+
+    const revisionNote = note.trim() || 'Please address the review feedback and resubmit the task.';
+    if (requestRevision(taskId, currentUser?.id, revisionNote)) {
+      setSelectedReviewTaskId(null);
+      setView('list');
+    }
+  };
+
   return (
     <div className="relative min-h-screen w-full bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)]">
       <TopActions rewardBalance={rewardBalance} />
       {canReview && activeTab === 'review' ? (
         view === 'review-detail' && selectedReviewTask ? (
-          <ReviewTaskDetailView task={selectedReviewTask} onBack={() => setView('list')} />
+          <ReviewTaskDetailView
+            task={selectedReviewTask}
+            onBack={() => setView('list')}
+            onApprove={handleApproveTask}
+            onRequestRevision={handleRequestRevision}
+          />
         ) : (
-          <ReviewTasksView activeTab={activeTab} onChangeTab={handleChangeTab} onOpenReviewTask={handleOpenReviewTask} tasks={reviewTasks} allTasks={taskCardsFromStore} />
+          <ReviewTasksView
+            activeTab={activeTab}
+            onChangeTab={handleChangeTab}
+            onOpenReviewTask={handleOpenReviewTask}
+            tasks={reviewTasks}
+            allTasks={taskCardsFromStore}
+            onApprove={handleApproveTask}
+            onRequestRevision={handleRequestRevision}
+          />
         )
       ) : view === 'detail' && selectedTask ? (
         <DetailView task={selectedTask} onBack={() => setView('list')} />

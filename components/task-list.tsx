@@ -2,8 +2,6 @@
 
 import { type Role, type Task } from '@/lib/types';
 import { useTaskStore } from '@/stores/useTaskStore';
-import { useUserStore } from '@/stores/useUserStore';
-import { useOfficeStore } from '@/stores/useOfficeStore';
 
 interface TaskListProps {
   role?: Role;
@@ -11,19 +9,13 @@ interface TaskListProps {
 
 export function TaskList({ role = 'member' }: TaskListProps) {
   const tasks = useTaskStore(state => state.tasks);
-  const updateTaskStatus = useTaskStore(state => state.updateTaskStatus);
-  const addXp = useUserStore(state => state.addXp);
-  const addOfficeXp = useOfficeStore(state => state.addOfficeXp);
+  const startTask = useTaskStore(state => state.startTask);
 
   const handleTaskClick = (task: Task) => {
     if (role !== 'member' && role !== 'employee') return; // Management roles are read-only here.
     
-    if (task.status === 'todo') {
-      updateTaskStatus(task.id, 'in_progress');
-    } else if (task.status === 'in_progress') {
-      updateTaskStatus(task.id, 'approved');
-      addXp(50); // XP Reward on completion
-      addOfficeXp(50); // Global Office Progression
+    if (task.status === 'todo' || task.status === 'revision_requested') {
+      startTask(task.id);
     }
   };
 
