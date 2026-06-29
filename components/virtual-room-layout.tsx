@@ -1,8 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef, type ComponentType, type CSSProperties, type ReactNode } from 'react';
+import { useState, useEffect, useRef, type ComponentType, type CSSProperties } from 'react';
 import { PhaserGame } from '@/game/components/PhaserGame';
 import { CreateNewTaskModal as SharedCreateNewTaskModal } from '@/components/create-new-task-modal';
+import { EmployerTaskManagementPage } from '@/components/employer-task-management-page';
+import {
+  WorkspaceChatPage,
+  WorkspaceSettingsPage,
+  WorkspaceStatsPage,
+  WorkspaceTeamPage,
+} from '@/components/employer-dashboard';
 import { useTaskStore } from '@/stores/useTaskStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useAvatarStore } from '@/stores/useAvatarStore';
@@ -2176,293 +2183,16 @@ export function ChangeRoomsModal({
 //  MAIN EXPORT — VIRTUAL ROOM LAYOUT
 // =============================================
 
-function MemberPageFrame({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
-  return (
-    <main className="h-full min-w-0 flex-1 overflow-y-auto bg-[linear-gradient(141deg,#d5d2ff_8%,#f2f8fe_48%,#f0f9fd_78%,#d9fff4_112%)] px-[32px] py-[28px] text-[#111111]">
-      <header className="mb-[26px] flex items-start justify-between gap-6">
-        <div>
-          <p className="warp-font-header text-[12px] font-bold uppercase tracking-[0.12em] text-[#685EEB]">Member Workspace</p>
-          <h1 className="warp-font-header mt-[8px] text-[32px] font-extrabold leading-none tracking-[-0.035em]">{title}</h1>
-          <p className="mt-[10px] max-w-[620px] text-[14px] font-medium text-[#858585]">{subtitle}</p>
-        </div>
-        <img src={VIRTUAL_ROOM_LOCAL_ASSETS.logo} alt="WARP" className="h-[29px] w-auto" />
-      </header>
-      {children}
-    </main>
-  );
-}
-
-const memberCardClass = 'rounded-[24px] border border-white/80 bg-white/90 p-[22px] shadow-[0_12px_30px_rgba(84,86,106,0.08)]';
-
-function MemberStatsPage({ user }: { user: User }) {
-  const tasks = useTaskStore((state) => state.tasks);
-  const completed = tasks.filter((task) => task.status === 'completed').length;
-  const active = tasks.filter((task) => task.status !== 'completed').length;
-  const stats = [
-    ['Focus Time', '2h 45m', 'Today'],
-    ['Tasks Completed', String(completed), `${tasks.length ? Math.round((completed / tasks.length) * 100) : 0}% completion`],
-    ['Active Tasks', String(active), 'Across this project'],
-    ['Current Level', `Level ${user.level}`, 'Research & Concepting'],
-  ];
-
-  return (
-    <MemberPageFrame title="My Stats" subtitle="Your focus, task progress, and current workspace level.">
-      <section className="grid gap-[16px] md:grid-cols-2 xl:grid-cols-4">
-        {stats.map(([label, value, detail], index) => (
-          <article key={label} className={`${memberCardClass} ${['bg-[#F6F3FF]', 'bg-[#F0FFFB]', 'bg-[#F2F8FF]', 'bg-[#FFF4F4]'][index]}`}>
-            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#9B96B8]">{label}</p>
-            <p className="warp-font-header mt-[18px] text-[27px] font-extrabold tracking-[-0.03em]">{value}</p>
-            <p className="mt-[7px] text-[11px] text-[#858585]">{detail}</p>
-          </article>
-        ))}
-      </section>
-      <section className={`mt-[18px] ${memberCardClass}`}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="warp-font-header text-[18px] font-extrabold">Weekly focus progress</h2>
-            <p className="mt-[5px] text-[12px] text-[#858585]">You are 82% toward this week&apos;s focus target.</p>
-          </div>
-          <span className="rounded-full bg-[#EEEAFE] px-[12px] py-[6px] text-[12px] font-bold text-[#685EEB]">82%</span>
-        </div>
-        <div className="mt-[24px] h-[12px] overflow-hidden rounded-full bg-[#F0EFF8]">
-          <div className="h-full w-[82%] rounded-full bg-[linear-gradient(90deg,#685EEB,#82ECEC)]" />
-        </div>
-        <div className="mt-[24px] grid grid-cols-7 gap-[9px]">
-          {[62, 74, 55, 88, 82, 46, 70].map((value, index) => (
-            <div key={index} className="flex flex-col items-center gap-[7px]">
-              <div className="flex h-[90px] w-full items-end rounded-[10px] bg-[#F7F6FC] p-[4px]">
-                <div className="w-full rounded-[7px] bg-[linear-gradient(180deg,#A29BFC,#685EEB)]" style={{ height: `${value}%` }} />
-              </div>
-              <span className="text-[10px] font-semibold text-[#9B96B8]">{['M', 'T', 'W', 'T', 'F', 'S', 'S'][index]}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-    </MemberPageFrame>
-  );
-}
-
-function MemberTodoPage() {
-  const tasks = useTaskStore((state) => state.tasks);
-  const updateTaskStatus = useTaskStore((state) => state.updateTaskStatus);
-  const activeTasks = tasks.filter((task) => task.status !== 'completed');
-  const completedTasks = tasks.filter((task) => task.status === 'completed');
-
-  const taskCard = (task: Task) => {
-    const progress = task.status === 'completed' ? 100 : task.status === 'started' ? 45 : 0;
-    return (
-      <article key={task.id} className="rounded-[21px] border border-[#E2E0F0] bg-white p-[19px] shadow-[0_9px_24px_rgba(84,86,106,0.06)]">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <span className="rounded-full bg-[#F0EFF8] px-[9px] py-[4px] text-[10px] font-bold uppercase text-[#685EEB]">
-              {task.status === 'assigned' ? 'To Do' : task.status === 'started' ? 'In Progress' : 'Completed'}
-            </span>
-            <h2 className="mt-[12px] text-[15px] font-extrabold">{task.title}</h2>
-            <p className="mt-[6px] text-[11px] text-[#858585]">Due {task.dueDate}</p>
-          </div>
-          {task.status !== 'completed' ? (
-            <button
-              type="button"
-              onClick={() => updateTaskStatus(task.id, task.status === 'assigned' ? 'started' : 'completed')}
-              className="shrink-0 rounded-[13px] bg-[#685EEB] px-[14px] py-[8px] text-[10px] font-bold text-white"
-            >
-              {task.status === 'assigned' ? 'Start task' : 'Mark complete'}
-            </button>
-          ) : null}
-        </div>
-        <p className="mt-[11px] text-[12px] leading-[1.5] text-[#5C5780]">{task.description}</p>
-        <div className="mt-[16px] flex items-center gap-[10px]">
-          <div className="h-[7px] flex-1 overflow-hidden rounded-full bg-[#F0EFF8]">
-            <div className="h-full rounded-full bg-[linear-gradient(90deg,#685EEB,#82ECEC)]" style={{ width: `${progress}%` }} />
-          </div>
-          <span className="text-[10px] font-bold text-[#685EEB]">{progress}%</span>
-        </div>
-      </article>
-    );
-  };
-
-  return (
-    <MemberPageFrame title="To-Do" subtitle="Track active work, move tasks forward, and review completed items.">
-      <div className="grid gap-[18px] xl:grid-cols-[1fr_320px]">
-        <section>
-          <h2 className="mb-[12px] warp-font-header text-[17px] font-extrabold">Active tasks · {activeTasks.length}</h2>
-          <div className="space-y-[12px]">{activeTasks.map(taskCard)}</div>
-        </section>
-        <aside>
-          <h2 className="mb-[12px] warp-font-header text-[17px] font-extrabold">Completed · {completedTasks.length}</h2>
-          <div className="space-y-[12px]">{completedTasks.map(taskCard)}</div>
-        </aside>
-      </div>
-    </MemberPageFrame>
-  );
-}
-
-function MemberChatPage() {
-  const [input, setInput] = useState('');
-  const [messages, setMessages] = useState([
-    { id: 1, sender: 'Nadine', text: 'I added the latest notes to the project board.', mine: false },
-    { id: 2, sender: 'Member', text: 'Thanks, I will review them after this focus session.', mine: true },
-    { id: 3, sender: 'Kevin', text: 'The icon task is ready whenever you are.', mine: false },
-  ]);
-  const sendMessage = () => {
-    const text = input.trim();
-    if (!text) return;
-    setMessages((current) => [...current, { id: Date.now(), sender: 'Member', text, mine: true }]);
-    setInput('');
-  };
-
-  return (
-    <MemberPageFrame title="Chat" subtitle="Continue project conversations outside the room overlay. Messages remain local to this demo.">
-      <section className="grid min-h-[600px] overflow-hidden rounded-[26px] border border-white/80 bg-white/90 shadow-[0_14px_34px_rgba(84,86,106,0.09)] lg:grid-cols-[270px_1fr]">
-        <aside className="border-r border-[#E2E0F0] p-[18px]">
-          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#9B96B8]">Conversations</p>
-          {['Papers Studio', 'Nadine', 'Kevin'].map((name, index) => (
-            <button key={name} type="button" className={`mt-[10px] flex w-full items-center gap-[10px] rounded-[15px] p-[11px] text-left ${index === 0 ? 'bg-[#F0EFF8]' : 'hover:bg-[#F8F7FC]'}`}>
-              <span className={`h-[37px] w-[37px] rounded-full ${['bg-[#A29BFC]', 'bg-[#6CB5FF]', 'bg-[#82ECEC]'][index]}`} />
-              <span className="text-[12px] font-bold">{name}</span>
-            </button>
-          ))}
-        </aside>
-        <div className="flex flex-col">
-          <div className="border-b border-[#E2E0F0] px-[22px] py-[17px]">
-            <p className="text-[14px] font-extrabold">Papers Studio</p>
-            <p className="mt-[3px] text-[10px] text-[#289F77]">3 members online</p>
-          </div>
-          <div className="flex-1 space-y-[14px] overflow-y-auto bg-[#FBFCFF] p-[22px]">
-            {messages.map((message) => (
-              <div key={message.id} className={`flex ${message.mine ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[72%] rounded-[18px] px-[15px] py-[10px] ${message.mine ? 'bg-[#685EEB] text-white' : 'border border-[#E2E0F0] bg-white text-[#4C4E62]'}`}>
-                  {!message.mine ? <p className="mb-[4px] text-[10px] font-bold text-[#685EEB]">{message.sender}</p> : null}
-                  <p className="text-[12px] leading-[1.45]">{message.text}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-[10px] border-t border-[#E2E0F0] p-[16px]">
-            <input
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  sendMessage();
-                }
-              }}
-              placeholder="Write a message..."
-              className="h-[42px] flex-1 rounded-full border border-[#E2E0F0] bg-[#F7F6FC] px-[17px] text-[12px] outline-none"
-            />
-            <button type="button" onClick={sendMessage} className="flex h-[42px] w-[42px] items-center justify-center rounded-full bg-[#685EEB] text-white">
-              <Send size={17} />
-            </button>
-          </div>
-        </div>
-      </section>
-    </MemberPageFrame>
-  );
-}
-
-function MemberTeamProjectPage() {
-  const teammates = useTaskStore((state) => state.teammates);
-  const statusTone = {
-    active: 'bg-[#D9FFF4] text-[#289F77]',
-    busy: 'bg-[#FFEEEE] text-[#D95757]',
-    away: 'bg-[#FFF4D8] text-[#B67A23]',
-    offline: 'bg-[#F0EFF8] text-[#858585]',
-  };
-
-  return (
-    <MemberPageFrame title="My Team & Project" subtitle="See the current project phase, room activity, and teammates working alongside you.">
-      <section className={`grid gap-[18px] xl:grid-cols-[1.2fr_0.8fr]`}>
-        <article className={memberCardClass}>
-          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#685EEB]">Papers Studio</p>
-          <h2 className="warp-font-header mt-[8px] text-[22px] font-extrabold">WARP Product Experience</h2>
-          <p className="mt-[7px] text-[12px] text-[#858585]">Design and validate the next collaboration workspace experience.</p>
-          <div className="mt-[22px] grid gap-[11px] sm:grid-cols-3">
-            {[
-              ['Current phase', 'Research & Concepting'],
-              ['Project progress', '58%'],
-              ['Next milestone', 'Design review'],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-[17px] bg-[#F7F6FC] p-[15px]">
-                <p className="text-[9px] font-bold uppercase text-[#9B96B8]">{label}</p>
-                <p className="mt-[7px] text-[12px] font-extrabold">{value}</p>
-              </div>
-            ))}
-          </div>
-        </article>
-        <article className={memberCardClass}>
-          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#9B96B8]">Room activity</p>
-          <h2 className="warp-font-header mt-[9px] text-[19px] font-extrabold">Main Office</h2>
-          <p className="mt-[6px] text-[12px] text-[#858585]">Primary workspace · 3 teammates active</p>
-          <div className="mt-[20px] rounded-[17px] bg-[linear-gradient(135deg,#EEEAFE,#E8F8FF)] p-[17px] text-[11px] font-bold text-[#5C5780]">Next team check-in · 15.30</div>
-        </article>
-      </section>
-      <section className={`mt-[18px] ${memberCardClass}`}>
-        <h2 className="warp-font-header text-[18px] font-extrabold">Team members</h2>
-        <div className="mt-[18px] grid gap-[12px] md:grid-cols-2 xl:grid-cols-3">
-          {teammates.map((teammate, index) => (
-            <article key={teammate.id} className="flex items-center gap-[12px] rounded-[18px] border border-[#E2E0F0] bg-[#FCFCFF] p-[14px]">
-              <span className={`flex h-[44px] w-[44px] items-center justify-center rounded-full text-[11px] font-bold text-white ${['bg-[#685EEB]', 'bg-[#6CB5FF]', 'bg-[#46D8D8]'][index % 3]}`}>{teammate.avatar}</span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[12px] font-extrabold">{teammate.name}</p>
-                <p className="mt-[3px] truncate text-[10px] text-[#858585]">{teammate.role}</p>
-              </div>
-              <span className={`rounded-full px-[8px] py-[4px] text-[9px] font-bold capitalize ${statusTone[teammate.status]}`}>{teammate.status}</span>
-            </article>
-          ))}
-        </div>
-      </section>
-    </MemberPageFrame>
-  );
-}
-
-function MemberSettingsPage({ user }: { user: User }) {
-  const [notifications, setNotifications] = useState(true);
-  const [roomSounds, setRoomSounds] = useState(true);
-  const [availability, setAvailability] = useState('Available');
-  const toggle = (enabled: boolean, onClick: () => void) => (
-    <button type="button" role="switch" aria-checked={enabled} onClick={onClick} className={`relative h-[26px] w-[46px] rounded-full ${enabled ? 'bg-[#685EEB]' : 'bg-[#D8D6E4]'}`}>
-      <span className={`absolute top-[3px] h-[20px] w-[20px] rounded-full bg-white shadow-sm transition-all ${enabled ? 'left-[23px]' : 'left-[3px]'}`} />
-    </button>
-  );
-
-  return (
-    <MemberPageFrame title="Settings" subtitle="Adjust local profile, notifications, availability, and workspace preferences.">
-      <div className="grid gap-[18px] xl:grid-cols-2">
-        <section className={memberCardClass}>
-          <h2 className="warp-font-header text-[18px] font-extrabold">Profile</h2>
-          <div className="mt-[18px] flex items-center gap-[13px] rounded-[18px] bg-[#F7F6FC] p-[15px]">
-            <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-[linear-gradient(135deg,#A29BFC,#82ECEC)] font-extrabold text-white">{user.avatar}</span>
-            <div><p className="text-[14px] font-extrabold">{user.name}</p><p className="mt-[3px] text-[10px] text-[#858585]">{user.roleLabel}</p></div>
-          </div>
-        </section>
-        <section className={memberCardClass}>
-          <h2 className="warp-font-header text-[18px] font-extrabold">Availability</h2>
-          <div className="mt-[18px] flex gap-[8px]">
-            {['Available', 'Focusing', 'Away'].map((option) => (
-              <button key={option} type="button" onClick={() => setAvailability(option)} className={`rounded-full px-[13px] py-[8px] text-[10px] font-bold ${availability === option ? 'bg-[#685EEB] text-white' : 'bg-[#F0EFF8] text-[#5C5780]'}`}>{option}</button>
-            ))}
-          </div>
-        </section>
-        <section className={memberCardClass}>
-          <h2 className="warp-font-header text-[18px] font-extrabold">Notifications</h2>
-          <div className="mt-[18px] flex items-center justify-between"><div><p className="text-[12px] font-bold">Task and chat updates</p><p className="mt-[3px] text-[10px] text-[#858585]">Show assignment and message alerts.</p></div>{toggle(notifications, () => setNotifications((value) => !value))}</div>
-        </section>
-        <section className={memberCardClass}>
-          <h2 className="warp-font-header text-[18px] font-extrabold">Workspace preferences</h2>
-          <div className="mt-[18px] flex items-center justify-between"><div><p className="text-[12px] font-bold">Room sounds</p><p className="mt-[3px] text-[10px] text-[#858585]">Play lightweight collaboration sounds.</p></div>{toggle(roomSounds, () => setRoomSounds((value) => !value))}</div>
-        </section>
-      </div>
-    </MemberPageFrame>
-  );
-}
-
 function MemberSectionPage({ section, user }: { section: Exclude<MemberSection, 'dashboard'>; user: User }) {
-  if (section === 'stats') return <MemberStatsPage user={user} />;
-  if (section === 'todo') return <MemberTodoPage />;
-  if (section === 'chat') return <MemberChatPage />;
-  if (section === 'team') return <MemberTeamProjectPage />;
-  return <MemberSettingsPage user={user} />;
+  return (
+    <div className="min-w-0 flex-1 overflow-y-auto bg-[linear-gradient(141deg,#d5d2ff_8%,#f2f8fe_48%,#f0f9fd_78%,#d9fff4_112%)] text-[#111111]">
+      {section === 'stats' ? <WorkspaceStatsPage /> : null}
+      {section === 'todo' ? <EmployerTaskManagementPage /> : null}
+      {section === 'chat' ? <WorkspaceChatPage /> : null}
+      {section === 'team' ? <WorkspaceTeamPage /> : null}
+      {section === 'settings' ? <WorkspaceSettingsPage role={user.role} /> : null}
+    </div>
+  );
 }
 
 export function VirtualRoomLayout({ user }: { user: User }) {

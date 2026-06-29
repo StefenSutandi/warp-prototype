@@ -39,7 +39,7 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { type User } from '@/lib/types';
+import { type Role, type User } from '@/lib/types';
 import { useAvatarStore } from '@/stores/useAvatarStore';
 import { type RoomCapacity, type WorkspaceRoom, useRoomStore } from '@/stores/useRoomStore';
 import { EmployerTaskManagementPage } from './employer-task-management-page';
@@ -1757,7 +1757,7 @@ function BroadcastMessageModal({
   );
 }
 
-function EmployerStatsPage() {
+export function WorkspaceStatsPage() {
   const [selectedAchievement, setSelectedAchievement] = useState<string>('first-room');
 
   return (
@@ -1836,7 +1836,7 @@ function EmployerStatsPage() {
   );
 }
 
-function EmployerTeamPage({ onMessageTeammate }: { onMessageTeammate: (teammate: TeamMemberProfile) => void }) {
+export function WorkspaceTeamPage({ onMessageTeammate }: { onMessageTeammate?: (teammate: TeamMemberProfile) => void }) {
   const [selectedStudioId, setSelectedStudioId] = useState<(typeof studioTabs)[number]['id']>('papers-studio');
   const [selectedTeammate, setSelectedTeammate] = useState<TeamMemberProfile | null>(null);
   const [activeProfileTab, setActiveProfileTab] = useState<ProfileModalTab>('activity');
@@ -2012,7 +2012,7 @@ function EmployerTeamPage({ onMessageTeammate }: { onMessageTeammate: (teammate:
           activeTab={activeProfileTab}
           onTabChange={setActiveProfileTab}
           onMessage={() => {
-            onMessageTeammate(selectedTeammate);
+            onMessageTeammate?.(selectedTeammate);
             setSelectedTeammate(null);
           }}
           onClose={() => setSelectedTeammate(null)}
@@ -2302,7 +2302,7 @@ function TaskActivityCard({
   );
 }
 
-function EmployerSettingsPage() {
+export function WorkspaceSettingsPage({ role = 'owner' }: { role?: Role }) {
   const [selectedRoomId, setSelectedRoomId] = useState('artist-room-main');
   const [roomName, setRoomName] = useState('Artist Room');
   const [capacity, setCapacity] = useState<6 | 10 | 16>(6);
@@ -2326,6 +2326,43 @@ function EmployerSettingsPage() {
   const handleSaveRoom = () => {
     console.log('Save room settings', { selectedRoomId, roomName, capacity, selectedTheme });
   };
+
+  const canManageRooms = role === 'owner' || role === 'employer';
+
+  if (!canManageRooms) {
+    return (
+      <div className="px-[30px] py-[27px]">
+        <div className="border-b border-[#d8d4e8] pb-[20px]">
+          <h2 className="warp-font-display text-[24px] font-extrabold tracking-[-0.03em] text-[#111111]">Workspace Settings</h2>
+          <p className="mt-[7px] text-[12px] font-medium text-[#858585]">
+            Manage your personal workspace preferences without changing room administration.
+          </p>
+        </div>
+        <div className="mt-[24px] grid gap-[18px] xl:grid-cols-2">
+          {[
+            ['Profile', 'Update your display name, position, and workspace profile.'],
+            ['Notifications', 'Choose how task, review, and chat updates reach you.'],
+            ['Availability', 'Set your current team status and focus availability.'],
+            ['Workspace preferences', 'Adjust personal room sounds and display preferences.'],
+          ].map(([title, description]) => (
+            <section key={title} className="rounded-[20px] border border-[#dedddd] bg-white px-[24px] py-[22px] shadow-[0_10px_28px_rgba(104,94,235,0.05)]">
+              <h3 className="text-[17px] font-extrabold text-[#111111]">{title}</h3>
+              <p className="mt-[7px] text-[12px] leading-[1.5] text-[#858585]">{description}</p>
+              <button
+                type="button"
+                className={cn(
+                  'mt-[18px] rounded-[11px] border border-[#d8d3f2] bg-white px-[14px] py-[8px] text-[11px] font-bold text-[#685eeb] hover:bg-[#f7f5ff]',
+                  purplePressClass
+                )}
+              >
+                Manage
+              </button>
+            </section>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-[30px] py-[27px]">
@@ -2552,7 +2589,7 @@ function UserPresenceIcon() {
   );
 }
 
-function EmployerChatPage({ selectedTeammate }: { selectedTeammate: TeamMemberProfile | null }) {
+export function WorkspaceChatPage({ selectedTeammate = null }: { selectedTeammate?: TeamMemberProfile | null }) {
   const [threads, setThreads] = useState<EmployerChatThread[]>(employerChatThreads);
   const [activeThreadId, setActiveThreadId] = useState(employerChatThreads[0].id);
   const [chatInput, setChatInput] = useState('');
@@ -3132,18 +3169,18 @@ export function EmployerDashboard({ user }: { user: User }) {
               <TopBar displayName={displayName} rewardBalance={rewardBalance} title={isChatPage ? 'Chat' : isStatsPage ? 'My Stats' : isTeamPage ? 'My Team & Project' : isSettingsPage ? 'Settings' : undefined} />
 
               {isChatPage ? (
-                <EmployerChatPage selectedTeammate={selectedChatTeammate} />
+                <WorkspaceChatPage selectedTeammate={selectedChatTeammate} />
               ) : isStatsPage ? (
-                <EmployerStatsPage />
+                <WorkspaceStatsPage />
               ) : isTeamPage ? (
-                <EmployerTeamPage
+                <WorkspaceTeamPage
                   onMessageTeammate={(teammate) => {
                     setSelectedChatTeammate(teammate);
                     setActiveItem('chat');
                   }}
                 />
               ) : isSettingsPage ? (
-                <EmployerSettingsPage />
+                <WorkspaceSettingsPage role={user.role} />
               ) : stage === 'dashboard' ? (
                 <EmployerDashboardHome
                   onCreateRoom={() => setStage('create-room')}
