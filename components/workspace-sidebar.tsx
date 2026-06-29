@@ -63,9 +63,9 @@ export function WorkspaceSidebar({ role }: WorkspaceSidebarProps) {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-white">
-                {role === 'employer' ? 'Team Tasks' : 'My Tasks'}
+                {role === 'owner' || role === 'coordinator' || role === 'employer' ? 'Team Tasks' : 'My Tasks'}
               </h3>
-              {role === 'employer' && (
+              {(role === 'owner' || role === 'coordinator' || role === 'employer') && (
                 <button 
                   onClick={() => assignRandomTask()}
                   className="text-xs px-2 py-1 rounded bg-purple-600/50 hover:bg-purple-600 text-purple-100 transition-colors border border-purple-500/50"
@@ -92,7 +92,7 @@ export function WorkspaceSidebar({ role }: WorkspaceSidebarProps) {
       </div>
 
       {/* Footer Stats (for employee) */}
-      {role === 'employee' && (
+      {(role === 'member' || role === 'employee') && (
         <div className="border-t border-slate-700/50 bg-slate-800/30 p-4 space-y-2">
           <div className="text-xs text-slate-400 space-y-1">
             <div className="flex items-center justify-between">

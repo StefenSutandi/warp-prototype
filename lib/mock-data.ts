@@ -108,22 +108,46 @@ export const mockTeammates: Teammate[] = [
   },
 ];
 
-export const mockCurrentEmployeeUser: User = {
-  id: 'employee-1',
-  name: 'Alex Rivera',
-  role: 'employee',
-  avatar: 'AR',
+export const mockCurrentMemberUser: User = {
+  id: 'member-1',
+  name: 'Member',
+  role: 'member',
+  roleLabel: 'Member',
+  avatar: 'M',
   level: 5,
   xp: 2450,
 };
 
-export const mockCurrentEmployerUser: User = {
-  id: 'employer-1',
-  name: 'Jordan Quinn',
-  role: 'employer',
-  avatar: 'JQ',
+export const mockCurrentOwnerUser: User = {
+  id: 'owner-1',
+  name: 'Your Name',
+  role: 'owner',
+  roleLabel: 'Owner',
+  avatar: 'YN',
   level: 8,
   xp: 5200,
+};
+
+export const mockCurrentCoordinatorUser: User = {
+  id: 'coordinator-1',
+  name: 'Coordinator',
+  role: 'coordinator',
+  roleLabel: 'Coordinator',
+  avatar: 'C',
+  level: 6,
+  xp: 3600,
+};
+
+export const mockCurrentEmployeeUser: User = {
+  ...mockCurrentMemberUser,
+  id: 'employee-1',
+  role: 'employee',
+};
+
+export const mockCurrentEmployerUser: User = {
+  ...mockCurrentOwnerUser,
+  id: 'employer-1',
+  role: 'employer',
 };
 
 export const mockEmployerTasks: Task[] = [

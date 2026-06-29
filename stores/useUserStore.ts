@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { User } from '@/lib/types';
-import { mockCurrentEmployeeUser } from '@/lib/mock-data';
+import { mockCurrentMemberUser } from '@/lib/mock-data';
 
 interface UserState {
   currentUser: User | null;
@@ -12,15 +12,10 @@ interface UserState {
 const XP_PER_LEVEL = 1000;
 
 export const useUserStore = create<UserState>((set) => ({
-  currentUser: mockCurrentEmployeeUser,
+  currentUser: mockCurrentMemberUser,
   isInitialized: false,
   
-  initialize: (user) => {
-    set((state) => {
-      if (state.isInitialized) return state;
-      return { currentUser: user, isInitialized: true };
-    });
-  },
+  initialize: (user) => set({ currentUser: user, isInitialized: true }),
   
   addXp: (amount) => 
     set((state) => {

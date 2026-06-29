@@ -1,22 +1,22 @@
 'use client';
 
-import { type Task } from '@/lib/types';
+import { type Role, type Task } from '@/lib/types';
 import { useTaskStore } from '@/stores/useTaskStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useOfficeStore } from '@/stores/useOfficeStore';
 
 interface TaskListProps {
-  role?: 'employer' | 'employee';
+  role?: Role;
 }
 
-export function TaskList({ role = 'employee' }: TaskListProps) {
+export function TaskList({ role = 'member' }: TaskListProps) {
   const tasks = useTaskStore(state => state.tasks);
   const updateTaskStatus = useTaskStore(state => state.updateTaskStatus);
   const addXp = useUserStore(state => state.addXp);
   const addOfficeXp = useOfficeStore(state => state.addOfficeXp);
 
   const handleTaskClick = (task: Task) => {
-    if (role === 'employer') return; // Read-only for employer
+    if (role !== 'member' && role !== 'employee') return; // Management roles are read-only here.
     
     if (task.status === 'assigned') {
       updateTaskStatus(task.id, 'started');
@@ -49,7 +49,7 @@ export function TaskList({ role = 'employee' }: TaskListProps) {
           <div
             key={task.id}
             onClick={() => handleTaskClick(task)}
-            className={`p-3 rounded-lg bg-slate-800/30 border border-slate-700/50 transition-all duration-300 hover:bg-slate-800/60 group ${role === 'employee' && !isCompleted ? 'cursor-pointer hover:border-purple-600/50' : ''}`}
+            className={`p-3 rounded-lg bg-slate-800/30 border border-slate-700/50 transition-all duration-300 hover:bg-slate-800/60 group ${(role === 'member' || role === 'employee') && !isCompleted ? 'cursor-pointer hover:border-purple-600/50' : ''}`}
           >
             <div className="flex items-start gap-3">
               <button

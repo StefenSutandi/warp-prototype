@@ -24,8 +24,7 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
     initTasks(tasks, teammates);
   }, [user, tasks, teammates, initUser, initTasks]);
 
-  // Employee gets the new reference-inspired Virtual Room layout
-  if (user.role === 'employee') {
+  if (user.role === 'member' || user.role === 'employee') {
     return (
       <>
         <VirtualRoomLayout />
@@ -35,7 +34,7 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
     );
   }
 
-  // Employer uses the Figma-inspired management dashboard
+  // Owner and Coordinator share the management shell for the role-foundation stage.
   return (
     <>
       <EmployerDashboard />

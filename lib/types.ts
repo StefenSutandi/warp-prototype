@@ -1,4 +1,6 @@
-export type Role = 'employer' | 'employee';
+export type AppRole = 'owner' | 'coordinator' | 'member';
+export type LegacyRole = 'employer' | 'employee';
+export type Role = AppRole | LegacyRole;
 
 export interface Task {
   id: string;
@@ -23,6 +25,7 @@ export interface User {
   id: string;
   name: string;
   role: Role;
+  roleLabel: 'Owner' | 'Coordinator' | 'Member';
   avatar: string;
   level: number;
   xp: number;

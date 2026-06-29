@@ -17,12 +17,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   teammates: mockTeammates,
   isInitialized: false,
   
-  initialize: (tasks, teammates) => {
-    set((state) => {
-      if (state.isInitialized) return state;
-      return { tasks, teammates, isInitialized: true };
-    });
-  },
+  initialize: (tasks, teammates) => set({ tasks, teammates, isInitialized: true }),
   
   addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
   

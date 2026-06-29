@@ -9,6 +9,14 @@ import { cn } from '@/lib/utils';
 
 const WARP_LOGO = '/assets/dashboard-employer/branding/warp-logo.svg';
 
+const DEMO_CREDENTIALS = {
+  owner: { password: 'owner', role: 'owner', destination: '/owner' },
+  coordinator: { password: 'coordinator', role: 'coordinator', destination: '/coordinator' },
+  member: { password: 'member', role: 'member', destination: '/member' },
+  employer: { password: 'employer', role: 'owner', destination: '/owner' },
+  employee: { password: 'employee', role: 'member', destination: '/member' },
+} as const;
+
 function AuthShell({
   children,
   eyebrow,
@@ -145,29 +153,23 @@ export function LoginPage() {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const normalizedUsername = username.trim().toLowerCase();
+    const credential = DEMO_CREDENTIALS[normalizedUsername as keyof typeof DEMO_CREDENTIALS];
 
-    if (normalizedUsername === 'employee' && password === 'employee') {
-      localStorage.setItem('warpRole', 'employee');
+    if (credential && password === credential.password) {
+      localStorage.setItem('warpRole', credential.role);
       localStorage.setItem('warpLoggedIn', 'true');
-      router.push('/employee');
+      router.push(credential.destination);
       return;
     }
 
-    if (normalizedUsername === 'employer' && password === 'employer') {
-      localStorage.setItem('warpRole', 'employer');
-      localStorage.setItem('warpLoggedIn', 'true');
-      router.push('/employer');
-      return;
-    }
-
-    setError('Use employee / employee or employer / employer for this prototype.');
+    setError('Use owner, coordinator, or member with the matching password.');
   };
 
   return (
     <AuthShell
       eyebrow="Welcome back"
       title="Enter your virtual workspace."
-      subtitle="Sign in to continue into the WARP prototype as an employee or employer."
+      subtitle="Sign in to continue into the WARP prototype as an Owner, Coordinator, or Member."
     >
       <AuthCard title="Login" description="Use your demo account to access the workspace.">
         <form onSubmit={handleSubmit} className="mt-[30px] space-y-[18px]">
@@ -179,7 +181,7 @@ export function LoginPage() {
               setError('');
             }}
             icon="user"
-            placeholder="employee or employer"
+            placeholder="owner, coordinator, or member"
           />
           <TextInput
             label="Password"
