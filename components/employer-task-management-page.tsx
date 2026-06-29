@@ -1606,7 +1606,6 @@ export function EmployerTaskManagementPage({ initialTaskId }: { initialTaskId?: 
   const tasks = useTaskStore((state) => state.tasks);
   const approveTask = useTaskStore((state) => state.approveTask);
   const requestRevision = useTaskStore((state) => state.requestRevision);
-  const addXp = useUserStore((state) => state.addXp);
   const addOfficeXp = useOfficeStore((state) => state.addOfficeXp);
   const appRole = normalizeAppRole(currentUser?.role);
   const canReview = appRole === 'owner' || appRole === 'coordinator';
@@ -1657,7 +1656,8 @@ export function EmployerTaskManagementPage({ initialTaskId }: { initialTaskId?: 
   const handleApproveTask = (taskId: string) => {
     if (!canReview) return;
     if (approveTask(taskId, currentUser?.id)) {
-      addXp(50);
+      // The prototype has no member-by-id XP ledger. Do not credit the active reviewer.
+      // approvalXpAwarded remains the once-only approval reward guard for future member XP wiring.
       addOfficeXp(50);
       setSelectedReviewTaskId(null);
       setView('list');
