@@ -417,9 +417,11 @@ const MEMBER_NAV_ITEMS: { id: MemberSection; Icon: ComponentType<{ active?: bool
 function NavRail({
   active,
   onSelect,
+  onExit,
 }: {
   active: MemberSection;
   onSelect: (section: MemberSection) => void;
+  onExit?: () => void;
 }) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -490,7 +492,12 @@ function NavRail({
 
         {/* Bottom: Exit */}
         <div className="flex w-full flex-col items-start pt-[22px]">
-          <button title="Exit Room" className="flex h-[45px] w-[45px] items-center justify-center rounded-[14px] bg-transparent transition-all duration-150 hover:bg-[#fff3f3]">
+          <button
+            type="button"
+            onClick={onExit}
+            title={onExit ? 'Back to Dashboard' : 'Exit Room'}
+            className="flex h-[45px] w-[45px] items-center justify-center rounded-[14px] bg-transparent transition-all duration-150 hover:bg-[#fff3f3]"
+          >
             <IconExit />
           </button>
         </div>
@@ -543,11 +550,14 @@ function NavRail({
 
           <button
             type="button"
-            onClick={() => setIsDrawerOpen(false)}
+            onClick={() => {
+              setIsDrawerOpen(false);
+              onExit?.();
+            }}
             className="mt-auto flex w-full items-center gap-3 rounded-[14px] px-[12px] py-[10px] text-left text-[#9ca3af] transition hover:bg-[#fff3f3] hover:text-[#d95757]"
           >
             <IconExit />
-            <span className="text-[15px] font-medium">Exit Room</span>
+            <span className="text-[15px] font-medium">{onExit ? 'Back to Dashboard' : 'Exit Room'}</span>
           </button>
         </div>
       ) : null}
@@ -2216,7 +2226,7 @@ function MemberSectionPage({
   );
 }
 
-export function VirtualRoomLayout({ user }: { user: User }) {
+export function VirtualRoomLayout({ user, onBackToDashboard }: { user: User; onBackToDashboard?: () => void }) {
   const avatarSelection = useAvatarStore(s => s.selection);
   const [activeSection, setActiveSection] = useState<MemberSection>('dashboard');
   const [showChangeRooms, setShowChangeRooms] = useState(false);
@@ -2335,7 +2345,7 @@ export function VirtualRoomLayout({ user }: { user: User }) {
   return (
     <div className="warp-font-ui flex h-[100svh] w-full overflow-hidden bg-[#F9FBFD]" style={VIRTUAL_ROOM_SHELL_STYLE}>
       {/* Left Nav Rail */}
-      <NavRail active={activeSection} onSelect={setActiveSection} />
+      <NavRail active={activeSection} onSelect={setActiveSection} onExit={onBackToDashboard} />
 
       {activeSection === 'dashboard' ? (
         <>

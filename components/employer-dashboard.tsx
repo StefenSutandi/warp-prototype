@@ -586,10 +586,12 @@ function TopBar({
 function HeroPanel({
   onCreateRoom,
   onJoinRoom,
+  onEnterWorkspace,
   canManageRooms,
 }: {
   onCreateRoom: () => void;
   onJoinRoom: () => void;
+  onEnterWorkspace: () => void;
   canManageRooms: boolean;
 }) {
   return (
@@ -633,7 +635,20 @@ function HeroPanel({
               Create Room
             </button>
           </div>
-        ) : null}
+        ) : (
+          <button
+            type="button"
+            onClick={onEnterWorkspace}
+            className={cn(
+              'mt-[18px] inline-flex h-[38px] items-center gap-[8px] rounded-[12px] bg-[linear-gradient(97deg,#685eeb_2%,#7970f0_56%,#a29bfc_111%)] px-[18px] text-[12px] font-extrabold text-white shadow-[0_12px_24px_rgba(104,94,235,0.22)] hover:brightness-[1.03] active:brightness-95',
+              purplePressClass
+            )}
+          >
+            <DoorOpen className="h-4 w-4" strokeWidth={1.8} />
+            Enter Workspace
+            <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.2} />
+          </button>
+        )}
       </div>
 
       <div className="pointer-events-none absolute bottom-[-10px] right-[28px] hidden w-[43%] max-w-[420px] lg:block">
@@ -1361,17 +1376,24 @@ type EmployerStage = 'dashboard' | 'create-room';
 function EmployerDashboardHome({
   onCreateRoom,
   onJoinRoom,
+  onEnterWorkspace,
   onBroadcast,
   canManageRooms,
 }: {
   onCreateRoom: () => void;
   onJoinRoom: () => void;
+  onEnterWorkspace: () => void;
   onBroadcast: () => void;
   canManageRooms: boolean;
 }) {
   return (
     <div className="space-y-[15px] px-[21px] py-[22px]">
-      <HeroPanel onCreateRoom={onCreateRoom} onJoinRoom={onJoinRoom} canManageRooms={canManageRooms} />
+      <HeroPanel
+        onCreateRoom={onCreateRoom}
+        onJoinRoom={onJoinRoom}
+        onEnterWorkspace={onEnterWorkspace}
+        canManageRooms={canManageRooms}
+      />
 
       <div className={cn('grid gap-[14px]', canManageRooms ? 'xl:grid-cols-2' : 'xl:grid-cols-1')}>
         {canManageRooms ? (
@@ -3118,7 +3140,7 @@ function EmployerCreateRoomFlow({
     </div>
   );
 }
-export function EmployerDashboard({ user }: { user: User }) {
+export function EmployerDashboard({ user, onEnterWorkspace }: { user: User; onEnterWorkspace: () => void }) {
   const router = useRouter();
   const [stage, setStage] = useState<EmployerStage>('dashboard');
   const [activeItem, setActiveItem] = useState<(typeof navItems)[number]['id']>('dashboard');
@@ -3151,6 +3173,7 @@ export function EmployerDashboard({ user }: { user: User }) {
     console.log('Join employer room with code:', trimmedRoomCode);
     closeRoomCodeModal();
     setRoomCode('');
+    onEnterWorkspace();
   };
 
   return (
@@ -3185,6 +3208,7 @@ export function EmployerDashboard({ user }: { user: User }) {
                 <EmployerDashboardHome
                   onCreateRoom={() => setStage('create-room')}
                   onJoinRoom={openRoomCodeModal}
+                  onEnterWorkspace={onEnterWorkspace}
                   onBroadcast={() => setIsBroadcastModalOpen(true)}
                   canManageRooms={canManageRooms}
                 />
