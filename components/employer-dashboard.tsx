@@ -1050,7 +1050,7 @@ function ModeratorOverviewSection({ onBroadcast }: { onBroadcast: () => void }) 
     <section className="rounded-[17px] border border-[#e2e0f0] bg-white/86 px-[20px] py-[18px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="warp-font-display text-[13px] font-extrabold uppercase tracking-[0.04em] text-[#9b96b8]">Moderator Overview</p>
+          <p className="warp-font-display text-[13px] font-extrabold uppercase tracking-[0.04em] text-[#9b96b8]">Team Overview</p>
           <h2 className="mt-[5px] text-[20px] font-extrabold tracking-[-0.03em] text-black">Team Status</h2>
           <button
             type="button"

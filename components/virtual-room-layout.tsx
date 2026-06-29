@@ -2183,14 +2183,35 @@ export function ChangeRoomsModal({
 //  MAIN EXPORT — VIRTUAL ROOM LAYOUT
 // =============================================
 
-function MemberSectionPage({ section, user }: { section: Exclude<MemberSection, 'dashboard'>; user: User }) {
+function MemberSectionPage({
+  section,
+  user,
+  onOpenChat,
+}: {
+  section: Exclude<MemberSection, 'dashboard'>;
+  user: User;
+  onOpenChat: () => void;
+}) {
+  const sectionTitle = MEMBER_NAV_ITEMS.find((item) => item.id === section)?.label ?? 'Workspace';
+
   return (
-    <div className="min-w-0 flex-1 overflow-y-auto bg-[linear-gradient(141deg,#d5d2ff_8%,#f2f8fe_48%,#f0f9fd_78%,#d9fff4_112%)] text-[#111111]">
-      {section === 'stats' ? <WorkspaceStatsPage /> : null}
-      {section === 'todo' ? <EmployerTaskManagementPage /> : null}
-      {section === 'chat' ? <WorkspaceChatPage /> : null}
-      {section === 'team' ? <WorkspaceTeamPage /> : null}
-      {section === 'settings' ? <WorkspaceSettingsPage role={user.role} /> : null}
+    <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[linear-gradient(141deg,#d5d2ff_8%,#f2f8fe_48%,#f0f9fd_78%,#d9fff4_112%)] text-[#111111]">
+      <header className="flex h-[73px] shrink-0 items-center justify-between border-b border-[#e2e0f0] bg-white/85 px-[30px] backdrop-blur-sm">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9b96b8]">Member Workspace</p>
+          <h1 className="warp-font-header mt-[4px] text-[20px] font-extrabold tracking-[-0.025em] text-[#111111]">{sectionTitle}</h1>
+        </div>
+        <div className="rounded-full bg-[#f0eff8] px-[12px] py-[7px] text-[11px] font-bold text-[#685eeb]">
+          {user.name} · {user.roleLabel}
+        </div>
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {section === 'stats' ? <WorkspaceStatsPage /> : null}
+        {section === 'todo' ? <EmployerTaskManagementPage /> : null}
+        {section === 'chat' ? <WorkspaceChatPage /> : null}
+        {section === 'team' ? <WorkspaceTeamPage onMessageTeammate={onOpenChat} /> : null}
+        {section === 'settings' ? <WorkspaceSettingsPage role={user.role} /> : null}
+      </div>
     </div>
   );
 }
@@ -2359,7 +2380,7 @@ export function VirtualRoomLayout({ user }: { user: User }) {
           <RightPanel onCreateTask={() => setShowCreateTask(true)} />
         </>
       ) : (
-        <MemberSectionPage section={activeSection} user={user} />
+        <MemberSectionPage section={activeSection} user={user} onOpenChat={() => setActiveSection('chat')} />
       )}
 
       {/* Modals */}
