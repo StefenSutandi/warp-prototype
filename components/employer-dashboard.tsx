@@ -39,9 +39,9 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { type User } from '@/lib/types';
 import { useAvatarStore } from '@/stores/useAvatarStore';
 import { type RoomCapacity, type WorkspaceRoom, useRoomStore } from '@/stores/useRoomStore';
-import { useUserStore } from '@/stores/useUserStore';
 import { EmployerTaskManagementPage } from './employer-task-management-page';
 
 const EMPLOYER_DASHBOARD_ASSETS = {
@@ -180,7 +180,7 @@ const teamMembers = [
     status: 'Reviewing',
     avatarGradient: 'from-[#a29bfc] via-[#8fd3ff] to-[#9fe1cb]',
     interests: ['planning', 'review', 'delivery'],
-    bio: 'Coordinates the project timeline, review cycles, and room activity across the employer workspace.',
+    bio: 'Coordinates the project timeline, review cycles, and room activity across the workspace.',
   },
 ] as const;
 
@@ -586,9 +586,11 @@ function TopBar({
 function HeroPanel({
   onCreateRoom,
   onJoinRoom,
+  canManageRooms,
 }: {
   onCreateRoom: () => void;
   onJoinRoom: () => void;
+  canManageRooms: boolean;
 }) {
   return (
     <section className="relative min-h-[332px] overflow-hidden rounded-[17px] bg-[linear-gradient(145deg,#eeeaff_0%,#dfd7ff_42%,#fbf8ff_100%)] px-[42px] py-[38px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
@@ -605,31 +607,33 @@ function HeroPanel({
           <MetricCard icon={<FocusMetricIcon variant="timer" />} label="Today's focus" value="2h45m" detail="goal: 3h 00m" valueClassName="text-[#111111]" />
         </div>
 
-        <div className="mt-[18px] flex flex-wrap items-center gap-[10px]">
-          <button
-            type="button"
-            onClick={onJoinRoom}
-            className={cn(
-              'inline-flex h-[38px] items-center gap-[8px] rounded-[12px] bg-[linear-gradient(97deg,#685eeb_2%,#7970f0_56%,#a29bfc_111%)] px-[18px] text-[12px] font-extrabold text-white shadow-[0_12px_24px_rgba(104,94,235,0.22)] hover:brightness-[1.03] active:brightness-95',
-              purplePressClass
-            )}
-          >
-            <DoorOpen className="h-4 w-4" strokeWidth={1.8} />
-            Join Room
-            <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.2} />
-          </button>
-          <button
-            type="button"
-            onClick={onCreateRoom}
-            className={cn(
-              'inline-flex h-[38px] items-center gap-[7px] rounded-[12px] border border-[#d8d3f2] bg-white px-[14px] text-[12px] font-medium text-[#685eeb] shadow-[0_8px_16px_rgba(104,94,235,0.08)] hover:bg-[#f1eeff] active:bg-[#e4e0ff]',
-              purplePressClass
-            )}
-          >
-            <Plus className="h-4 w-4" strokeWidth={2} />
-            Create Room
-          </button>
-        </div>
+        {canManageRooms ? (
+          <div className="mt-[18px] flex flex-wrap items-center gap-[10px]">
+            <button
+              type="button"
+              onClick={onJoinRoom}
+              className={cn(
+                'inline-flex h-[38px] items-center gap-[8px] rounded-[12px] bg-[linear-gradient(97deg,#685eeb_2%,#7970f0_56%,#a29bfc_111%)] px-[18px] text-[12px] font-extrabold text-white shadow-[0_12px_24px_rgba(104,94,235,0.22)] hover:brightness-[1.03] active:brightness-95',
+                purplePressClass
+              )}
+            >
+              <DoorOpen className="h-4 w-4" strokeWidth={1.8} />
+              Join Room
+              <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.2} />
+            </button>
+            <button
+              type="button"
+              onClick={onCreateRoom}
+              className={cn(
+                'inline-flex h-[38px] items-center gap-[7px] rounded-[12px] border border-[#d8d3f2] bg-white px-[14px] text-[12px] font-medium text-[#685eeb] shadow-[0_8px_16px_rgba(104,94,235,0.08)] hover:bg-[#f1eeff] active:bg-[#e4e0ff]',
+                purplePressClass
+              )}
+            >
+              <Plus className="h-4 w-4" strokeWidth={2} />
+              Create Room
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <div className="pointer-events-none absolute bottom-[-10px] right-[28px] hidden w-[43%] max-w-[420px] lg:block">
@@ -1358,28 +1362,32 @@ function EmployerDashboardHome({
   onCreateRoom,
   onJoinRoom,
   onBroadcast,
+  canManageRooms,
 }: {
   onCreateRoom: () => void;
   onJoinRoom: () => void;
   onBroadcast: () => void;
+  canManageRooms: boolean;
 }) {
   return (
     <div className="space-y-[15px] px-[21px] py-[22px]">
-      <HeroPanel onCreateRoom={onCreateRoom} onJoinRoom={onJoinRoom} />
+      <HeroPanel onCreateRoom={onCreateRoom} onJoinRoom={onJoinRoom} canManageRooms={canManageRooms} />
 
-      <div className="grid gap-[14px] xl:grid-cols-2">
-        <DashboardCard
-          title="Your Rooms"
-          action={
-            <button type="button" className="text-[14px] font-semibold text-[#685eeb] transition hover:text-[#4f45d9]">
-              View all
-            </button>
-          }
-        >
-          {recentRooms.map((room) => (
-            <RoomRow key={room.id} title={room.title} level={room.level} membersOnline={room.membersOnline} onEnterRoom={onJoinRoom} />
-          ))}
-        </DashboardCard>
+      <div className={cn('grid gap-[14px]', canManageRooms ? 'xl:grid-cols-2' : 'xl:grid-cols-1')}>
+        {canManageRooms ? (
+          <DashboardCard
+            title="Your Rooms"
+            action={
+              <button type="button" className="text-[14px] font-semibold text-[#685eeb] transition hover:text-[#4f45d9]">
+                View all
+              </button>
+            }
+          >
+            {recentRooms.map((room) => (
+              <RoomRow key={room.id} title={room.title} level={room.level} membersOnline={room.membersOnline} onEnterRoom={onJoinRoom} />
+            ))}
+          </DashboardCard>
+        ) : null}
 
         <DashboardCard title="Upcoming Deadlines">
           {upcomingDeadlines.map((deadline) => (
@@ -3073,7 +3081,7 @@ function EmployerCreateRoomFlow({
     </div>
   );
 }
-export function EmployerDashboard() {
+export function EmployerDashboard({ user }: { user: User }) {
   const router = useRouter();
   const [stage, setStage] = useState<EmployerStage>('dashboard');
   const [activeItem, setActiveItem] = useState<(typeof navItems)[number]['id']>('dashboard');
@@ -3081,12 +3089,12 @@ export function EmployerDashboard() {
   const [isRoomCodeModalOpen, setIsRoomCodeModalOpen] = useState(false);
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
   const [roomCode, setRoomCode] = useState('');
-  const currentUser = useUserStore((state) => state.currentUser);
   const avatarProfile = useAvatarStore((state) => state.profile);
 
-  const displayName = avatarProfile.displayName.trim() || currentUser?.name || 'Your Name';
-  const roleLabel = avatarProfile.position.trim() || 'Your Position';
-  const rewardBalance = Math.max(200, Math.round((currentUser?.xp ?? 5200) / 26));
+  const displayName = avatarProfile.displayName.trim() || user.name;
+  const roleLabel = avatarProfile.position.trim() || user.roleLabel;
+  const rewardBalance = Math.max(200, Math.round(user.xp / 26));
+  const canManageRooms = user.role === 'owner' || user.role === 'employer';
   const isTaskPage = activeItem === 'tasks';
   const isChatPage = activeItem === 'chat';
   const isStatsPage = activeItem === 'stats';
@@ -3141,6 +3149,7 @@ export function EmployerDashboard() {
                   onCreateRoom={() => setStage('create-room')}
                   onJoinRoom={openRoomCodeModal}
                   onBroadcast={() => setIsBroadcastModalOpen(true)}
+                  canManageRooms={canManageRooms}
                 />
               ) : (
                 <EmployerCreateRoomFlow onBack={() => setStage('dashboard')} />
@@ -3159,7 +3168,7 @@ export function EmployerDashboard() {
         ) : null}
       </div>
 
-      {isRoomCodeModalOpen ? (
+      {canManageRooms && isRoomCodeModalOpen ? (
         <InsertRoomCodeModal
           roomCode={roomCode}
           onRoomCodeChange={setRoomCode}

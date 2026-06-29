@@ -27,7 +27,7 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
   if (user.role === 'member' || user.role === 'employee') {
     return (
       <>
-        <VirtualRoomLayout />
+        <VirtualRoomLayout user={user} />
         <LevelUpModal />
         <AvatarCustomizer />
       </>
@@ -37,7 +37,7 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
   // Owner and Coordinator share the management shell for the role-foundation stage.
   return (
     <>
-      <EmployerDashboard />
+      <EmployerDashboard user={user} />
       <LevelUpModal />
       <AvatarCustomizer />
     </>

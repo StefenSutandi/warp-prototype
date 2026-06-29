@@ -7,7 +7,7 @@ import { useTaskStore } from '@/stores/useTaskStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useAvatarStore } from '@/stores/useAvatarStore';
 import { useOfficeStore } from '@/stores/useOfficeStore';
-import { type Task } from '@/lib/types';
+import { type Task, type User } from '@/lib/types';
 import { CalendarClock, ChevronRight, Eye, ListTodo, MessageCircle, Mic, MonitorUp, Pause, PhoneOff, Send, SkipForward, Smile, Upload, X } from 'lucide-react';
 
 // =============================================
@@ -641,7 +641,7 @@ function TopRightHud() {
 //  USER CARD OVERLAY (Figma: top-left "Your Name" pill)
 // =============================================
 
-function UserCardOverlay({ onOpenTeamModal }: { onOpenTeamModal: () => void }) {
+function UserCardOverlay({ user, onOpenTeamModal }: { user: User; onOpenTeamModal: () => void }) {
   const avatarProfile = useAvatarStore(s => s.profile);
   const [isExpanded, setIsExpanded] = useState(false);
   const activityOptions = [
@@ -654,8 +654,8 @@ function UserCardOverlay({ onOpenTeamModal }: { onOpenTeamModal: () => void }) {
   const [selectedActivity, setSelectedActivity] = useState(activityOptions[0]);
   const cardRef = useRef<HTMLDivElement>(null);
   const activityPillStyles = ['bg-[#EEF2FF]', 'bg-[#FFEBEC]', 'bg-[#EAFBF3]'];
-  const displayName = avatarProfile.displayName.trim() || 'Your Name';
-  const position = avatarProfile.position.trim() || 'Your Position';
+  const displayName = avatarProfile.displayName.trim() || user.name;
+  const position = avatarProfile.position.trim() || user.roleLabel;
   const bio = avatarProfile.bio.trim();
   const interests = avatarProfile.interests;
 
@@ -2107,7 +2107,7 @@ export function ChangeRoomsModal({
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-purple-400">Virtual Room</p>
             <h2 className="mt-2 text-[26px] font-bold leading-none text-gray-900">Switch Rooms</h2>
-            <p className="mt-2 text-sm text-gray-400">Jump between spaces without leaving the current Employee flow.</p>
+            <p className="mt-2 text-sm text-gray-400">Jump between spaces without leaving the current Member flow.</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
         </div>
@@ -2169,7 +2169,7 @@ export function ChangeRoomsModal({
 //  MAIN EXPORT — VIRTUAL ROOM LAYOUT
 // =============================================
 
-export function VirtualRoomLayout() {
+export function VirtualRoomLayout({ user }: { user: User }) {
   const avatarSelection = useAvatarStore(s => s.selection);
   const [showChangeRooms, setShowChangeRooms] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
@@ -2307,7 +2307,7 @@ export function VirtualRoomLayout() {
           />
           <TopRightHud />
           <RoomActiveTaskCard member={activeTaskMember} />
-          <UserCardOverlay onOpenTeamModal={() => setIsModeratorTeamModalOpen(true)} />
+          <UserCardOverlay user={user} onOpenTeamModal={() => setIsModeratorTeamModalOpen(true)} />
           <TeammateInteractionCard
             selection={selectedTeammateAction}
             onClose={() => setSelectedTeammateAction(null)}
