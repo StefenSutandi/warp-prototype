@@ -405,9 +405,9 @@ function WarpLogo() {
 type MemberSection = 'dashboard' | 'stats' | 'todo' | 'chat' | 'team' | 'settings';
 
 const MEMBER_NAV_ITEMS: { id: MemberSection; Icon: ComponentType<{ active?: boolean }>; label: string }[] = [
-  { id: 'dashboard', Icon: IconDashboard, label: 'Dashboard' },
-  { id: 'stats', Icon: IconStats, label: 'My Stats' },
+  { id: 'dashboard', Icon: IconDashboard, label: 'Workspace' },
   { id: 'todo', Icon: IconTodo, label: 'To-Do' },
+  { id: 'stats', Icon: IconStats, label: 'My Stats' },
   { id: 'chat', Icon: IconChat, label: 'Chat' },
   { id: 'team', Icon: IconTeam, label: 'My Team & Project' },
   { id: 'settings', Icon: IconSettings, label: 'Settings' },
@@ -457,7 +457,7 @@ function NavRail({
 
   return (
     <>
-      <aside className="flex w-[89px] shrink-0 flex-col items-start border-r border-[#e2e0f0] bg-[#fcfcff] px-[22px] pb-[22px] pt-[18px]">
+      <aside className="relative z-40 flex w-[89px] shrink-0 flex-col items-start border-r border-[#e2e0f0] bg-white px-[22px] pb-[22px] pt-[18px] shadow-[6px_0_20px_rgba(84,86,106,0.04)]">
         <button
           ref={drawerTriggerRef}
           type="button"
@@ -475,11 +475,13 @@ function NavRail({
             return (
               <button
                 key={item.id}
+                type="button"
                 onClick={() => selectNavItem(item.id)}
                 title={item.label}
+                aria-label={item.label}
                 className={`flex h-[45px] w-[45px] items-center justify-center rounded-[14px] transition-all duration-150 ${
                   isActive
-                    ? 'bg-[linear-gradient(101deg,#efedff_2.4%,#eff3fc_47.9%,#eff9fb_108.06%)]'
+                    ? 'bg-[linear-gradient(101deg,#efedff_2.4%,#eff3fc_47.9%,#eff9fb_108.06%)] shadow-[0_6px_16px_rgba(104,94,235,0.10)] ring-1 ring-[#e2dfff]'
                     : 'bg-transparent text-[#a6a1bc] hover:bg-[#f6f3ff]'
                 }`}
               >
@@ -523,7 +525,7 @@ function NavRail({
           </div>
 
           <p className="warp-font-display mb-[14px] text-[13px] font-extrabold uppercase tracking-[0.04em] text-[#9b96b8]">
-            Main Menu
+            Workspace Navigation
           </p>
           <nav className="flex flex-col gap-[8px]">
             {MEMBER_NAV_ITEMS.map((item) => {
@@ -631,7 +633,7 @@ function RoomTitle({
 //  TOP-RIGHT HUD (W badge + bell)
 // =============================================
 
-function TopRightHud() {
+function TopRightHud({ balance }: { balance?: number } = {}) {
   const user = useUserStore(s => s.currentUser);
 
   return (
@@ -644,7 +646,7 @@ function TopRightHud() {
           className="h-[22px] w-[22px] shrink-0"
         />
         <span className="warp-font-ui inline-flex h-[14px] items-center text-[20px] font-medium leading-none text-[#5C5780] tabular-nums">
-          {user?.xp || 200}
+          {balance ?? user?.xp ?? 200}
         </span>
       </div>
 
@@ -1012,10 +1014,6 @@ function TomatoWidget() {
 // =============================================
 
 function ClapHint() {
-  const triggerClap = () => {
-    window.dispatchEvent(new CustomEvent('warp:player-emote', { detail: { emote: 'clap' } }));
-  };
-
   return (
     <div className="pointer-events-none absolute bottom-[98px] left-1/2 z-30 -translate-x-1/2">
       <div className="warp-font-ui flex items-center gap-[8px]">
@@ -1031,15 +1029,6 @@ function ClapHint() {
           </span>
           <span>Press F to Sit / Stand</span>
         </div>
-        <button
-          type="button"
-          onClick={triggerClap}
-          className="pointer-events-auto flex h-[30px] items-center gap-[6px] rounded-full bg-[#685EEB] px-[13px] text-[12px] font-bold text-white shadow-[0_6px_18px_rgba(104,94,235,0.26)] transition-all hover:bg-[#7970F0] active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#DFDFFF] focus-visible:ring-offset-2"
-          aria-label="Clap"
-        >
-          <Smile size={14} strokeWidth={2.4} aria-hidden="true" />
-          Clap
-        </button>
       </div>
     </div>
   );
@@ -1048,10 +1037,51 @@ function ClapHint() {
 function BottomControlBar({
   onShareScreen,
   onWatchScreen,
+  onOpenEmoteMenu,
+  shouldDismissMenus,
 }: {
   onShareScreen: () => void;
   onWatchScreen: () => void;
+  onOpenEmoteMenu: () => void;
+  shouldDismissMenus: boolean;
 }) {
+  const [isEmoteMenuOpen, setIsEmoteMenuOpen] = useState(false);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const emotes = [
+    { id: 'clap', label: 'Clap', src: '/assets/figma-export/virtual-room/emotes/clap.png' },
+    { id: 'wave', label: 'Wave', src: '/assets/figma-export/virtual-room/emotes/wave.png' },
+    { id: 'fist', label: 'Fist', src: '/assets/figma-export/virtual-room/emotes/fist.png' },
+  ] as const;
+
+  useEffect(() => {
+    if (!isEmoteMenuOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsEmoteMenuOpen(false);
+    };
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!toolbarRef.current?.contains(event.target as Node)) {
+        setIsEmoteMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handlePointerDown);
+    };
+  }, [isEmoteMenuOpen]);
+
+  useEffect(() => {
+    if (shouldDismissMenus) setIsEmoteMenuOpen(false);
+  }, [shouldDismissMenus]);
+
+  const triggerEmote = (emote: 'clap' | 'wave' | 'fist') => {
+    window.dispatchEvent(new CustomEvent('warp:player-emote', { detail: { emote } }));
+    setIsEmoteMenuOpen(false);
+  };
+
   const controls = [
     {
       label: 'Mic',
@@ -1064,21 +1094,58 @@ function BottomControlBar({
     {
       label: 'Start Meeting',
       icon: <ScreenShare size={18} strokeWidth={2.1} aria-hidden="true" />,
-      onClick: onShareScreen,
+      onClick: () => {
+        setIsEmoteMenuOpen(false);
+        onShareScreen();
+      },
     },
     {
       label: 'Emote',
       icon: <Smile size={18} strokeWidth={2.2} aria-hidden="true" />,
+      onClick: () => {
+        onOpenEmoteMenu();
+        setIsEmoteMenuOpen((current) => !current);
+      },
     },
     {
       label: 'Watch',
       icon: <Eye size={18} strokeWidth={2.2} aria-hidden="true" />,
-      onClick: onWatchScreen,
+      onClick: () => {
+        setIsEmoteMenuOpen(false);
+        onWatchScreen();
+      },
     },
   ];
 
   return (
-    <div className="absolute bottom-[46px] left-1/2 z-30 flex h-[40px] -translate-x-1/2 items-center justify-center gap-[5px] rounded-full border border-white/12 bg-[rgba(34,29,55,0.82)] px-[7px] shadow-[0_10px_24px_rgba(39,33,63,0.22)] backdrop-blur-[12px]">
+    <div ref={toolbarRef} className="absolute bottom-[46px] left-1/2 z-30 flex h-[40px] -translate-x-1/2 items-center justify-center gap-[5px] rounded-full border border-white/12 bg-[rgba(34,29,55,0.82)] px-[7px] shadow-[0_10px_24px_rgba(39,33,63,0.22)] backdrop-blur-[12px]">
+      {isEmoteMenuOpen ? (
+        <div className="absolute bottom-[50px] left-1/2 flex -translate-x-1/2 items-center gap-[7px] rounded-[16px] border border-[#e2e0f0] bg-white/96 p-[8px] shadow-[0_14px_34px_rgba(39,33,63,0.22)] backdrop-blur">
+          {emotes.map((emote) => (
+            <button
+              key={emote.id}
+              type="button"
+              onClick={() => triggerEmote(emote.id)}
+              title={emote.label}
+              aria-label={emote.label}
+              className="flex h-[44px] w-[44px] items-center justify-center rounded-[11px] bg-[#f6f3ff] transition hover:-translate-y-0.5 hover:bg-[#ece8ff] active:scale-[0.96]"
+            >
+              <img
+                src={emote.src}
+                alt=""
+                className="h-[30px] w-[30px] object-contain"
+                onError={(event) => {
+                  event.currentTarget.classList.add('hidden');
+                  event.currentTarget.nextElementSibling?.classList.remove('hidden');
+                }}
+              />
+              <span className="hidden px-1 text-[9px] font-bold uppercase text-[#685eeb]">
+                {emote.label}
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : null}
       {controls.map(btn => (
         <button
           key={btn.label}
@@ -1641,6 +1708,83 @@ function RoomActiveTaskCard({ member }: { member: ModeratorMember }) {
           <div className="h-full w-[47%] rounded-full bg-[#685EEB]" />
         </div>
       </div>
+    </div>
+  );
+}
+
+function LoungeScreenShareInvite({
+  onJoin,
+  screenX,
+  screenY,
+}: {
+  onJoin: () => void;
+  screenX: number;
+  screenY: number;
+}) {
+  const participantAvatars = [
+    '/assets/avatar/profile/Frame%203866.png',
+    '/assets/avatar/profile/Frame%203865.png',
+    '/assets/avatar/profile/Frame%203867.png',
+  ];
+
+  return (
+    <div
+      className="pointer-events-auto absolute z-30 flex -translate-x-1/2 flex-col items-center"
+      style={{ left: screenX, top: Math.max(72, screenY - 400) }}
+    >
+      <div className="lounge-invite-card relative w-[236px] overflow-hidden rounded-[18px] border border-[#d8d5ea] bg-white p-[8px] shadow-[0_16px_38px_rgba(48,42,91,0.24)]">
+        <div className="relative h-[118px] overflow-hidden rounded-[12px] bg-[#ecebfa]">
+          <img
+            src="/assets/figma-export/live/thumbnails/Group%201310%201.png"
+            alt="Coworker A shared screen preview"
+            className="h-full w-full object-cover object-left-top"
+          />
+          <span className="absolute left-[9px] top-[9px] rounded-full bg-[#ff7675] px-[8px] py-[4px] text-[9px] font-bold uppercase tracking-[0.08em] text-white shadow-sm">
+            Live
+          </span>
+        </div>
+
+        <div className="flex items-center gap-[10px] px-[4px] pb-[3px] pt-[9px]">
+          <div className="flex -space-x-[7px]">
+            {participantAvatars.map((avatar, index) => (
+              <span key={avatar} className="relative h-[27px] w-[27px] overflow-hidden rounded-full border-2 border-white bg-[#f0eff8]" style={{ zIndex: participantAvatars.length - index }}>
+                <img src={avatar} alt="" className="h-full w-full object-cover" />
+              </span>
+            ))}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[11px] font-bold text-[#252233]">Coworker A is sharing</p>
+            <p className="mt-[2px] text-[9px] text-[#9b96b8]">3 people watching</p>
+          </div>
+          <button
+            type="button"
+            onClick={onJoin}
+            className="flex h-[30px] items-center justify-center rounded-[10px] bg-[#685eeb] px-[13px] text-[11px] font-bold text-white shadow-[0_7px_16px_rgba(104,94,235,0.25)] transition hover:bg-[#5d53df] active:scale-[0.97]"
+          >
+            Join
+          </button>
+        </div>
+      </div>
+      <style jsx>{`
+        .lounge-invite-card {
+          animation: lounge-invite-enter 360ms ease-out both;
+        }
+        @keyframes lounge-invite-enter {
+          from {
+            opacity: 0;
+            transform: translateY(8px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .lounge-invite-card {
+            animation: none;
+          }
+        }
+      `}</style>
     </div>
   );
 }
@@ -2320,16 +2464,35 @@ function MemberSectionPage({
   section,
   user,
   onOpenChat,
+  onWorkspaceHome,
   selectedTaskId,
   onOpenLiveScreen,
 }: {
   section: Exclude<MemberSection, 'dashboard'>;
   user: User;
   onOpenChat: () => void;
+  onWorkspaceHome: () => void;
   selectedTaskId?: string;
   onOpenLiveScreen: () => void;
 }) {
   const sectionTitle = MEMBER_NAV_ITEMS.find((item) => item.id === section)?.label ?? 'Workspace';
+
+  if (section === 'settings') {
+    return (
+      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f5f4ff] text-[#111111]">
+        <header className="relative h-[85px] shrink-0 border-b border-[#e2e0f0] bg-white">
+          <div className="absolute inset-x-0 top-[16px] text-center">
+            <h1 className="warp-font-header text-[24px] font-bold leading-none text-black">Artist Room</h1>
+            <p className="mt-[7px] text-[14px] leading-none text-[#838383]">working hour</p>
+          </div>
+          <TopRightHud balance={200} />
+        </header>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <WorkspaceSettingsPage role={user.role} onBack={onWorkspaceHome} workspaceMode />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[linear-gradient(141deg,#d5d2ff_8%,#f2f8fe_48%,#f0f9fd_78%,#d9fff4_112%)] text-[#111111]">
@@ -2347,7 +2510,6 @@ function MemberSectionPage({
         {section === 'todo' ? <EmployerTaskManagementPage initialTaskId={selectedTaskId} onOpenLiveScreen={onOpenLiveScreen} /> : null}
         {section === 'chat' ? <WorkspaceChatPage /> : null}
         {section === 'team' ? <WorkspaceTeamPage role={user.role} onMessageTeammate={onOpenChat} /> : null}
-        {section === 'settings' ? <WorkspaceSettingsPage role={user.role} /> : null}
       </div>
     </div>
   );
@@ -2356,10 +2518,12 @@ function MemberSectionPage({
 export function VirtualRoomLayout({
   user,
   onBackToDashboard,
+  onOpenWorkspacePanel,
   initialRoomId = 'main',
 }: {
   user: User;
   onBackToDashboard?: () => void;
+  onOpenWorkspacePanel?: (section: Exclude<MemberSection, 'dashboard'>) => void;
   initialRoomId?: 'main' | 'lounge';
 }) {
   const avatarSelection = useAvatarStore(s => s.selection);
@@ -2376,11 +2540,14 @@ export function VirtualRoomLayout({
   const [isSharingScreen, setIsSharingScreen] = useState(false);
   const [isWatchingScreen, setIsWatchingScreen] = useState(false);
   const [selectedTeammateAction, setSelectedTeammateAction] = useState<TeammateInteractionSelection | null>(null);
+  const [loungeCoworkerReady, setLoungeCoworkerReady] = useState(false);
+  const [loungeCoworkerScreenPosition, setLoungeCoworkerScreenPosition] = useState<{ x: number; y: number } | null>(null);
   const [activeRoom, setActiveRoom] = useState<RoomDisplayState>(
     () => VIRTUAL_ROOM_OPTIONS.find((room) => room.id === initialRoomId) ?? VIRTUAL_ROOM_OPTIONS[0]
   );
   const viewportRef = useRef<HTMLDivElement>(null);
   const hasAppliedInitialRoomRef = useRef(false);
+  const activeRoomIdRef = useRef(initialRoomId);
 
   useEffect(() => {
     const handleRoomChanged = (event: Event) => {
@@ -2388,8 +2555,11 @@ export function VirtualRoomLayout({
       const roomId = customEvent.detail?.roomId;
       if (!roomId) return;
 
+      setLoungeCoworkerReady(false);
+      setLoungeCoworkerScreenPosition(null);
       const matchedRoom = VIRTUAL_ROOM_OPTIONS.find((room) => room.id === roomId);
       if (matchedRoom) {
+        activeRoomIdRef.current = matchedRoom.id;
         setActiveRoom({
           ...matchedRoom,
           name: customEvent.detail?.title || matchedRoom.name,
@@ -2409,6 +2579,35 @@ export function VirtualRoomLayout({
 
     window.addEventListener('warp:room-changed', handleRoomChanged as EventListener);
     return () => window.removeEventListener('warp:room-changed', handleRoomChanged as EventListener);
+  }, [initialRoomId]);
+
+  useEffect(() => {
+    const handleLoungeCoworkerReady = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        coworkerId?: string;
+        roomId?: string;
+        screenX?: number;
+        screenY?: number;
+      }>;
+      if (
+        customEvent.detail?.roomId !== 'lounge'
+        || customEvent.detail?.coworkerId !== 'coworker-a'
+        || activeRoomIdRef.current !== 'lounge'
+        || typeof customEvent.detail?.screenX !== 'number'
+        || typeof customEvent.detail?.screenY !== 'number'
+      ) {
+        return;
+      }
+
+      setLoungeCoworkerScreenPosition({
+        x: customEvent.detail.screenX,
+        y: customEvent.detail.screenY,
+      });
+      setLoungeCoworkerReady(true);
+    };
+
+    window.addEventListener('warp:lounge-coworker-ready', handleLoungeCoworkerReady as EventListener);
+    return () => window.removeEventListener('warp:lounge-coworker-ready', handleLoungeCoworkerReady as EventListener);
   }, []);
 
   useEffect(() => {
@@ -2446,9 +2645,29 @@ export function VirtualRoomLayout({
       });
     };
 
+    const handleTeammateCleared = () => setSelectedTeammateAction(null);
+
     window.addEventListener('warp:teammate-selected', handleTeammateSelected as EventListener);
-    return () => window.removeEventListener('warp:teammate-selected', handleTeammateSelected as EventListener);
-  }, [initialRoomId]);
+    window.addEventListener('warp:teammate-cleared', handleTeammateCleared);
+    return () => {
+      window.removeEventListener('warp:teammate-selected', handleTeammateSelected as EventListener);
+      window.removeEventListener('warp:teammate-cleared', handleTeammateCleared);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleOpenWorkspaceSection = (event: Event) => {
+      const customEvent = event as CustomEvent<{ section?: MemberSection }>;
+      if (customEvent.detail?.section === 'settings') {
+        setSelectedTeammateAction(null);
+        setSelectedTaskId(undefined);
+        setActiveSection('settings');
+      }
+    };
+
+    window.addEventListener('warp:open-workspace-section', handleOpenWorkspaceSection as EventListener);
+    return () => window.removeEventListener('warp:open-workspace-section', handleOpenWorkspaceSection as EventListener);
+  }, []);
 
   useEffect(() => {
     if (
@@ -2464,6 +2683,8 @@ export function VirtualRoomLayout({
 
   const handleRoomSelection = (roomId: string) => {
     setSelectedTeammateAction(null);
+    setLoungeCoworkerReady(false);
+    setLoungeCoworkerScreenPosition(null);
     window.dispatchEvent(new CustomEvent('warp:switch-room', { detail: { roomId } }));
     setShowChangeRooms(false);
   };
@@ -2474,6 +2695,7 @@ export function VirtualRoomLayout({
 
   const openScreenOverlay = (mode: ScreenOverlayMode) => {
     setSelectedTeammateAction(null);
+    setLoungeCoworkerReady(false);
     setScreenOverlayMode(mode);
     setIsScreenOverlayOpen(true);
     if (mode === 'share') {
@@ -2486,6 +2708,13 @@ export function VirtualRoomLayout({
     setSelectedSharedScreenId('coworker-a');
     setIsWatchingScreen(true);
     setIsSharingScreen(false);
+  };
+
+  const closeScreenOverlay = () => {
+    setIsScreenOverlayOpen(false);
+    if (activeRoomIdRef.current === 'lounge' && loungeCoworkerScreenPosition) {
+      setLoungeCoworkerReady(true);
+    }
   };
 
   const toggleFullscreen = async () => {
@@ -2503,14 +2732,33 @@ export function VirtualRoomLayout({
   };
 
   const activeTaskMember = MODERATOR_TEAM_MEMBERS.find((member) => member.id === selectedModeratorMemberId) ?? MODERATOR_TEAM_MEMBERS[0];
-  const selectSection = (section: MemberSection) => {
+  const handleWorkspaceHome = () => {
     setSelectedTeammateAction(null);
     setSelectedTaskId(undefined);
-    setActiveSection(section);
+    setShowChangeRooms(false);
+    setShowCreateTask(false);
+    setIsModeratorTeamModalOpen(false);
+    setIsScreenOverlayOpen(false);
+    setIsSharingScreen(false);
+    setIsWatchingScreen(false);
+    setActiveSection('dashboard');
+  };
+  const selectSection = (section: MemberSection) => {
+    if (section === 'dashboard') {
+      handleWorkspaceHome();
+      return;
+    }
+    setSelectedTeammateAction(null);
+    setSelectedTaskId(undefined);
+    if (section === 'settings') {
+      setActiveSection('settings');
+      return;
+    }
+    onOpenWorkspacePanel?.(section);
   };
   const openTaskDetail = (taskId: string) => {
     setSelectedTaskId(taskId);
-    setActiveSection('todo');
+    onOpenWorkspacePanel?.('todo');
   };
 
   return (
@@ -2537,7 +2785,14 @@ export function VirtualRoomLayout({
                 onSwitchRooms={() => setShowChangeRooms(true)}
               />
               <TopRightHud />
-              <RoomActiveTaskCard member={activeTaskMember} />
+              {selectedTeammateAction ? <RoomActiveTaskCard member={activeTaskMember} /> : null}
+              {activeRoom.id === 'lounge' && loungeCoworkerReady && loungeCoworkerScreenPosition ? (
+                <LoungeScreenShareInvite
+                  screenX={loungeCoworkerScreenPosition.x}
+                  screenY={loungeCoworkerScreenPosition.y}
+                  onJoin={() => openScreenOverlay('watch')}
+                />
+              ) : null}
               <UserCardOverlay user={user} onOpenTeamModal={() => setIsModeratorTeamModalOpen(true)} />
               <TeammateInteractionCard
                 selection={selectedTeammateAction}
@@ -2550,14 +2805,22 @@ export function VirtualRoomLayout({
                 }}
                 onMessage={() => {
                   setSelectedTeammateAction(null);
-                  setActiveSection('chat');
+                  onOpenWorkspacePanel?.('chat');
                 }}
               />
-              <TomatoWidget />
+              <TomatoWidget key={activeRoom.id} />
               <ClapHint />
               <BottomControlBar
                 onShareScreen={() => openScreenOverlay('share')}
                 onWatchScreen={() => openScreenOverlay('watch')}
+                onOpenEmoteMenu={() => setSelectedTeammateAction(null)}
+                shouldDismissMenus={
+                  showChangeRooms
+                  || showCreateTask
+                  || isModeratorTeamModalOpen
+                  || isScreenOverlayOpen
+                  || selectedTeammateAction !== null
+                }
               />
               <ZoomControls
                 onZoomIn={() => sendViewportControl('zoom-in')}
@@ -2575,6 +2838,7 @@ export function VirtualRoomLayout({
           section={activeSection}
           user={user}
           onOpenChat={() => setActiveSection('chat')}
+          onWorkspaceHome={handleWorkspaceHome}
           selectedTaskId={selectedTaskId}
           onOpenLiveScreen={() => openScreenOverlay('watch')}
         />
@@ -2602,7 +2866,7 @@ export function VirtualRoomLayout({
         selectedSharedScreenId={selectedSharedScreenId}
         isSharingScreen={isSharingScreen}
         isWatchingScreen={isWatchingScreen}
-        onClose={() => setIsScreenOverlayOpen(false)}
+        onClose={closeScreenOverlay}
         onToggleSharing={() => setIsSharingScreen((current) => !current)}
       />
     </div>

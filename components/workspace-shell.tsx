@@ -19,7 +19,10 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
   const initUser = useUserStore(state => state.initialize);
   const initTasks = useTaskStore(state => state.initialize);
   const isMemberWorkspace = user.role === 'member' || user.role === 'employee';
-  const [activeView, setActiveView] = useState<'management' | 'room'>('management');
+  const [activeView, setActiveView] = useState<'dashboard' | 'room' | 'workspacePanel'>('dashboard');
+  const [dashboardSection, setDashboardSection] = useState<
+    'dashboard' | 'stats' | 'tasks' | 'chat' | 'team' | 'settings'
+  >('dashboard');
 
   useEffect(() => {
     initUser(user);
@@ -27,27 +30,53 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
   }, [user, tasks, teammates, initUser, initTasks]);
 
   useEffect(() => {
-    setActiveView('management');
+    setActiveView('dashboard');
+    setDashboardSection('dashboard');
   }, [isMemberWorkspace, user.role]);
 
-  if (activeView === 'room') {
-    return (
-      <>
+  const openWorkspacePanel = (
+    section: 'stats' | 'todo' | 'chat' | 'team' | 'settings',
+  ) => {
+    setDashboardSection(section === 'todo' ? 'tasks' : section);
+    setActiveView('workspacePanel');
+  };
+
+  return (
+    <>
+      {activeView === 'room' || activeView === 'workspacePanel' ? (
+        <div className={activeView === 'room' ? 'block' : 'hidden'}>
         <VirtualRoomLayout
           user={user}
           initialRoomId={isMemberWorkspace ? 'lounge' : 'main'}
-          onBackToDashboard={() => setActiveView('management')}
+          onBackToDashboard={() => {
+            setDashboardSection('dashboard');
+            setActiveView('dashboard');
+          }}
+          onOpenWorkspacePanel={openWorkspacePanel}
         />
-        <LevelUpModal />
-        <AvatarCustomizer />
-      </>
-    );
-  }
+        </div>
+      ) : null}
 
-  // All roles share the dashboard shell; role checks inside it limit privileged controls.
-  return (
-    <>
-      <EmployerDashboard user={user} onEnterWorkspace={() => setActiveView('room')} />
+      {activeView !== 'room' ? (
+      <EmployerDashboard
+        user={user}
+        initialActiveItem={dashboardSection}
+        workspaceContext={activeView === 'workspacePanel'}
+        onWorkspaceHome={() => setActiveView('room')}
+        onWorkspaceSettings={() => {
+          window.dispatchEvent(new CustomEvent('warp:open-workspace-section', { detail: { section: 'settings' } }));
+          setActiveView('room');
+        }}
+        onExitWorkspace={() => {
+          setDashboardSection('dashboard');
+          setActiveView('dashboard');
+        }}
+        onEnterWorkspace={() => {
+          setDashboardSection('dashboard');
+          setActiveView('room');
+        }}
+      />
+      ) : null}
       <LevelUpModal />
       <AvatarCustomizer />
     </>

@@ -229,7 +229,7 @@ type SittingLaptopConfig = {
 };
 type BodyTone = 'light' | 'medium' | 'dark';
 type OutfitType = 'long' | 'hoodie' | 'short' | 'suit';
-type CoworkerPresenceStatus = 'online' | 'afk';
+type CoworkerPresenceStatus = 'online' | 'afk' | 'mic';
 type RoomCoworkerConfig = {
   id: string;
   name: string;
@@ -259,6 +259,7 @@ type RoomCoworkerLayers = {
   blinkEvent?: Phaser.Time.TimerEvent;
   hitArea?: Phaser.GameObjects.Arc;
   nameBadge?: Phaser.GameObjects.Container;
+  pomodoroIndicator?: Phaser.GameObjects.Container;
 };
 type StaticSeatedCoworkerConfig = {
   id: string;
@@ -280,6 +281,7 @@ const AVATAR_HAIR_BASE_PATH = '/assets/avatar/walk/hair/source';
 const AVATAR_FACE_BASE_PATH = '/assets/avatar/walk/face/source';
 const AVATAR_SHADOW_ASSET_PATH = '/assets/avatar/walk/shadow/SHADOW_BASE.png';
 const COWORKER_SHADOW_ASSET_PATH = '/assets/avatar/walk/shadow/source/Frame%203852%20(3).png';
+const INDICATOR_ASSET_BASE_PATH = '/assets/figma-export/virtual-room/indicators';
 const AVATAR_DEPTH_OFFSET = 16;
 const AVATAR_DISPLAY_SIZE = 180;
 const AVATAR_SITTING_INTERACTION_RANGE = 145;
@@ -300,6 +302,7 @@ const COWORKER_BLINK_INTERVAL_MS = 3200;
 const COWORKER_BLINK_DURATION_MS = 130;
 const COWORKER_NAME_BADGE_OFFSET_Y = 172;
 const STATIC_COWORKER_NAME_BADGE_OFFSET_Y = 148;
+const PLAYER_BADGE_OFFSET_X = 4;
 const COWORKER_OUTFIT_IDLE_FILES: Record<OutfitType, string> = {
   long: 'outfit1_idle.png',
   hoodie: 'outfit2_idle.png',
@@ -397,6 +400,19 @@ const MAIN_ROOM_COWORKER_CONFIGS: Omit<RoomCoworkerConfig, 'x' | 'y'>[] = [
     faceFlipX: false,
   },
 ];
+const TEAM_LOUNGE_COWORKER_SOURCE: FigmaPoint = { x: 1680, y: 820 };
+const TEAM_LOUNGE_COWORKER_CONFIG: Omit<RoomCoworkerConfig, 'x' | 'y'> = {
+  id: 'coworker-a',
+  name: 'Coworker A',
+  status: 'mic',
+  direction: 'FR',
+  bodyTone: 'light',
+  outfitType: 'short',
+  hairTextureKey: 'avatar-coworker-hair-2-1',
+  faceDefaultTextureKey: 'avatar-coworker-face-2-default',
+  faceBlinkTextureKey: 'avatar-coworker-face-2-blink',
+  faceFlipX: false,
+};
 const COWORKER_ROLE_BY_NAME: Record<string, string> = {
   'Coworker A': 'UI/UX Designer',
   'Coworker B': 'UI Designer',
@@ -471,8 +487,8 @@ const SEAT_ANCHOR_Y_RATIO_BY_SEAT_VARIANT: Record<SeatVariant, number> = {
   back: 0.72,
 };
 const SITTING_BASE_OFFSET_BY_SEAT_VARIANT: Record<SeatVariant, FigmaPoint> = {
-  front: { x: -6, y: 4 },
-  back: { x: 6, y: -4 },
+  front: { x: -6, y: 12 },
+  back: { x: 6, y: 2 },
 };
 const SITTING_BASE_OFFSET_BY_SEAT_ID: Partial<Record<string, FigmaPoint>> = {
   'front-green': { x: 0, y: 0 },
@@ -503,7 +519,7 @@ const SIT_CHIP_STANDING_OFFSET_Y_BY_SEAT_VARIANT: Record<SeatVariant, number> = 
   back: 0.14,
 };
 const SITTING_CHIP_HEAD_CLEARANCE = 14;
-const SITTING_TABLE_BODY_OCCLUSION_GAP = 0;
+const SITTING_TABLE_BODY_FOREGROUND_GAP = 3;
 const SITTING_TABLE_HEAD_DEPTH_GAP = 2;
 const STATIC_COWORKER_A_SEAT_ID = 'front-green';
 const STATIC_OCCUPIED_SEAT_IDS = new Set<string>([STATIC_COWORKER_A_SEAT_ID]);
@@ -543,7 +559,7 @@ function coworkerBodyTextureKey(tone: BodyTone, direction: AvatarDirection): str
 }
 
 function coworkerBodyAssetPath(tone: BodyTone, direction: AvatarDirection): string {
-  return `/assets/avatar/walk/body/${tone}/source/${direction === 'FR' || direction === 'FL' ? 'base_idle.png' : 'base_idle_back.png'}`;
+  return `${AVATAR_BODY_BASE_PATH}/${tone}/${direction}/base_${tone}_idle_${direction}.png`;
 }
 
 function avatarOutfitWalkFile(outfitType: OutfitType, direction: AvatarDirection, frameNumber: number): string {
@@ -739,7 +755,7 @@ export default class MainOfficeScene extends Phaser.Scene {
   private playerSittingBody?: Phaser.GameObjects.Sprite;
   private playerSittingOutfit?: Phaser.GameObjects.Sprite;
   private playerSittingLaptop?: Phaser.GameObjects.Image;
-  private playerLabel!: Phaser.GameObjects.Text;
+  private playerLabel!: Phaser.GameObjects.Container;
   private playerAvatarSelection: Pick<
     AvatarSelection,
     'selectedFaceId' | 'selectedHairId' | 'selectedHairColorId' | 'selectedOutfitType' | 'selectedBodyTone'
@@ -885,6 +901,11 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.load.image('chair_back_hover_blue', VIRTUAL_ROOM_ASSETS.chairBackHoverBlue);
     this.load.image('sit_popup_primary', VIRTUAL_ROOM_ASSETS.sitPopupPrimary);
     this.load.image('coworker-pomodoro-tomato', VIRTUAL_ROOM_ASSETS.tomato);
+    this.load.image('indicator-pomodoro', `${INDICATOR_ASSET_BASE_PATH}/pomodoro.png`);
+    this.load.svg('indicator-mic', `${INDICATOR_ASSET_BASE_PATH}/mic.svg`);
+    this.load.svg('indicator-crown', `${INDICATOR_ASSET_BASE_PATH}/crown.svg`);
+    this.load.svg('indicator-coordinator', `${INDICATOR_ASSET_BASE_PATH}/coordinator.svg`);
+    this.load.svg('indicator-member', `${INDICATOR_ASSET_BASE_PATH}/member.svg`);
     this.load.image(SITTING_LAPTOP_CONFIG_BY_POSE.front.textureKey, SITTING_LAPTOP_CONFIG_BY_POSE.front.assetPath);
     this.load.image(SITTING_LAPTOP_CONFIG_BY_POSE.back.textureKey, SITTING_LAPTOP_CONFIG_BY_POSE.back.assetPath);
     this.load.image('avatar-shadow', AVATAR_SHADOW_ASSET_PATH);
@@ -914,6 +935,8 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.load.image('avatar-coworker-hair-4-1', avatarHairColorVariantAssetPath('hair_4 1.png'));
     this.load.image('avatar-coworker-face-1-default', avatarFaceAssetPath('face_1_default.png'));
     this.load.image('avatar-coworker-face-1-blink', avatarFaceAssetPath('face_1_blink.png'));
+    this.load.image('avatar-coworker-face-2-default', avatarFaceAssetPath('face_2_default.png'));
+    this.load.image('avatar-coworker-face-2-blink', avatarFaceAssetPath('face_2_blink.png'));
     this.load.image('avatar-coworker-face-1-default-2', avatarFaceVariantAssetPath('face_1_default 2.png'));
     this.load.image('avatar-coworker-face-1-blink-2', avatarFaceVariantAssetPath('face_1_blink 2.png'));
     this.load.image('avatar-coworker-face-2-default-2', avatarFaceVariantAssetPath('face_2_default 2.png'));
@@ -1096,13 +1119,17 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.applyFaceLayerConfig();
     this.syncAvatarLayers();
 
-    this.playerLabel = this.add.text(400, 270, 'You', {
-      fontSize: '11px', color: '#6366f1', fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(5).setVisible(false);
+    this.playerLabel = this.createPlayerIdentityBadge(400, 270);
 
     this.events.on('update', () => {
-      this.playerLabel.setPosition(this.player.x, this.player.y - 22);
-      this.playerLabel.setDepth(this.player.depth + 4);
+      const labelOffsetY = this.isPlayerSitting ? 158 : 184;
+      this.playerLabel.setPosition(
+        Math.round(this.player.x + PLAYER_BADGE_OFFSET_X),
+        Math.round(this.player.y - labelOffsetY),
+      );
+      this.playerLabel.setDepth(
+        this.isPlayerSitting ? this.getSittingHeadDepth() + 2 : this.player.depth + 4,
+      );
     });
 
     this.blinkEvent = this.time.addEvent({
@@ -1138,7 +1165,10 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       this.focusGameInput();
       const hitObjects = this.input.hitTestPointer(pointer);
-      if (hitObjects.length === 0) this.dismissAllOverlays();
+      if (hitObjects.length === 0) {
+        this.dismissAllOverlays();
+        this.dispatchTeammateCleared();
+      }
     });
 
     if (typeof window !== 'undefined') {
@@ -1445,7 +1475,7 @@ export default class MainOfficeScene extends Phaser.Scene {
 
     const seatBodyDepth = seat.depth + 1;
     if (seat.row === 'top' && this.mainRoomTableDepth !== null) {
-      return Math.min(seatBodyDepth, this.mainRoomTableDepth - SITTING_TABLE_BODY_OCCLUSION_GAP);
+      return Math.max(seatBodyDepth, this.mainRoomTableDepth + SITTING_TABLE_BODY_FOREGROUND_GAP);
     }
 
     return seatBodyDepth;
@@ -1650,7 +1680,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       return bodyDepth + 2;
     }
 
-    return this.mainRoomTableDepth + 4;
+    return this.mainRoomTableDepth + 6;
   }
 
   private createSittingLaptop(seat: SeatData, bodyDepth: number): Phaser.GameObjects.Image {
@@ -2118,6 +2148,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     }
 
     this.dismissAllOverlays();
+    this.dispatchTeammateCleared();
     this.clearRoom();
     this.currentRoomId = roomId;
 
@@ -2146,6 +2177,32 @@ export default class MainOfficeScene extends Phaser.Scene {
     } else if (roomId === 'lounge') {
       // ===== TEAM LOUNGE: Use the exported full-room composition =====
       this.loadTeamLoungeAssets(width, height);
+      if (this.mainRoomBounds) {
+        const loungeCoworkerX = this.mainRoomBounds.x
+          + (TEAM_LOUNGE_COWORKER_SOURCE.x / TEAM_LOUNGE_SOURCE.width) * this.mainRoomBounds.width;
+        const loungeCoworkerY = this.mainRoomBounds.y
+          + (TEAM_LOUNGE_COWORKER_SOURCE.y / TEAM_LOUNGE_SOURCE.height) * this.mainRoomBounds.height;
+        this.spawnTeammate(
+          loungeCoworkerX,
+          loungeCoworkerY,
+          0x685eeb,
+          TEAM_LOUNGE_COWORKER_CONFIG.name,
+          COWORKER_ROLE_BY_NAME[TEAM_LOUNGE_COWORKER_CONFIG.name],
+          undefined,
+          false,
+          undefined,
+          { ...TEAM_LOUNGE_COWORKER_CONFIG, x: loungeCoworkerX, y: loungeCoworkerY },
+        );
+        this.time.delayedCall(0, () => {
+          if (this.currentRoomId === 'lounge') {
+            this.dispatchLoungeCoworkerReady(
+              TEAM_LOUNGE_COWORKER_CONFIG.id,
+              loungeCoworkerX,
+              loungeCoworkerY,
+            );
+          }
+        });
+      }
     } else {
       this.mainRoomBounds = new Phaser.Geom.Rectangle(0, 0, width, height);
       this.playerMovementBounds = new Phaser.Geom.Rectangle(0, 0, width, height);
@@ -2726,6 +2783,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     }
 
     const visualCameraYOffset = this.currentRoomId === 'lounge' ? 0 : MainOfficeScene.VISUAL_CAMERA_Y_OFFSET;
+    camera.roundPixels = true;
     camera.setZoom(this.sceneZoom);
     camera.centerOn(mainRoomBounds.centerX, mainRoomBounds.centerY - visualCameraYOffset);
   }
@@ -2974,7 +3032,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       base.x,
       base.y - STATIC_COWORKER_NAME_BADGE_OFFSET_Y,
       config.name,
-      'online',
+      config.name === 'Coworker A' ? 'mic' : 'online',
       headDepth + 20,
     );
     const pomodoroIndicator = this.createStaticCoworkerPomodoroIndicator(
@@ -3011,15 +3069,36 @@ export default class MainOfficeScene extends Phaser.Scene {
     background.fillRoundedRect(-width / 2, -height / 2, width, height, 8);
     background.lineStyle(1, 0xe2e0f0, 0.9);
     background.strokeRoundedRect(-width / 2, -height / 2, width, height, 8);
-    const tomato = this.add.image(-width / 2 + 11, 0, 'coworker-pomodoro-tomato')
-      .setDisplaySize(18, 18);
+    const tomato = this.add.image(-width / 2 + 12, 0, 'indicator-pomodoro')
+      .setDisplaySize(23, 17);
     const track = this.add.rectangle(-10, 0, 50, 5, 0xe9e6f6, 1)
       .setOrigin(0, 0.5);
-    const progress = this.add.rectangle(-10, 0, 35, 5, 0x685eeb, 1)
+    const trackWidth = 50;
+    const progress = this.add.rectangle(-10, 0, trackWidth * 0.8, 5, 0x685eeb, 1)
       .setOrigin(0, 0.5);
 
-    return this.add.container(x, y, [background, tomato, track, progress])
+    const container = this.add.container(Math.round(x), Math.round(y), [background, tomato, track, progress])
       .setDepth(depth);
+    let baselineProgress = 0.8;
+    let tick = 0;
+    const progressTimer = this.time.addEvent({
+      delay: 1500,
+      loop: true,
+      callback: () => {
+        if (!container.active) {
+          progressTimer.remove(false);
+          return;
+        }
+
+        tick += 1;
+        baselineProgress = Math.max(0.12, baselineProgress - 0.0035);
+        const calmVariation = Math.sin(tick * 0.72) * 0.006;
+        const visibleProgress = Phaser.Math.Clamp(baselineProgress + calmVariation, 0.12, 0.82);
+        progress.setDisplaySize(trackWidth * visibleProgress, 5);
+      },
+    });
+
+    return container;
   }
 
   private getStaticCoworkerFaceTexture(textureKey: string): string {
@@ -3063,7 +3142,7 @@ export default class MainOfficeScene extends Phaser.Scene {
   private getStaticSittingBodyDepth(seat: SeatData): number {
     const seatBodyDepth = seat.depth + 1;
     if (seat.row === 'top' && this.mainRoomTableDepth !== null) {
-      return Math.min(seatBodyDepth, this.mainRoomTableDepth - SITTING_TABLE_BODY_OCCLUSION_GAP);
+      return Math.max(seatBodyDepth, this.mainRoomTableDepth + SITTING_TABLE_BODY_FOREGROUND_GAP);
     }
 
     return seatBodyDepth;
@@ -3081,6 +3160,31 @@ export default class MainOfficeScene extends Phaser.Scene {
   //  TEAMMATE CREATION + INTERACTION MENU
   // =============================================
 
+  private createPlayerIdentityBadge(x: number, y: number): Phaser.GameObjects.Container {
+    const width = 58;
+    const height = 24;
+    const background = this.add.graphics();
+    background.fillStyle(0x27213f, 0.94);
+    background.lineStyle(1, 0xffffff, 0.16);
+    background.fillRoundedRect(-width / 2, -height / 2, width, height, 12);
+    background.strokeRoundedRect(-width / 2, -height / 2, width, height, 12);
+
+    const crown = this.add.image(-15, 0, 'indicator-crown')
+      .setDisplaySize(12, 12);
+
+    const text = this.add.text(-1, 0, 'You', {
+      fontFamily: 'Funnel Sans, Arial, sans-serif',
+      fontSize: '11px',
+      color: '#ffffff',
+      fontStyle: '600',
+      resolution: this.getIndicatorTextResolution(),
+    }).setOrigin(0.5);
+
+    return this.add.container(x, y, [background, crown, text])
+      .setDepth(5)
+      .setSize(width, height);
+  }
+
   private createCoworkerNameBadge(
     x: number,
     y: number,
@@ -3090,14 +3194,16 @@ export default class MainOfficeScene extends Phaser.Scene {
   ): Phaser.GameObjects.Container {
     const text = this.add.text(0, 0, name, {
       fontFamily: 'Funnel Sans, Arial, sans-serif',
-      fontSize: '10px',
+      fontSize: '11px',
       color: '#ffffff',
       fontStyle: '600',
+      resolution: this.getIndicatorTextResolution(),
     }).setOrigin(0, 0.5);
     const labelBounds = text.getBounds();
-    const badgeWidth = Math.max(74, labelBounds.width + 28);
+    const hasMic = status === 'mic';
+    const badgeWidth = Math.max(74, labelBounds.width + (hasMic ? 47 : 28));
     const badgeHeight = 20;
-    const dotColor = status === 'online' ? 0x56efc4 : 0x9ca3af;
+    const dotColor = status === 'afk' ? 0xfb7675 : 0x56efc4;
 
     const bg = this.add.graphics();
     bg.fillStyle(0x27213f, 0.78);
@@ -3105,12 +3211,33 @@ export default class MainOfficeScene extends Phaser.Scene {
     bg.fillRoundedRect(-badgeWidth / 2, -badgeHeight / 2, badgeWidth, badgeHeight, 10);
     bg.strokeRoundedRect(-badgeWidth / 2, -badgeHeight / 2, badgeWidth, badgeHeight, 10);
 
-    const dot = this.add.circle(-badgeWidth / 2 + 11, 0, 3.5, dotColor, 1);
-    text.setPosition(-badgeWidth / 2 + 20, 0);
+    const statusDot = this.add.circle(
+      -badgeWidth / 2 + (hasMic ? 28 : 11),
+      0,
+      3.5,
+      dotColor,
+      1,
+    );
+    const children: Phaser.GameObjects.GameObject[] = [bg];
+    if (hasMic) {
+      children.push(
+        this.add.image(-badgeWidth / 2 + 11, 0, 'indicator-mic').setDisplaySize(16, 16),
+      );
+    }
+    children.push(statusDot, text);
+    text.setPosition(-badgeWidth / 2 + (hasMic ? 37 : 20), 0);
 
-    return this.add.container(x, y, [bg, dot, text])
+    return this.add.container(Math.round(x), Math.round(y), children)
       .setDepth(depth)
       .setSize(badgeWidth, badgeHeight);
+  }
+
+  private getIndicatorTextResolution(): number {
+    if (typeof window === 'undefined') {
+      return 2;
+    }
+
+    return Phaser.Math.Clamp(Math.ceil(window.devicePixelRatio * 2), 2, 4);
   }
 
   private spawnLayeredCoworker(config: RoomCoworkerConfig, hitArea?: Phaser.GameObjects.Arc): RoomCoworkerLayers {
@@ -3140,6 +3267,16 @@ export default class MainOfficeScene extends Phaser.Scene {
       config.y + AVATAR_DEPTH_OFFSET + 24,
     );
     this.roomObjects.push(nameBadge);
+    const pomodoroIndicator = config.id === 'coworker-a'
+      ? this.createStaticCoworkerPomodoroIndicator(
+          config.x,
+          config.y - COWORKER_NAME_BADGE_OFFSET_Y - 28,
+          config.y + AVATAR_DEPTH_OFFSET + 25,
+        )
+      : undefined;
+    if (pomodoroIndicator) {
+      this.roomObjects.push(pomodoroIndicator);
+    }
 
     const coworker: RoomCoworkerLayers = {
       id: config.id,
@@ -3152,6 +3289,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       faceBlinkTextureKey: config.faceBlinkTextureKey,
       hitArea,
       nameBadge,
+      pomodoroIndicator,
     };
     this.startCoworkerBlink(coworker, config.faceVisible ?? true);
     this.syncCoworkerLayers(coworker, config.x, config.y, config.depthOffset ?? 0);
@@ -3169,7 +3307,12 @@ export default class MainOfficeScene extends Phaser.Scene {
     coworker.hair?.setPosition(x, y).setDepth(baseDepth + 2);
     coworker.face?.setPosition(x, y).setDepth(baseDepth + 3);
     coworker.hitArea?.setPosition(x, y - 72).setDepth(baseDepth + 4);
-    coworker.nameBadge?.setPosition(x, y - COWORKER_NAME_BADGE_OFFSET_Y).setDepth(baseDepth + 24);
+    coworker.nameBadge
+      ?.setPosition(Math.round(x), Math.round(y - COWORKER_NAME_BADGE_OFFSET_Y))
+      .setDepth(baseDepth + 24);
+    coworker.pomodoroIndicator
+      ?.setPosition(Math.round(x), Math.round(y - COWORKER_NAME_BADGE_OFFSET_Y - 28))
+      .setDepth(baseDepth + 25);
   }
 
   private getCoworkerBodyIdleTexture(tone: BodyTone, direction: Extract<AvatarDirection, 'FR' | 'FL'>): string {
@@ -3290,6 +3433,30 @@ export default class MainOfficeScene extends Phaser.Scene {
         avatarSrc,
         clientX,
         clientY,
+      },
+    }));
+  }
+
+  private dispatchTeammateCleared() {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('warp:teammate-cleared'));
+    }
+  }
+
+  private dispatchLoungeCoworkerReady(coworkerId: string, worldX: number, worldY: number) {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const camera = this.cameras.main;
+    const screenX = (worldX - camera.worldView.x) * camera.zoom;
+    const screenY = (worldY - camera.worldView.y) * camera.zoom;
+    window.dispatchEvent(new CustomEvent('warp:lounge-coworker-ready', {
+      detail: {
+        coworkerId,
+        roomId: 'lounge',
+        screenX,
+        screenY,
       },
     }));
   }

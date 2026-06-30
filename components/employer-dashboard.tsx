@@ -18,6 +18,7 @@ import {
   Hash,
   House,
   Lock,
+  LogOut,
   type LucideIcon,
   MessageCircle,
   MessageSquarePlus,
@@ -525,9 +526,15 @@ function WarpMark() {
 function SidebarNav({
   activeItem,
   onSelect,
+  workspaceContext = false,
+  onWorkspaceHome,
+  onExitWorkspace,
 }: {
   activeItem: (typeof navItems)[number]['id'];
   onSelect: (id: (typeof navItems)[number]['id']) => void;
+  workspaceContext?: boolean;
+  onWorkspaceHome?: () => void;
+  onExitWorkspace?: () => void;
 }) {
   return (
     <aside className="flex h-full min-h-screen w-[283px] shrink-0 flex-col gap-10 border-r border-[#e2e0f0] bg-white px-[23px] py-[29px]">
@@ -542,12 +549,19 @@ function SidebarNav({
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.id === activeItem;
+            const label = workspaceContext && item.id === 'dashboard' ? 'Workspace' : item.label;
 
             return (
               <button
                 key={item.id}
                 type="button"
-                onClick={() => onSelect(item.id)}
+                onClick={() => {
+                  if (workspaceContext && item.id === 'dashboard') {
+                    onWorkspaceHome?.();
+                    return;
+                  }
+                  onSelect(item.id);
+                }}
                 className={cn(
                   'flex w-[235px] items-center gap-4 rounded-[14px] px-[14px] py-[11px] text-left transition-all duration-200',
                   isActive
@@ -556,12 +570,23 @@ function SidebarNav({
                 )}
               >
                 <Icon className={cn('h-5 w-5', isActive ? 'text-[#7c5cfc]' : 'text-[#8b86ab]')} strokeWidth={1.8} />
-                <span className="text-[16px] font-medium">{item.label}</span>
+                <span className="text-[16px] font-medium">{label}</span>
               </button>
             );
           })}
         </nav>
       </div>
+
+      {workspaceContext ? (
+        <button
+          type="button"
+          onClick={onExitWorkspace}
+          className="mt-auto flex w-[235px] items-center gap-4 rounded-[14px] px-[14px] py-[11px] text-left text-[#9b96b8] transition hover:bg-[#fff3f3] hover:text-[#d95757]"
+        >
+          <LogOut className="h-5 w-5" strokeWidth={1.8} />
+          <span className="text-[16px] font-medium">Exit Workspace</span>
+        </button>
+      ) : null}
     </aside>
   );
 }
@@ -2542,14 +2567,22 @@ function TaskActivityCard({
   );
 }
 
-export function WorkspaceSettingsPage({ role = 'owner', onBack }: { role?: Role; onBack?: () => void }) {
+export function WorkspaceSettingsPage({
+  role = 'owner',
+  onBack,
+  workspaceMode = false,
+}: {
+  role?: Role;
+  onBack?: () => void;
+  workspaceMode?: boolean;
+}) {
   const savedConfig = useRoomStore((state) => state.roomConfig);
   const saveRoomAdministration = useRoomStore((state) => state.saveRoomAdministration);
   const initialRooms = savedConfig?.rooms.length
     ? savedConfig.rooms
     : [
         { id: 'artist-room-main', name: 'Artist Room', capacity: 6 as RoomCapacity, theme: 'studio' as const },
-        { id: 'artist-room-secondary', name: 'Focus Room', capacity: 6 as RoomCapacity, theme: 'focus' as const },
+        { id: 'artist-room-secondary', name: 'Artist Room', capacity: 6 as RoomCapacity, theme: 'studio' as const },
       ];
   const [rooms, setRooms] = useState<WorkspaceRoom[]>(initialRooms);
   const [selectedRoomId, setSelectedRoomId] = useState(initialRooms[0].id);
@@ -2599,42 +2632,140 @@ export function WorkspaceSettingsPage({ role = 'owner', onBack }: { role?: Role;
 
   if (!canManageRooms) {
     return (
-      <div className="px-[30px] py-[27px]">
-        <div className="border-b border-[#d8d4e8] pb-[20px]">
-          <h2 className="warp-font-display text-[24px] font-extrabold tracking-[-0.03em] text-[#111111]">Workspace Settings</h2>
-          <p className="mt-[7px] text-[12px] font-medium text-[#858585]">
-            Manage your personal workspace preferences without changing room administration.
-          </p>
+      <div className="min-h-full bg-[#f5f4ff] px-[34px] py-[28px]">
+        <div className="mx-auto flex max-w-[1210px] items-center gap-[12px] border-b border-[#d8d4e8] pb-[20px]">
+          {workspaceMode ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className={cn(
+                'flex h-[34px] w-[34px] items-center justify-center rounded-[8px] border border-[#e2e0f0] bg-white text-[#9b96b8] hover:border-[#a29bfc] hover:text-[#685eeb]',
+                purplePressClass
+              )}
+              aria-label="Back to workspace"
+            >
+              <ArrowLeft className="h-[19px] w-[19px]" strokeWidth={2.2} />
+            </button>
+          ) : null}
+          <div>
+            <h2 className="warp-font-display text-[24px] font-extrabold tracking-[-0.03em] text-[#111111]">Workspace Settings</h2>
+            <p className="mt-[4px] text-[12px] font-medium text-[#858585]">
+              Personal access and preferences for this workspace
+            </p>
+          </div>
         </div>
-        <div className="mt-[24px] grid gap-[18px] xl:grid-cols-2">
-          {[
-            ['Profile', 'Update your display name, position, and workspace profile.'],
-            ['Notifications', 'Choose how task, review, and chat updates reach you.'],
-            ['Availability', 'Set your current team status and focus availability.'],
-            ['Workspace preferences', 'Adjust personal room sounds and display preferences.'],
-          ].map(([title, description]) => (
-            <section key={title} className="rounded-[20px] border border-[#dedddd] bg-white px-[24px] py-[22px] shadow-[0_10px_28px_rgba(104,94,235,0.05)]">
-              <h3 className="text-[17px] font-extrabold text-[#111111]">{title}</h3>
-              <p className="mt-[7px] text-[12px] leading-[1.5] text-[#858585]">{description}</p>
-              <button
-                type="button"
-                className={cn(
-                  'mt-[18px] rounded-[11px] border border-[#d8d3f2] bg-white px-[14px] py-[8px] text-[11px] font-bold text-[#685eeb] hover:bg-[#f7f5ff]',
-                  purplePressClass
-                )}
-              >
-                Manage
-              </button>
-            </section>
-          ))}
+
+        <div className="mx-auto mt-[26px] grid max-w-[1210px] items-start gap-[34px] xl:grid-cols-2">
+          <section className="rounded-[20px] border border-[#dedddd] bg-white p-[30px] shadow-[0_14px_38px_rgba(104,94,235,0.08)]">
+            <div className="flex items-center gap-[11px] border-b border-[#dedddd] pb-[18px]">
+              <UsersRound className="h-[18px] w-[18px] text-[#685eeb]" strokeWidth={2} />
+              <h3 className="text-[20px] font-semibold text-black">Workspace Profile</h3>
+            </div>
+
+            <div className="mt-[20px] space-y-[18px]">
+              <label className="block">
+                <span className="mb-[9px] block text-[14px] font-medium text-black">Display name</span>
+                <input
+                  defaultValue={role === 'coordinator' ? 'Coordinator' : 'Member'}
+                  className="h-[54px] w-full rounded-[15px] border border-[#e2e0f0] bg-white px-[16px] text-[15px] font-medium text-black outline-none transition focus:border-[#685eeb] focus:ring-2 focus:ring-[#685eeb]/10"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-[9px] block text-[14px] font-medium text-black">Position</span>
+                <input
+                  defaultValue={role === 'coordinator' ? 'Project Coordinator' : 'Workspace Member'}
+                  className="h-[54px] w-full rounded-[15px] border border-[#e2e0f0] bg-white px-[16px] text-[15px] font-medium text-black outline-none transition focus:border-[#685eeb] focus:ring-2 focus:ring-[#685eeb]/10"
+                />
+              </label>
+            </div>
+
+            <div className="mt-[24px] border-t border-[#dedddd] pt-[20px]">
+              <p className="text-[14px] font-medium text-black">Availability</p>
+              <div className="mt-[12px] flex gap-[10px]">
+                {['Online', 'Focus', 'Away'].map((status, index) => (
+                  <button
+                    key={status}
+                    type="button"
+                    className={cn(
+                      'h-[42px] flex-1 rounded-[11px] border text-[13px] font-semibold',
+                      index === 0 ? 'border-[#685eeb] bg-[#f5f4ff] text-[#685eeb]' : 'border-[#d8d4e8] bg-white text-[#858585]'
+                    )}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[20px] border border-[#dedddd] bg-white p-[30px] shadow-[0_14px_38px_rgba(104,94,235,0.08)]">
+            <div className="flex items-center gap-[11px] border-b border-[#dedddd] pb-[18px]">
+              <ShieldCheck className="h-[18px] w-[18px] text-[#685eeb]" strokeWidth={2} />
+              <h3 className="text-[20px] font-semibold text-black">Workspace Access</h3>
+            </div>
+
+            <div className="mt-[20px] rounded-[15px] border border-[#e2e0f0] bg-[#faf9ff] p-[18px]">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[15px] font-semibold text-black">Artist Room</p>
+                  <p className="mt-[5px] text-[12px] text-[#858585]">Standard workspace access · Room administration restricted</p>
+                </div>
+                <span className="rounded-full bg-[#ece9ff] px-[12px] py-[6px] text-[11px] font-bold text-[#685eeb]">Active</span>
+              </div>
+            </div>
+
+            <div className="mt-[24px] border-t border-[#dedddd] pt-[20px]">
+              <div className="mb-[14px] flex items-center gap-[9px]">
+                <Bell className="h-[17px] w-[17px] text-[#685eeb]" strokeWidth={2} />
+                <p className="text-[15px] font-semibold text-black">Notifications</p>
+              </div>
+              {[
+                ['Task updates', 'Assignments, progress, and review changes'],
+                ['Room activity', 'Mentions and live workspace events'],
+                ['Team messages', 'Direct messages and project chat'],
+              ].map(([title, description], index) => (
+                <div key={title} className="flex items-center justify-between gap-4 border-t border-[#eeeaf7] py-[14px] first:border-t-0">
+                  <div>
+                    <p className="text-[13px] font-semibold text-black">{title}</p>
+                    <p className="mt-[3px] text-[11px] text-[#858585]">{description}</p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label={`Toggle ${title}`}
+                    className={cn(
+                      'relative h-[24px] w-[42px] rounded-full transition',
+                      index < 2 ? 'bg-[#685eeb]' : 'bg-[#d8d4e8]'
+                    )}
+                  >
+                    <span className={cn('absolute top-[3px] h-[18px] w-[18px] rounded-full bg-white shadow-sm transition', index < 2 ? 'left-[21px]' : 'left-[3px]')} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className={cn(
+                'ml-auto mt-[22px] flex h-[40px] min-w-[110px] items-center justify-center rounded-[10px] bg-[linear-gradient(111deg,#685eeb_2%,#7970f0_56%,#a29bfc_111%)] px-[20px] text-[13px] font-bold text-white',
+                purplePressClass
+              )}
+            >
+              Save preferences
+            </button>
+          </section>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="px-[30px] py-[27px]">
-      <div className="flex items-center gap-[12px] border-b border-[#d8d4e8] pb-[20px]">
+    <div className={cn(
+      'min-h-full px-[34px] py-[28px]',
+      workspaceMode
+        ? 'bg-[#f5f4ff] px-[46px] py-[27px]'
+        : 'bg-[linear-gradient(145deg,#f5f3ff_0%,#f8fbff_48%,#f0fbfa_100%)]'
+    )}>
+      <div className="mx-auto flex max-w-[1210px] items-center gap-[12px] border-b border-[#d8d4e8] pb-[20px]">
         <button
           type="button"
           onClick={onBack}
@@ -2649,7 +2780,7 @@ export function WorkspaceSettingsPage({ role = 'owner', onBack }: { role?: Role;
         <h2 className="warp-font-display text-[24px] font-extrabold tracking-[-0.03em] text-[#111111]">Edit Workspace</h2>
       </div>
 
-      <div className="mt-[28px] grid gap-[24px] xl:grid-cols-[minmax(420px,0.92fr)_minmax(460px,0.88fr)]">
+      <div className="mx-auto mt-[26px] grid max-w-[1210px] items-start gap-[34px] xl:grid-cols-[minmax(0,598px)_minmax(0,577px)]">
         <section>
           <p className="warp-font-display text-[13px] font-extrabold uppercase tracking-[0.04em] text-[#5c5780]">
             Room List
@@ -2689,7 +2820,7 @@ export function WorkspaceSettingsPage({ role = 'owner', onBack }: { role?: Role;
                       </span>
                       <span className="inline-flex items-center gap-[5px]">
                         <UserPresenceIcon />
-                        Demo room
+                        4 Online
                       </span>
                     </span>
                   </span>
@@ -2753,7 +2884,7 @@ export function WorkspaceSettingsPage({ role = 'owner', onBack }: { role?: Role;
           ) : null}
         </section>
 
-        <section className="rounded-[17px] border border-[#dedddd] bg-white px-[30px] py-[30px] shadow-[0_10px_28px_rgba(104,94,235,0.05)]">
+        <section className="rounded-[20px] border border-[#dedddd] bg-white px-[30px] py-[30px] shadow-[0_14px_38px_rgba(104,94,235,0.08)]">
           <div className="flex items-center gap-[11px]">
             <Edit3 className="h-[16px] w-[16px] text-[#685eeb]" strokeWidth={2} />
             <h3 className="text-[20px] font-semibold text-black">Edit: {selectedRoom.name}</h3>
@@ -2779,7 +2910,7 @@ export function WorkspaceSettingsPage({ role = 'owner', onBack }: { role?: Role;
                   type="button"
                   onClick={() => updateSelectedRoom({ capacity: option.value })}
                   className={cn(
-                    'flex min-h-[46px] flex-col items-center justify-center rounded-[11px] border px-4 py-[8px] text-black transition hover:border-[#685eeb]',
+                    'flex min-h-[77px] flex-col items-center justify-center rounded-[11px] border px-4 py-[8px] text-black transition hover:border-[#685eeb]',
                     selectedRoom.capacity === option.value ? 'border-[#685eeb] bg-[#f5f4ff]' : 'border-[#9b96b8] bg-white'
                   )}
                 >
@@ -2801,7 +2932,7 @@ export function WorkspaceSettingsPage({ role = 'owner', onBack }: { role?: Role;
                   selectedRoom.theme !== 'focus' ? 'border-[#685eeb]' : 'border-[#9b96b8]'
                 )}
               >
-                <div className="relative h-[66px] overflow-hidden rounded-[9px] bg-[#f4f2ff]">
+                <div className="relative h-[92px] overflow-hidden rounded-[9px] bg-[#f4f2ff]">
                   <Image
                     src={EMPLOYER_DASHBOARD_ASSETS.roomPreview}
                     alt=""
@@ -2816,21 +2947,35 @@ export function WorkspaceSettingsPage({ role = 'owner', onBack }: { role?: Role;
 
               <button
                 type="button"
-                onClick={() => updateSelectedRoom({ theme: 'focus' })}
-                className={cn(
-                  'rounded-[16px] border bg-[#f5f5f5] p-[8px] transition hover:border-[#685eeb]',
-                  selectedRoom.theme === 'focus' ? 'border-[#685eeb]' : 'border-[#9b96b8]'
-                )}
+                disabled
+                className="cursor-not-allowed rounded-[16px] border border-[#d8d8d8] bg-[#f5f5f5] p-[8px] opacity-70"
               >
-                <div className="flex h-[66px] items-center justify-center rounded-[9px] bg-[#d5d5d5] text-black">
-                  <Timer className="h-[24px] w-[24px]" strokeWidth={1.9} />
+                <div className="relative flex h-[92px] items-center justify-center overflow-hidden rounded-[9px] bg-[#d5d5d5] text-[#858585]">
+                  <Image
+                    src={EMPLOYER_DASHBOARD_ASSETS.roomPreview}
+                    alt=""
+                    fill
+                    sizes="220px"
+                    className="object-cover object-bottom grayscale"
+                    unoptimized
+                  />
+                  <Lock className="relative z-10 h-[24px] w-[24px] text-black" strokeWidth={1.8} />
                 </div>
-                <span className="mt-[8px] block text-center text-[16px] text-black">Focus</span>
+                <span className="mt-[8px] block text-center text-[16px] text-[#858585]">Locked</span>
               </button>
             </div>
           </div>
 
-          <p className="mt-[18px] text-right text-[12px] font-medium text-[#858585]">Use Save Changes to apply all room edits.</p>
+          <button
+            type="button"
+            onClick={handleSaveWorkspace}
+            className={cn(
+              'ml-auto mt-[24px] flex h-[34px] w-[79px] items-center justify-center rounded-[8px] border border-[#a29bfc] bg-white text-[15px] font-medium text-[#454545] hover:bg-[#f7f5ff]',
+              purplePressClass
+            )}
+          >
+            Save
+          </button>
         </section>
       </div>
     </div>
@@ -3396,10 +3541,26 @@ function EmployerCreateRoomFlow({
     </div>
   );
 }
-export function EmployerDashboard({ user, onEnterWorkspace }: { user: User; onEnterWorkspace: () => void }) {
+export function EmployerDashboard({
+  user,
+  onEnterWorkspace,
+  initialActiveItem = 'dashboard',
+  workspaceContext = false,
+  onWorkspaceHome,
+  onWorkspaceSettings,
+  onExitWorkspace,
+}: {
+  user: User;
+  onEnterWorkspace: () => void;
+  initialActiveItem?: (typeof navItems)[number]['id'];
+  workspaceContext?: boolean;
+  onWorkspaceHome?: () => void;
+  onWorkspaceSettings?: () => void;
+  onExitWorkspace?: () => void;
+}) {
   const router = useRouter();
   const [stage, setStage] = useState<EmployerStage>('dashboard');
-  const [activeItem, setActiveItem] = useState<(typeof navItems)[number]['id']>('dashboard');
+  const [activeItem, setActiveItem] = useState<(typeof navItems)[number]['id']>(initialActiveItem);
   const [selectedChatTeammate, setSelectedChatTeammate] = useState<TeamMemberProfile | null>(null);
   const [isRoomCodeModalOpen, setIsRoomCodeModalOpen] = useState(false);
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
@@ -3420,6 +3581,11 @@ export function EmployerDashboard({ user, onEnterWorkspace }: { user: User; onEn
   const isStatsPage = activeItem === 'stats';
   const isTeamPage = activeItem === 'team';
   const isSettingsPage = activeItem === 'settings';
+
+  useEffect(() => {
+    setActiveItem(initialActiveItem);
+  }, [initialActiveItem]);
+
   const openRoomCodeModal = () => {
     setRoomCode('');
     setIsRoomCodeModalOpen(true);
@@ -3440,7 +3606,19 @@ export function EmployerDashboard({ user, onEnterWorkspace }: { user: User; onEn
   return (
     <div className="warp-font-ui h-screen w-full overflow-hidden bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)] text-[#111111]">
       <div className={cn('grid h-screen min-h-0 w-full', isTaskPage || isChatPage || isStatsPage || isTeamPage || isSettingsPage ? 'grid-cols-[283px_minmax(0,1fr)]' : 'grid-cols-[283px_minmax(0,1fr)_285px]')}>
-        <SidebarNav activeItem={activeItem} onSelect={setActiveItem} />
+        <SidebarNav
+          activeItem={activeItem}
+          onSelect={(item) => {
+            if (workspaceContext && item === 'settings') {
+              onWorkspaceSettings?.();
+              return;
+            }
+            setActiveItem(item);
+          }}
+          workspaceContext={workspaceContext}
+          onWorkspaceHome={onWorkspaceHome}
+          onExitWorkspace={onExitWorkspace}
+        />
 
         <main
           className="flex h-screen min-h-0 min-w-0 w-full flex-col overflow-hidden border-r border-[#e2e0f0] bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)]"
@@ -3471,7 +3649,10 @@ export function EmployerDashboard({ user, onEnterWorkspace }: { user: User; onEn
                     }}
                   />
                 ) : isSettingsPage ? (
-                  <WorkspaceSettingsPage role={user.role} onBack={() => setActiveItem('dashboard')} />
+                  <WorkspaceSettingsPage
+                    role={user.role}
+                    onBack={workspaceContext ? onWorkspaceHome : () => setActiveItem('dashboard')}
+                  />
                 ) : stage === 'dashboard' ? (
                   <EmployerDashboardHome
                     onCreateRoom={() => setStage('create-room')}
