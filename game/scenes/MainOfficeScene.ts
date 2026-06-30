@@ -345,6 +345,7 @@ const MAIN_ROOM_COWORKER_CONFIGS: Omit<RoomCoworkerConfig, 'x' | 'y'>[] = [
     status: 'online',
     direction: 'FR',
     bodyTone: 'medium',
+    bodyTextureKey: 'avatar-coworker-body-medium-FR-idle-tone',
     outfitType: 'suit',
     hairTextureKey: 'avatar-coworker-hair-4',
     faceDefaultTextureKey: 'avatar-coworker-face-4-default',
@@ -898,6 +899,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.load.image('avatar-coworker-face-4-default', avatarFaceAssetPath('face_4_default.png'));
     this.load.image('avatar-coworker-face-4-blink', avatarFaceAssetPath('face_4_blink.png'));
     this.load.image('avatar-coworker-body-dark-FL-idle-tone', '/assets/avatar/walk/body/dark/FL/base_dark_idle_FL.png');
+    this.load.image('avatar-coworker-body-medium-FR-idle-tone', '/assets/avatar/walk/body/medium/FR/base_medium_idle_FR.png');
     (['light', 'medium', 'dark'] as BodyTone[]).forEach((tone) => {
       COWORKER_IDLE_DIRECTIONS.forEach((direction) => {
         this.load.image(
