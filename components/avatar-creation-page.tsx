@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import { type CSSProperties, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Pencil, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -40,7 +40,63 @@ const avatarTabs: { id: AvatarTab; label: string }[] = [
   { id: 'outfit', label: 'Outfit' },
 ];
 
-const avatarPreviewAsset = '/assets/avatar/custom%20profile.svg';
+const AVATAR_CUSTOMIZATION_ASSET_BASE = '/assets/figma-export/avatar-customization';
+
+const bodyPreviewAssets: Record<BodyToneId, { src: string; fallbackSrc: string }> = {
+  light: {
+    src: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/body/body-light.png`,
+    fallbackSrc: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/body/body_light.png`,
+  },
+  medium: {
+    src: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/body/body-medium.png`,
+    fallbackSrc: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/body/body_medium.png`,
+  },
+  dark: {
+    src: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/body/body-dark.png`,
+    fallbackSrc: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/body/body_dark.png`,
+  },
+};
+
+const outfitPreviewAssets: Record<string, string> = {
+  short: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/outfit/outfit-short.png`,
+  long: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/outfit/outfit-long.png`,
+  hoodie: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/outfit/outfit-hoodie.png`,
+  suit: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/outfit/outfit-suit.png`,
+};
+
+const hairPreviewAssets: Record<HairColorId, Record<number, string>> = {
+  brown: {
+    1: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/hair/hair-1-brown.png`,
+    2: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/hair/hair-2-brown.png`,
+    3: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/hair/hair-3-brown.png`,
+    4: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/hair/hair-4-brown.png`,
+  },
+  dark: {
+    1: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/hair/hair-1-dark.png`,
+    2: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/hair/hair-2-dark.png`,
+    3: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/hair/hair-3-dark.png`,
+    4: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/hair/hair-4-dark.png`,
+  },
+  blonde: {
+    1: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/hair/hair-1-blonde.png`,
+    2: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/hair/hair-2-blonde.png`,
+    3: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/hair/hair-3-blonde.png`,
+    4: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/hair/hair-4-blonde.png`,
+  },
+};
+
+const facePreviewAssetPaths = [
+  `${AVATAR_CUSTOMIZATION_ASSET_BASE}/face/face-1.png`,
+  `${AVATAR_CUSTOMIZATION_ASSET_BASE}/face/face-2.png`,
+  `${AVATAR_CUSTOMIZATION_ASSET_BASE}/face/face-3.png`,
+  `${AVATAR_CUSTOMIZATION_ASSET_BASE}/face/face-4.png`,
+] as const;
+
+const FACE_PREVIEW_PLACEMENT = {
+  top: '27%',
+  left: '30%',
+  width: '42%',
+} as const;
 
 const faceOptions: AvatarOption[] = [
   { id: 'face-1-default', label: 'Face 1 default', src: '/assets/avatar/face/Layer_1-2.png' },
@@ -48,6 +104,11 @@ const faceOptions: AvatarOption[] = [
   { id: 'face-3-default', label: 'Face 3 default', src: '/assets/avatar/face/Layer_1-5.png' },
   { id: 'face-4-default', label: 'Face 4 default', src: '/assets/avatar/face/Layer_1-7.png' },
 ];
+
+const facePreviewAssetsById = faceOptions.reduce<Record<string, string>>((assets, option, index) => {
+  assets[option.id] = facePreviewAssetPaths[index] ?? facePreviewAssetPaths[0];
+  return assets;
+}, {});
 
 const hairOptionsByColor: Record<HairColorId, AvatarOption[]> = {
   dark: [
@@ -130,6 +191,15 @@ const isBodyToneId = (value: string): value is BodyToneId =>
 
 const findAvatarOption = (options: AvatarOption[], id: string, fallback: AvatarOption) =>
   options.find((option) => option.id === id) ?? fallback;
+
+const getOptionNumber = (id: string, fallback = 1) => {
+  const match = id.match(/-(\d+)(?:-|$)/);
+  const value = match ? Number(match[1]) : fallback;
+  return value >= 1 && value <= 4 ? value : fallback;
+};
+
+const getPreviewOutfitType = (selectedOutfit: AvatarOption) =>
+  outfitTypesById[selectedOutfit.id] ?? 'short';
 
 function StepIndicator() {
   const steps = [
@@ -249,14 +319,65 @@ function AvatarOptionCard({
   );
 }
 
-function AvatarPreview() {
+function PreviewLayer({
+  src,
+  fallbackSrc,
+  className,
+  style,
+}: {
+  src: string;
+  fallbackSrc?: string;
+  className?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <img
+      src={src}
+      alt=""
+      className={cn('pointer-events-none select-none', className)}
+      draggable={false}
+      style={style}
+      onError={(event) => {
+        if (!fallbackSrc || event.currentTarget.src.endsWith(fallbackSrc)) return;
+        event.currentTarget.src = fallbackSrc;
+      }}
+    />
+  );
+}
+
+function AvatarPreview({
+  selectedFace,
+  selectedHair,
+  selectedOutfit,
+  selectedHairColorId,
+  selectedBodyTone,
+}: {
+  selectedFace: AvatarOption;
+  selectedHair: AvatarOption;
+  selectedOutfit: AvatarOption;
+  selectedHairColorId: HairColorId;
+  selectedBodyTone: BodyToneId;
+}) {
+  const bodyAsset = bodyPreviewAssets[selectedBodyTone] ?? bodyPreviewAssets.light;
+  const outfitType = getPreviewOutfitType(selectedOutfit);
+  const outfitAsset = outfitPreviewAssets[outfitType] ?? outfitPreviewAssets.short;
+  const hairStyleNumber = getOptionNumber(selectedHair.id);
+  const hairAsset = hairPreviewAssets[selectedHairColorId]?.[hairStyleNumber] ?? hairPreviewAssets.brown[1];
+  const faceAsset = facePreviewAssetsById[selectedFace.id] ?? facePreviewAssetPaths[0];
+
   return (
     <section className="relative min-h-[440px] overflow-hidden rounded-[51px] border-2 border-white bg-white/10 shadow-[0_2px_17.7px_rgba(104,94,235,0.31)] backdrop-blur-[4px] lg:min-h-[539px]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_26%_18%,rgba(217,255,244,0.95),rgba(255,255,255,0.46)_43%,rgba(213,210,255,0.74)_100%)]" />
       <div className="relative flex h-full min-h-[440px] items-center justify-center lg:min-h-[539px]">
-        <div className="relative h-[360px] w-[260px] lg:h-[430px] lg:w-[318px]">
-          {/* Full layered avatar compositing is intentionally deferred because the current prototype assets are not a complete aligned compositing system. */}
-          <Image src={avatarPreviewAsset} alt="Avatar preview" fill sizes="318px" className="object-contain" priority />
+        <div className="relative aspect-square w-[260px] max-w-full lg:w-[318px]" aria-label="Avatar preview">
+          <PreviewLayer src={bodyAsset.src} fallbackSrc={bodyAsset.fallbackSrc} className="absolute inset-0 h-full w-full object-contain" />
+          <PreviewLayer src={outfitAsset} className="absolute inset-0 h-full w-full object-contain" />
+          <PreviewLayer
+            src={faceAsset}
+            className="absolute h-auto object-contain"
+            style={FACE_PREVIEW_PLACEMENT}
+          />
+          <PreviewLayer src={hairAsset} className="absolute inset-0 h-full w-full object-contain" />
         </div>
       </div>
     </section>
@@ -571,7 +692,13 @@ export function AvatarCreationPage() {
         </header>
 
         <div className="mt-[48px] grid items-stretch gap-[12px] lg:grid-cols-[436px_minmax(430px,522px)_338px]">
-          <AvatarPreview />
+          <AvatarPreview
+            selectedFace={selectedFace}
+            selectedHair={selectedHair}
+            selectedOutfit={selectedOutfit}
+            selectedHairColorId={selectedHairColorId}
+            selectedBodyTone={selectedBodyTone}
+          />
 
           <AvatarOptionsPanel
             activeTab={activeTab}
