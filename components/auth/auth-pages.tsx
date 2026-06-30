@@ -8,7 +8,7 @@ import { Check, Eye, EyeOff, Lock, Mail, ShieldCheck, UserRound } from 'lucide-r
 import { cn } from '@/lib/utils';
 import { type AppRole, normalizeAppRole, ROLE_STORAGE_KEY } from '@/lib/types';
 
-const WARP_LOGO = '/assets/dashboard-employer/branding/warp-logo.svg';
+const WARP_LOGO = '/assets/figma-export/logo/warp-logo-full.svg';
 
 const DEMO_CREDENTIALS = {
   owner: { password: 'owner', role: 'owner', destination: '/owner' },
@@ -40,7 +40,7 @@ function AuthShell({
       <div className="grid min-h-screen lg:grid-cols-[minmax(420px,0.92fr)_minmax(520px,1fr)]">
         <section className="relative hidden overflow-hidden bg-[#e2e0f0] p-[34px] lg:block">
           <div className="flex h-full flex-col rounded-[28px] bg-[linear-gradient(145deg,#f5f3ff_0%,#eef8fb_55%,#ffffff_100%)] p-[34px] shadow-[0_18px_48px_rgba(104,94,235,0.14)]">
-            <Image src={WARP_LOGO} alt="Warp" width={119} height={29} priority className="h-[29px] w-auto" />
+            <Image src={WARP_LOGO} alt="Warp" width={81} height={29} priority className="h-[29px] w-auto" />
 
             <div className="mt-auto">
               <p className="text-[13px] font-bold uppercase tracking-[0.08em] text-[#685eeb]">{eyebrow}</p>
@@ -103,7 +103,7 @@ function AuthCard({
   return (
     <div className="w-full max-w-[470px]">
       <div className="mb-[34px] flex justify-center lg:hidden">
-        <Image src={WARP_LOGO} alt="Warp" width={119} height={29} priority className="h-[29px] w-auto" />
+        <Image src={WARP_LOGO} alt="Warp" width={81} height={29} priority className="h-[29px] w-auto" />
       </div>
       <div className="rounded-[28px] border border-[#e2e0f0] bg-white px-[28px] py-[30px] shadow-[0_20px_46px_rgba(104,94,235,0.10)] sm:px-[38px] sm:py-[38px]">
         <h2 className="warp-font-header text-[36px] font-extrabold leading-none tracking-[-0.04em] text-black">{title}</h2>

@@ -46,7 +46,7 @@ import { type RoomCapacity, type RoomInvite, type WorkspaceRoom, useRoomStore } 
 import { EmployerTaskManagementPage } from './employer-task-management-page';
 
 const EMPLOYER_DASHBOARD_ASSETS = {
-  logo: '/assets/dashboard-employer/branding/warp-logo.svg',
+  logo: '/assets/figma-export/logo/warp-logo-full.svg',
   joinRoom: '/assets/dashboard-employer/cards/join-room.png',
   createRoom: '/assets/dashboard-employer/cards/create-room.png',
   roomPreview: '/assets/dashboard-employer/hero/dashboard-room-preview.png',
@@ -485,7 +485,7 @@ function WarpMark() {
       <Image
         src={EMPLOYER_DASHBOARD_ASSETS.logo}
         alt="Warp"
-        width={119}
+        width={81}
         height={29}
         priority
         className="h-[29px] w-auto"

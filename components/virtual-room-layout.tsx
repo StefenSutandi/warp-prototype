@@ -86,8 +86,8 @@ const VIRTUAL_ROOM_OPTIONS = [
 ] as const;
 
 const VIRTUAL_ROOM_LOCAL_ASSETS = {
-  logo: '/assets/dashboard-employer/branding/warp-logo.svg',
-  logoMark: '/assets/virtual-room/logo/logo.svg',
+  logo: '/assets/figma-export/logo/warp-logo-full.svg',
+  logoMark: '/assets/figma-export/logo/warp-logo-mark.svg',
   tomato: '/assets/virtual-room/ui/tomato.png',
   start: '/assets/virtual-room/ui/start.png',
   pause: '/assets/virtual-room/ui/pause.png',
@@ -393,7 +393,7 @@ function IconExit() {
 function WarpLogo() {
   return (
     <div className="flex h-[45px] w-[45px] items-center justify-center rounded-[14px] bg-[#f7f5ff]">
-      <img src={VIRTUAL_ROOM_LOCAL_ASSETS.logoMark} alt="WARP" className="block h-[29px] w-[40px] object-contain" />
+      <img src={VIRTUAL_ROOM_LOCAL_ASSETS.logoMark} alt="WARP" className="block h-[29px] w-auto object-contain" />
     </div>
   );
 }
