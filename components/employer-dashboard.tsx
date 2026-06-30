@@ -10,6 +10,7 @@ import {
   CalendarClock,
   ChartColumnBig,
   Check,
+  Copy,
   ClipboardCheck,
   DoorOpen,
   Edit3,
@@ -41,7 +42,7 @@ import {
 import { cn } from '@/lib/utils';
 import { type Role, type User } from '@/lib/types';
 import { useAvatarStore } from '@/stores/useAvatarStore';
-import { type RoomCapacity, type WorkspaceRoom, useRoomStore } from '@/stores/useRoomStore';
+import { type RoomCapacity, type RoomInvite, type WorkspaceRoom, useRoomStore } from '@/stores/useRoomStore';
 import { EmployerTaskManagementPage } from './employer-task-management-page';
 
 const EMPLOYER_DASHBOARD_ASSETS = {
@@ -636,18 +637,30 @@ function HeroPanel({
             </button>
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={onEnterWorkspace}
-            className={cn(
-              'mt-[18px] inline-flex h-[38px] items-center gap-[8px] rounded-[12px] bg-[linear-gradient(97deg,#685eeb_2%,#7970f0_56%,#a29bfc_111%)] px-[18px] text-[12px] font-extrabold text-white shadow-[0_12px_24px_rgba(104,94,235,0.22)] hover:brightness-[1.03] active:brightness-95',
-              purplePressClass
-            )}
-          >
-            <DoorOpen className="h-4 w-4" strokeWidth={1.8} />
-            Enter Workspace
-            <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.2} />
-          </button>
+          <div className="mt-[18px] flex flex-wrap items-center gap-[10px]">
+            <button
+              type="button"
+              onClick={onJoinRoom}
+              className={cn(
+                'inline-flex h-[38px] items-center gap-[8px] rounded-[12px] bg-[linear-gradient(97deg,#685eeb_2%,#7970f0_56%,#a29bfc_111%)] px-[18px] text-[12px] font-extrabold text-white shadow-[0_12px_24px_rgba(104,94,235,0.22)] hover:brightness-[1.03] active:brightness-95',
+                purplePressClass
+              )}
+            >
+              <Hash className="h-4 w-4" strokeWidth={1.8} />
+              Join Room Code
+            </button>
+            <button
+              type="button"
+              onClick={onEnterWorkspace}
+              className={cn(
+                'inline-flex h-[38px] items-center gap-[7px] rounded-[12px] border border-[#d8d3f2] bg-white px-[14px] text-[12px] font-medium text-[#685eeb] shadow-[0_8px_16px_rgba(104,94,235,0.08)] hover:bg-[#f1eeff]',
+                purplePressClass
+              )}
+            >
+              <DoorOpen className="h-4 w-4" strokeWidth={1.8} />
+              Enter Workspace
+            </button>
+          </div>
         )}
       </div>
 
@@ -1512,6 +1525,82 @@ function InsertRoomCodeModal({
           Confirm
         </button>
       </form>
+    </div>
+  );
+}
+
+function WorkspaceCreatedModal({
+  invite,
+  onEnterWorkspace,
+  onLater,
+}: {
+  invite: RoomInvite;
+  onEnterWorkspace: () => void;
+  onLater: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const copyInviteLink = async () => {
+    try {
+      await navigator.clipboard.writeText(invite.inviteLink);
+      setCopied(true);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = invite.inviteLink;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      textarea.remove();
+      setCopied(true);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#111111]/30 px-4 py-6 backdrop-blur-[2px]" role="presentation">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="workspace-created-title"
+        className="w-full max-w-[620px] rounded-[28px] border border-[#e2e0f0] bg-white px-[42px] py-[40px] text-center shadow-[0_22px_60px_rgba(72,66,140,0.18)]"
+      >
+        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#e9fff8] text-[#54b499]">
+          <Check className="h-7 w-7" strokeWidth={2.5} />
+        </span>
+        <h2 id="workspace-created-title" className="mt-5 text-[28px] font-extrabold tracking-[-0.03em] text-[#111111]">
+          Your Workspace is Ready!
+        </h2>
+        <p className="mx-auto mt-3 max-w-[470px] text-sm leading-6 text-[#6f6a87]">
+          Workspace <strong className="text-[#685eeb]">{invite.name}</strong> has been created. Invite teammates with the room code or link below.
+        </p>
+
+        <div className="mt-7 rounded-[18px] border border-[#ded9f2] bg-[#faf9ff] p-5">
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#9b96b8]">Room code</p>
+          <p className="mt-2 text-[32px] font-extrabold tracking-[0.18em] text-[#111111]">{invite.code}</p>
+          <p className="mt-3 truncate rounded-[10px] bg-white px-3 py-2 text-xs text-[#6f6a87]">{invite.inviteLink}</p>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={copyInviteLink}
+            className={cn('inline-flex h-[48px] items-center justify-center gap-2 rounded-[13px] border border-[#a29bfc] bg-white text-sm font-semibold text-[#685eeb] hover:bg-[#f7f5ff]', purplePressClass)}
+          >
+            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {copied ? 'Invite Link Copied' : 'Copy Invite Link'}
+          </button>
+          <button
+            type="button"
+            onClick={onEnterWorkspace}
+            className={cn('inline-flex h-[48px] items-center justify-center gap-2 rounded-[13px] bg-[#685eeb] text-sm font-bold text-white shadow-[0_12px_24px_rgba(104,94,235,0.22)] hover:bg-[#5d54df]', purplePressClass)}
+          >
+            Enter Workspace
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+        <button type="button" onClick={onLater} className="mt-5 text-sm font-semibold text-[#85809d] hover:text-[#685eeb]">
+          Later / Back to Dashboard
+        </button>
+      </section>
     </div>
   );
 }
@@ -2855,11 +2944,16 @@ const DEFAULT_WORKSPACE_ROOMS: WorkspaceRoom[] = [
 
 function EmployerCreateRoomFlow({
   onBack,
+  createdByRole,
+  onCreated,
 }: {
   onBack: () => void;
+  createdByRole: Role;
+  onCreated: (invite: RoomInvite) => void;
 }) {
   const savedSetup = useRoomStore((state) => state.roomConfig);
   const saveRoomSetup = useRoomStore((state) => state.saveRoomSetup);
+  const createRoomInvite = useRoomStore((state) => state.createRoomInvite);
 
   const [flowStep, setFlowStep] = useState<'setup' | 'timeline'>('setup');
   const [projectName, setProjectName] = useState(savedSetup?.projectName ?? '');
@@ -2928,7 +3022,14 @@ function EmployerCreateRoomFlow({
       projectDuration,
       rooms: rooms.map((room) => ({ ...room, name: room.name.trim() })),
     });
+    const primaryRoom = rooms[0];
+    const invite = createRoomInvite({
+      id: primaryRoom.id,
+      name: normalizedProjectName,
+      createdByRole,
+    });
     setFlowStep('timeline');
+    onCreated(invite);
   };
 
   return (
@@ -3147,7 +3248,9 @@ export function EmployerDashboard({ user, onEnterWorkspace }: { user: User; onEn
   const [selectedChatTeammate, setSelectedChatTeammate] = useState<TeamMemberProfile | null>(null);
   const [isRoomCodeModalOpen, setIsRoomCodeModalOpen] = useState(false);
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
+  const [createdInvite, setCreatedInvite] = useState<RoomInvite | null>(null);
   const [roomCode, setRoomCode] = useState('');
+  const joinRoomByCode = useRoomStore((state) => state.joinRoomByCode);
   const avatarProfile = useAvatarStore((state) => state.profile);
 
   const displayName = avatarProfile.displayName.trim() || user.name;
@@ -3170,7 +3273,7 @@ export function EmployerDashboard({ user, onEnterWorkspace }: { user: User; onEn
     const trimmedRoomCode = roomCode.trim();
     if (!trimmedRoomCode) return;
 
-    console.log('Join employer room with code:', trimmedRoomCode);
+    joinRoomByCode(trimmedRoomCode);
     closeRoomCodeModal();
     setRoomCode('');
     onEnterWorkspace();
@@ -3213,7 +3316,11 @@ export function EmployerDashboard({ user, onEnterWorkspace }: { user: User; onEn
                   canManageRooms={canManageRooms}
                 />
               ) : (
-                <EmployerCreateRoomFlow onBack={() => setStage('dashboard')} />
+                <EmployerCreateRoomFlow
+                  onBack={() => setStage('dashboard')}
+                  createdByRole={user.role}
+                  onCreated={setCreatedInvite}
+                />
               )}
             </>
           )}
@@ -3229,7 +3336,7 @@ export function EmployerDashboard({ user, onEnterWorkspace }: { user: User; onEn
         ) : null}
       </div>
 
-      {canManageRooms && isRoomCodeModalOpen ? (
+      {isRoomCodeModalOpen ? (
         <InsertRoomCodeModal
           roomCode={roomCode}
           onRoomCodeChange={setRoomCode}
@@ -3239,6 +3346,19 @@ export function EmployerDashboard({ user, onEnterWorkspace }: { user: User; onEn
       ) : null}
       {isBroadcastModalOpen ? (
         <BroadcastMessageModal onClose={() => setIsBroadcastModalOpen(false)} />
+      ) : null}
+      {createdInvite ? (
+        <WorkspaceCreatedModal
+          invite={createdInvite}
+          onEnterWorkspace={() => {
+            setCreatedInvite(null);
+            onEnterWorkspace();
+          }}
+          onLater={() => {
+            setCreatedInvite(null);
+            setStage('dashboard');
+          }}
+        />
       ) : null}
     </div>
   );
