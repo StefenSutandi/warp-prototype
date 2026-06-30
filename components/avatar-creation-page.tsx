@@ -1,9 +1,9 @@
 'use client';
 
 import Image from 'next/image';
-import { type CSSProperties, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Pencil, Plus, X } from 'lucide-react';
+import { ChevronRight, Pencil, Plus, Redo2, Undo2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getRoleDestination, normalizeAppRole, ROLE_STORAGE_KEY } from '@/lib/types';
 import { useAvatarStore } from '@/stores/useAvatarStore';
@@ -17,7 +17,17 @@ type AvatarOption = {
   id: string;
   label: string;
   src: string;
+  optionCardSrc?: string;
+  previewLayerSrc?: string;
   closedSrc?: string;
+};
+
+type AvatarSelectionSnapshot = {
+  face: AvatarOption;
+  hair: AvatarOption;
+  outfit: AvatarOption;
+  hairColorId: HairColorId;
+  bodyTone: BodyToneId;
 };
 
 type ColorOption = {
@@ -41,6 +51,7 @@ const avatarTabs: { id: AvatarTab; label: string }[] = [
 ];
 
 const AVATAR_CUSTOMIZATION_ASSET_BASE = '/assets/figma-export/avatar-customization';
+const WARP_COIN_ASSET = `${AVATAR_CUSTOMIZATION_ASSET_BASE}/icons/warp-coin.svg`;
 
 const bodyPreviewAssets: Record<BodyToneId, { src: string; fallbackSrc: string }> = {
   light: {
@@ -85,30 +96,36 @@ const hairPreviewAssets: Record<HairColorId, Record<number, string>> = {
   },
 };
 
-const facePreviewAssetPaths = [
-  `${AVATAR_CUSTOMIZATION_ASSET_BASE}/face/face-1.png`,
-  `${AVATAR_CUSTOMIZATION_ASSET_BASE}/face/face-2.png`,
-  `${AVATAR_CUSTOMIZATION_ASSET_BASE}/face/face-3.png`,
-  `${AVATAR_CUSTOMIZATION_ASSET_BASE}/face/face-4.png`,
-] as const;
-
-const FACE_PREVIEW_PLACEMENT = {
-  top: '27%',
-  left: '30%',
-  width: '42%',
-} as const;
-
 const faceOptions: AvatarOption[] = [
-  { id: 'face-1-default', label: 'Face 1 default', src: '/assets/avatar/face/Layer_1-2.png' },
-  { id: 'face-2-default', label: 'Face 2 default', src: '/assets/avatar/face/Layer_1-3.png' },
-  { id: 'face-3-default', label: 'Face 3 default', src: '/assets/avatar/face/Layer_1-5.png' },
-  { id: 'face-4-default', label: 'Face 4 default', src: '/assets/avatar/face/Layer_1-7.png' },
+  {
+    id: 'face-1-default',
+    label: 'Face 1 default',
+    src: '/assets/avatar/face/Layer_1-2.png',
+    optionCardSrc: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/face/face-1.png`,
+    previewLayerSrc: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/face-preview/face-1-default-fr.png`,
+  },
+  {
+    id: 'face-2-default',
+    label: 'Face 2 default',
+    src: '/assets/avatar/face/Layer_1-3.png',
+    optionCardSrc: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/face/face-2.png`,
+    previewLayerSrc: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/face-preview/face-2-default-fr.png`,
+  },
+  {
+    id: 'face-3-default',
+    label: 'Face 3 default',
+    src: '/assets/avatar/face/Layer_1-5.png',
+    optionCardSrc: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/face/face-3.png`,
+    previewLayerSrc: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/face-preview/face-3-default-fr.png`,
+  },
+  {
+    id: 'face-4-default',
+    label: 'Face 4 default',
+    src: '/assets/avatar/face/Layer_1-7.png',
+    optionCardSrc: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/face/face-4.png`,
+    previewLayerSrc: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/face-preview/face-4-default-fr.png`,
+  },
 ];
-
-const facePreviewAssetsById = faceOptions.reduce<Record<string, string>>((assets, option, index) => {
-  assets[option.id] = facePreviewAssetPaths[index] ?? facePreviewAssetPaths[0];
-  return assets;
-}, {});
 
 const hairOptionsByColor: Record<HairColorId, AvatarOption[]> = {
   dark: [
@@ -282,15 +299,17 @@ function AvatarOptionCard({
   option,
   selected,
   onSelect,
+  locked = false,
   compact = false,
 }: {
   option?: AvatarOption;
   selected?: boolean;
   onSelect?: () => void;
+  locked?: boolean;
   compact?: boolean;
 }) {
   const cardClassName = cn(
-    'flex items-center justify-center rounded-[10px] border-2',
+    'relative flex items-center justify-center rounded-[10px] border-2',
     compact ? 'h-[104px] p-[7px] sm:h-[122px]' : 'h-[110px] p-[10px] sm:h-[155px]'
   );
 
@@ -302,9 +321,11 @@ function AvatarOptionCard({
     <button
       type="button"
       onClick={onSelect}
+      disabled={locked}
       className={cn(
         cardClassName,
         'group transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB] focus-visible:ring-offset-2',
+        locked && 'cursor-not-allowed border-[#DFDFDF] bg-[#F0F0F0] grayscale-[0.35]',
         selected
           ? 'border-[#685EEB] bg-white shadow-[0_9px_20px_rgba(104,94,235,0.14)]'
           : 'border-[#DFDFDF] bg-[#F0F0F0] hover:border-[#B9B4FF] hover:bg-white/80'
@@ -312,9 +333,15 @@ function AvatarOptionCard({
       aria-pressed={selected}
     >
       <span className="sr-only">{option.label}</span>
-      <span className={cn('relative', compact ? 'h-[78px] w-[86px] sm:h-[92px] sm:w-[102px]' : 'h-[78px] w-[78px] sm:h-[115px] sm:w-[115px]')}>
-        <Image src={option.src} alt="" fill sizes={compact ? '102px' : '115px'} className="object-contain" />
+      <span className={cn('relative', locked && 'opacity-35', compact ? 'h-[78px] w-[86px] sm:h-[92px] sm:w-[102px]' : 'h-[78px] w-[78px] sm:h-[115px] sm:w-[115px]')}>
+        <Image src={option.optionCardSrc ?? option.src} alt="" fill sizes={compact ? '102px' : '115px'} className="object-contain" />
       </span>
+      {locked ? (
+        <span className="absolute bottom-[8px] left-1/2 inline-flex h-[34px] -translate-x-1/2 items-center gap-[4px] rounded-full border-2 border-[#685EEB] bg-[#F0EFF8] px-[7px] text-[17px] font-semibold text-[#685EEB] shadow-[0_4px_10px_rgba(104,94,235,0.14)]">
+          <Image src={WARP_COIN_ASSET} alt="" width={22} height={22} className="h-[22px] w-[22px]" />
+          200
+        </span>
+      ) : null}
     </button>
   );
 }
@@ -323,12 +350,10 @@ function PreviewLayer({
   src,
   fallbackSrc,
   className,
-  style,
 }: {
   src: string;
   fallbackSrc?: string;
   className?: string;
-  style?: CSSProperties;
 }) {
   return (
     <img
@@ -336,7 +361,6 @@ function PreviewLayer({
       alt=""
       className={cn('pointer-events-none select-none', className)}
       draggable={false}
-      style={style}
       onError={(event) => {
         if (!fallbackSrc || event.currentTarget.src.endsWith(fallbackSrc)) return;
         event.currentTarget.src = fallbackSrc;
@@ -351,34 +375,62 @@ function AvatarPreview({
   selectedOutfit,
   selectedHairColorId,
   selectedBodyTone,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
 }: {
   selectedFace: AvatarOption;
   selectedHair: AvatarOption;
   selectedOutfit: AvatarOption;
   selectedHairColorId: HairColorId;
   selectedBodyTone: BodyToneId;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
 }) {
   const bodyAsset = bodyPreviewAssets[selectedBodyTone] ?? bodyPreviewAssets.light;
   const outfitType = getPreviewOutfitType(selectedOutfit);
   const outfitAsset = outfitPreviewAssets[outfitType] ?? outfitPreviewAssets.short;
   const hairStyleNumber = getOptionNumber(selectedHair.id);
   const hairAsset = hairPreviewAssets[selectedHairColorId]?.[hairStyleNumber] ?? hairPreviewAssets.brown[1];
-  const faceAsset = facePreviewAssetsById[selectedFace.id] ?? facePreviewAssetPaths[0];
+  const faceAsset = selectedFace.previewLayerSrc ?? faceOptions[0].previewLayerSrc!;
 
   return (
     <section className="relative min-h-[440px] overflow-hidden rounded-[51px] border-2 border-white bg-white/10 shadow-[0_2px_17.7px_rgba(104,94,235,0.31)] backdrop-blur-[4px] lg:min-h-[539px]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_26%_18%,rgba(217,255,244,0.95),rgba(255,255,255,0.46)_43%,rgba(213,210,255,0.74)_100%)]" />
+      <div className="absolute left-[14px] top-[14px] z-10 inline-flex h-[40px] items-center gap-[6px] rounded-full border-2 border-[#685EEB] bg-[#F0EFF8] px-[9px] text-[20px] font-semibold text-[#111111] shadow-[0_5px_14px_rgba(104,94,235,0.12)] lg:left-[26px] lg:top-[22px]">
+        <Image src={WARP_COIN_ASSET} alt="WARP coin" width={26} height={26} className="h-[26px] w-[26px]" />
+        <span>200</span>
+      </div>
       <div className="relative flex h-full min-h-[440px] items-center justify-center lg:min-h-[539px]">
         <div className="relative aspect-square w-[260px] max-w-full lg:w-[318px]" aria-label="Avatar preview">
           <PreviewLayer src={bodyAsset.src} fallbackSrc={bodyAsset.fallbackSrc} className="absolute inset-0 h-full w-full object-contain" />
           <PreviewLayer src={outfitAsset} className="absolute inset-0 h-full w-full object-contain" />
-          <PreviewLayer
-            src={faceAsset}
-            className="absolute h-auto object-contain"
-            style={FACE_PREVIEW_PLACEMENT}
-          />
           <PreviewLayer src={hairAsset} className="absolute inset-0 h-full w-full object-contain" />
+          <PreviewLayer src={faceAsset} className="absolute inset-0 h-full w-full object-contain" />
         </div>
+      </div>
+      <div className="absolute bottom-[16px] left-1/2 z-10 flex -translate-x-1/2 items-center gap-[10px]">
+        <button
+          type="button"
+          onClick={onUndo}
+          disabled={!canUndo}
+          aria-label="Undo avatar change"
+          className="flex h-[46px] w-[46px] items-center justify-center rounded-full text-[#858585] transition hover:bg-white/60 hover:text-[#685EEB] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-[#858585] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB]"
+        >
+          <Undo2 className="h-[34px] w-[34px]" strokeWidth={2.2} />
+        </button>
+        <button
+          type="button"
+          onClick={onRedo}
+          disabled={!canRedo}
+          aria-label="Redo avatar change"
+          className="flex h-[46px] w-[46px] items-center justify-center rounded-full text-[#858585] transition hover:bg-white/60 hover:text-[#685EEB] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-[#858585] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB]"
+        >
+          <Redo2 className="h-[34px] w-[34px]" strokeWidth={2.2} />
+        </button>
       </div>
     </section>
   );
@@ -466,12 +518,19 @@ function AvatarOptionsPanel({
             )}
           >
             {optionCards.map((option, index) => {
+              const locked = Boolean(
+                option && (
+                  (activeTab === 'face' && option.id === 'face-4-default') ||
+                  (activeTab === 'hair' && option.id.endsWith('-4')) ||
+                  (activeTab === 'outfit' && option.id === 'outfit-4')
+                )
+              );
               const selected =
                 (activeTab === 'face' && option?.id === selectedFace.id) ||
                 (activeTab === 'hair' && option?.id === selectedHair.id) ||
                 (activeTab === 'outfit' && option?.id === selectedOutfit.id);
               const handleSelect = () => {
-                if (!option) return;
+                if (!option || locked) return;
                 if (activeTab === 'face') setSelectedFace(option);
                 if (activeTab === 'hair') setSelectedHair(option);
                 if (activeTab === 'outfit') setSelectedOutfit(option);
@@ -483,6 +542,7 @@ function AvatarOptionsPanel({
                   option={option}
                   selected={selected}
                   onSelect={handleSelect}
+                  locked={locked}
                   compact={activeTab === 'face' || activeTab === 'hair'}
                 />
               );
@@ -618,10 +678,75 @@ export function AvatarCreationPage() {
     findAvatarOption(outfitOptions, avatarSelection.selectedOutfitId, outfitOptions[2])
   );
   const [selectedBodyTone, setSelectedBodyTone] = useState<BodyToneId>(initialBodyTone);
+  const [undoStack, setUndoStack] = useState<AvatarSelectionSnapshot[]>([]);
+  const [redoStack, setRedoStack] = useState<AvatarSelectionSnapshot[]>([]);
   const [displayName, setDisplayName] = useState(() => avatarProfile.displayName);
   const [position, setPosition] = useState(() => avatarProfile.position);
   const [interests, setInterests] = useState<string[]>(() => avatarProfile.interests.length > 0 ? avatarProfile.interests : defaultInterests);
   const [bio, setBio] = useState(() => avatarProfile.bio);
+
+  const currentSelectionSnapshot = (): AvatarSelectionSnapshot => ({
+    face: selectedFace,
+    hair: selectedHair,
+    outfit: selectedOutfit,
+    hairColorId: selectedHairColorId,
+    bodyTone: selectedBodyTone,
+  });
+
+  const restoreSelectionSnapshot = (snapshot: AvatarSelectionSnapshot) => {
+    setSelectedFace(snapshot.face);
+    setSelectedHair(snapshot.hair);
+    setSelectedOutfit(snapshot.outfit);
+    setSelectedHairColorId(snapshot.hairColorId);
+    setSelectedBodyTone(snapshot.bodyTone);
+  };
+
+  const recordSelectionChange = () => {
+    setUndoStack((history) => [...history.slice(-19), currentSelectionSnapshot()]);
+    setRedoStack([]);
+  };
+
+  const handleUndo = () => {
+    const previous = undoStack.at(-1);
+    if (!previous) return;
+
+    setRedoStack((history) => [...history.slice(-19), currentSelectionSnapshot()]);
+    setUndoStack((history) => history.slice(0, -1));
+    restoreSelectionSnapshot(previous);
+  };
+
+  const handleRedo = () => {
+    const next = redoStack.at(-1);
+    if (!next) return;
+
+    setUndoStack((history) => [...history.slice(-19), currentSelectionSnapshot()]);
+    setRedoStack((history) => history.slice(0, -1));
+    restoreSelectionSnapshot(next);
+  };
+
+  const handleFaceSelect = (option: AvatarOption) => {
+    if (option.id === selectedFace.id) return;
+    recordSelectionChange();
+    setSelectedFace(option);
+  };
+
+  const handleHairSelect = (option: AvatarOption) => {
+    if (option.id === selectedHair.id) return;
+    recordSelectionChange();
+    setSelectedHair(option);
+  };
+
+  const handleOutfitSelect = (option: AvatarOption) => {
+    if (option.id === selectedOutfit.id) return;
+    recordSelectionChange();
+    setSelectedOutfit(option);
+  };
+
+  const handleBodyToneSelect = (tone: BodyToneId) => {
+    if (tone === selectedBodyTone) return;
+    recordSelectionChange();
+    setSelectedBodyTone(tone);
+  };
 
   const handleDisplayNameChange = (value: string) => {
     setDisplayName(value);
@@ -668,6 +793,8 @@ export function AvatarCreationPage() {
   };
 
   const handleHairColorSelect = (colorId: HairColorId) => {
+    if (colorId === selectedHairColorId) return;
+    recordSelectionChange();
     const nextHairOptions = selectableHairOptionsByColor[colorId];
     setSelectedHairColorId(colorId);
     if (!nextHairOptions.some((option) => option.id === selectedHair.id)) {
@@ -687,7 +814,7 @@ export function AvatarCreationPage() {
             Create your <span className="bg-[linear-gradient(90deg,#685EEB_18%,#46D2D2_100%)] bg-clip-text text-transparent">Avatar</span>
           </h1>
           <p className="mt-[8px] text-[17px] font-light text-[#656565] sm:text-[20px]">
-            Customize how you appear in your virtual workspace. Make it yours.
+            Customize how you appear in your virtual workspace - make it you!
           </p>
         </header>
 
@@ -698,21 +825,25 @@ export function AvatarCreationPage() {
             selectedOutfit={selectedOutfit}
             selectedHairColorId={selectedHairColorId}
             selectedBodyTone={selectedBodyTone}
+            canUndo={undoStack.length > 0}
+            canRedo={redoStack.length > 0}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
           />
 
           <AvatarOptionsPanel
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             selectedFace={selectedFace}
-            setSelectedFace={setSelectedFace}
+            setSelectedFace={handleFaceSelect}
             selectedHair={selectedHair}
-            setSelectedHair={setSelectedHair}
+            setSelectedHair={handleHairSelect}
             selectedOutfit={selectedOutfit}
-            setSelectedOutfit={setSelectedOutfit}
+            setSelectedOutfit={handleOutfitSelect}
             selectedHairColorId={selectedHairColorId}
             setSelectedHairColorId={handleHairColorSelect}
             selectedBodyTone={selectedBodyTone}
-            setSelectedBodyTone={setSelectedBodyTone}
+            setSelectedBodyTone={handleBodyToneSelect}
           />
 
           <ProfileInfoCard
@@ -740,7 +871,7 @@ export function AvatarCreationPage() {
             onClick={handleContinue}
             className="inline-flex h-[38px] items-center justify-center gap-2 rounded-[10px] bg-[#685EEB] px-[23px] text-[16px] font-semibold text-white shadow-[0_12px_24px_rgba(104,94,235,0.2)] transition hover:bg-[#5E54D8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB] focus-visible:ring-offset-2"
           >
-            Continue
+            Save &amp; Continue
             <ChevronRight className="h-4 w-4" strokeWidth={2.4} />
           </button>
         </div>
