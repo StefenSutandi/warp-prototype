@@ -6,6 +6,7 @@ export interface WorkspaceRoom {
   id: string;
   name: string;
   capacity: RoomCapacity;
+  theme?: 'studio' | 'focus';
 }
 
 export interface RoomConfig {
@@ -44,6 +45,7 @@ interface RoomState {
   roomInvites: RoomInvite[];
   activeRoom: RoomInvite | null;
   saveRoomSetup: (config: RoomConfig) => void;
+  saveRoomAdministration: (rooms: WorkspaceRoom[], createdByRole: RoomInvite['createdByRole']) => RoomInvite[];
   createRoomInvite: (room: Pick<RoomInvite, 'id' | 'name' | 'createdByRole'>) => RoomInvite;
   joinRoomByCode: (code: string) => RoomInvite;
   resetRoom: () => void;
@@ -54,6 +56,39 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   roomInvites: [],
   activeRoom: null,
   saveRoomSetup: (config) => set({ roomConfig: config }),
+  saveRoomAdministration: (rooms, createdByRole) => {
+    const currentState = get();
+    const existingInvitesById = new Map(currentState.roomInvites.map((invite) => [invite.id, invite]));
+    const roomInvites = rooms.map((room) => {
+      const existingInvite = existingInvitesById.get(room.id);
+      if (existingInvite) {
+        return { ...existingInvite, name: room.name };
+      }
+
+      const code = createRoomCode(room.id, room.name);
+      return {
+        id: room.id,
+        name: room.name,
+        code,
+        inviteLink: createInviteLink(code),
+        createdByRole,
+      };
+    });
+
+    set({
+      roomConfig: {
+        projectName: currentState.roomConfig?.projectName ?? 'WARP Workspace',
+        workingHours: currentState.roomConfig?.workingHours ?? '09:00 – 17:00',
+        projectDuration: currentState.roomConfig?.projectDuration ?? '9 months',
+        rooms,
+      },
+      roomInvites,
+      activeRoom: currentState.activeRoom
+        ? roomInvites.find((invite) => invite.id === currentState.activeRoom?.id) ?? currentState.activeRoom
+        : currentState.activeRoom,
+    });
+    return roomInvites;
+  },
   createRoomInvite: (room) => {
     const code = createRoomCode(room.id, room.name);
     const invite: RoomInvite = {

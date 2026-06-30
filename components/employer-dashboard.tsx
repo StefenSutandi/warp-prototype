@@ -1399,12 +1399,14 @@ function EmployerDashboardHome({
   onJoinRoom,
   onEnterWorkspace,
   onBroadcast,
+  onManageRooms,
   canManageRooms,
 }: {
   onCreateRoom: () => void;
   onJoinRoom: () => void;
   onEnterWorkspace: () => void;
   onBroadcast: () => void;
+  onManageRooms: () => void;
   canManageRooms: boolean;
 }) {
   return (
@@ -1421,8 +1423,8 @@ function EmployerDashboardHome({
           <DashboardCard
             title="Your Rooms"
             action={
-              <button type="button" className="text-[14px] font-semibold text-[#685eeb] transition hover:text-[#4f45d9]">
-                View all
+              <button type="button" onClick={onManageRooms} className="text-[14px] font-semibold text-[#685eeb] transition hover:text-[#4f45d9]">
+                Room Administration
               </button>
             }
           >
@@ -2442,16 +2444,19 @@ function TaskActivityCard({
   );
 }
 
-export function WorkspaceSettingsPage({ role = 'owner' }: { role?: Role }) {
-  const [selectedRoomId, setSelectedRoomId] = useState('artist-room-main');
-  const [roomName, setRoomName] = useState('Artist Room');
-  const [capacity, setCapacity] = useState<6 | 10 | 16>(6);
-  const [selectedTheme, setSelectedTheme] = useState<'studio' | 'locked'>('studio');
-
-  const rooms = [
-    { id: 'artist-room-main', title: roomName || 'Artist Room', capacity, theme: 'Studio', online: 4 },
-    { id: 'artist-room-secondary', title: 'Artist Room', capacity: 6, theme: 'Studio', online: 4 },
-  ] as const;
+export function WorkspaceSettingsPage({ role = 'owner', onBack }: { role?: Role; onBack?: () => void }) {
+  const savedConfig = useRoomStore((state) => state.roomConfig);
+  const saveRoomAdministration = useRoomStore((state) => state.saveRoomAdministration);
+  const initialRooms = savedConfig?.rooms.length
+    ? savedConfig.rooms
+    : [
+        { id: 'artist-room-main', name: 'Artist Room', capacity: 6 as RoomCapacity, theme: 'studio' as const },
+        { id: 'artist-room-secondary', name: 'Focus Room', capacity: 6 as RoomCapacity, theme: 'focus' as const },
+      ];
+  const [rooms, setRooms] = useState<WorkspaceRoom[]>(initialRooms);
+  const [selectedRoomId, setSelectedRoomId] = useState(initialRooms[0].id);
+  const [saveMessage, setSaveMessage] = useState('');
+  const selectedRoom = rooms.find((room) => room.id === selectedRoomId) ?? rooms[0];
 
   const capacityOptions = [
     { value: 6, label: 'small' },
@@ -2459,12 +2464,37 @@ export function WorkspaceSettingsPage({ role = 'owner' }: { role?: Role }) {
     { value: 16, label: 'large' },
   ] as const;
 
-  const handleSaveWorkspace = () => {
-    console.log('Save workspace settings', { selectedRoomId, roomName, capacity, selectedTheme });
+  const updateSelectedRoom = (updates: Partial<Pick<WorkspaceRoom, 'name' | 'capacity' | 'theme'>>) => {
+    setSaveMessage('');
+    setRooms((current) => current.map((room) => (room.id === selectedRoomId ? { ...room, ...updates } : room)));
   };
 
-  const handleSaveRoom = () => {
-    console.log('Save room settings', { selectedRoomId, roomName, capacity, selectedTheme });
+  const addRoom = () => {
+    const id = `room-${Date.now()}`;
+    setRooms((current) => [
+      ...current,
+      { id, name: `Room ${current.length + 1}`, capacity: 6, theme: 'studio' },
+    ]);
+    setSelectedRoomId(id);
+    setSaveMessage('');
+  };
+
+  const deleteRoom = (roomId: string) => {
+    if (rooms.length === 1) return;
+    const nextRooms = rooms.filter((room) => room.id !== roomId);
+    setRooms(nextRooms);
+    if (selectedRoomId === roomId) setSelectedRoomId(nextRooms[0].id);
+    setSaveMessage('');
+  };
+
+  const handleSaveWorkspace = () => {
+    const normalizedRooms = rooms.map((room, index) => ({
+      ...room,
+      name: room.name.trim() || `Room ${index + 1}`,
+    }));
+    setRooms(normalizedRooms);
+    saveRoomAdministration(normalizedRooms, role);
+    setSaveMessage('Workspace rooms saved. Existing invite codes were preserved and new rooms received local codes.');
   };
 
   const canManageRooms = role === 'owner' || role === 'employer';
@@ -2509,6 +2539,7 @@ export function WorkspaceSettingsPage({ role = 'owner' }: { role?: Role }) {
       <div className="flex items-center gap-[12px] border-b border-[#d8d4e8] pb-[20px]">
         <button
           type="button"
+          onClick={onBack}
           className={cn(
             'flex h-[34px] w-[34px] items-center justify-center rounded-[8px] border border-[#e2e0f0] bg-white text-[#9b96b8] hover:border-[#a29bfc] hover:text-[#685eeb]',
             purplePressClass
@@ -2548,7 +2579,7 @@ export function WorkspaceSettingsPage({ role = 'owner' }: { role?: Role }) {
                   )}
                 >
                   <span className="min-w-0">
-                    <span className="block truncate text-[20px] font-semibold text-black">{room.title}</span>
+                    <span className="block truncate text-[20px] font-semibold text-black">{room.name}</span>
                     <span className="mt-[11px] flex flex-wrap items-center gap-x-[24px] gap-y-[7px] text-[14px] font-medium text-black">
                       <span className="inline-flex items-center gap-[5px]">
                         <UsersRound className="h-[15px] w-[15px]" strokeWidth={1.8} />
@@ -2556,11 +2587,11 @@ export function WorkspaceSettingsPage({ role = 'owner' }: { role?: Role }) {
                       </span>
                       <span className="inline-flex items-center gap-[5px]">
                         <Palette className="h-[15px] w-[15px]" strokeWidth={1.8} />
-                        Theme: {room.theme}
+                        Theme: {room.theme === 'focus' ? 'Focus' : 'Studio'}
                       </span>
                       <span className="inline-flex items-center gap-[5px]">
                         <UserPresenceIcon />
-                        {room.online} Online
+                        Demo room
                       </span>
                     </span>
                   </span>
@@ -2580,11 +2611,13 @@ export function WorkspaceSettingsPage({ role = 'owner' }: { role?: Role }) {
                     ) : null}
                     <button
                       type="button"
+                      onClick={() => deleteRoom(room.id)}
                       className={cn(
                         'flex h-[34px] w-[34px] items-center justify-center rounded-[8px] border border-[#a29bfc] bg-white text-[#454545] hover:bg-[#fff4f4] hover:text-[#e05757]',
                         purplePressClass
                       )}
-                      aria-label={`Delete ${room.title}`}
+                      aria-label={`Delete ${room.name}`}
+                      disabled={rooms.length === 1}
                     >
                       <Trash2 className="h-[16px] w-[16px]" strokeWidth={1.9} />
                     </button>
@@ -2596,6 +2629,7 @@ export function WorkspaceSettingsPage({ role = 'owner' }: { role?: Role }) {
 
           <button
             type="button"
+            onClick={addRoom}
             className={cn(
               'mt-[45px] flex h-[45px] w-full items-center justify-center rounded-[10px] border border-[#685eeb] bg-[#f9fbfd] text-[20px] font-medium text-[#685eeb] hover:bg-[#f4f2ff]',
               purplePressClass
@@ -2614,20 +2648,25 @@ export function WorkspaceSettingsPage({ role = 'owner' }: { role?: Role }) {
           >
             Save Changes
           </button>
+          {saveMessage ? (
+            <p role="status" className="mt-3 rounded-[12px] border border-[#bdebdc] bg-[#effcf7] px-4 py-3 text-sm font-semibold text-[#287c63]">
+              {saveMessage}
+            </p>
+          ) : null}
         </section>
 
         <section className="rounded-[17px] border border-[#dedddd] bg-white px-[30px] py-[30px] shadow-[0_10px_28px_rgba(104,94,235,0.05)]">
           <div className="flex items-center gap-[11px]">
             <Edit3 className="h-[16px] w-[16px] text-[#685eeb]" strokeWidth={2} />
-            <h3 className="text-[20px] font-semibold text-black">Edit: Artist Room</h3>
+            <h3 className="text-[20px] font-semibold text-black">Edit: {selectedRoom.name}</h3>
           </div>
 
           <div className="mt-[16px] border-t border-[#dedddd] pt-[16px]">
             <label className="block">
               <span className="mb-[9px] block text-[16px] font-medium text-black">Room name</span>
               <input
-                value={roomName}
-                onChange={(event) => setRoomName(event.target.value)}
+                value={selectedRoom.name}
+                onChange={(event) => updateSelectedRoom({ name: event.target.value })}
                 className="h-[54px] w-full rounded-[15px] border border-[#e2e0f0] bg-white px-[16px] text-[16px] font-medium text-black outline-none transition focus:border-[#685eeb] focus:ring-2 focus:ring-[#685eeb]/10"
               />
             </label>
@@ -2640,10 +2679,10 @@ export function WorkspaceSettingsPage({ role = 'owner' }: { role?: Role }) {
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => setCapacity(option.value)}
+                  onClick={() => updateSelectedRoom({ capacity: option.value })}
                   className={cn(
                     'flex min-h-[46px] flex-col items-center justify-center rounded-[11px] border px-4 py-[8px] text-black transition hover:border-[#685eeb]',
-                    capacity === option.value ? 'border-[#685eeb] bg-[#f5f4ff]' : 'border-[#9b96b8] bg-white'
+                    selectedRoom.capacity === option.value ? 'border-[#685eeb] bg-[#f5f4ff]' : 'border-[#9b96b8] bg-white'
                   )}
                 >
                   <span className="text-[24px] font-semibold leading-none">{option.value}</span>
@@ -2658,10 +2697,10 @@ export function WorkspaceSettingsPage({ role = 'owner' }: { role?: Role }) {
             <div className="mt-[16px] grid gap-[10px] sm:grid-cols-2">
               <button
                 type="button"
-                onClick={() => setSelectedTheme('studio')}
+                onClick={() => updateSelectedRoom({ theme: 'studio' })}
                 className={cn(
                   'rounded-[16px] border p-[8px] transition hover:border-[#685eeb]',
-                  selectedTheme === 'studio' ? 'border-[#685eeb]' : 'border-[#9b96b8]'
+                  selectedRoom.theme !== 'focus' ? 'border-[#685eeb]' : 'border-[#9b96b8]'
                 )}
               >
                 <div className="relative h-[66px] overflow-hidden rounded-[9px] bg-[#f4f2ff]">
@@ -2679,32 +2718,21 @@ export function WorkspaceSettingsPage({ role = 'owner' }: { role?: Role }) {
 
               <button
                 type="button"
-                onClick={() => setSelectedTheme('locked')}
+                onClick={() => updateSelectedRoom({ theme: 'focus' })}
                 className={cn(
                   'rounded-[16px] border bg-[#f5f5f5] p-[8px] transition hover:border-[#685eeb]',
-                  selectedTheme === 'locked' ? 'border-[#685eeb]' : 'border-[#9b96b8]'
+                  selectedRoom.theme === 'focus' ? 'border-[#685eeb]' : 'border-[#9b96b8]'
                 )}
               >
                 <div className="flex h-[66px] items-center justify-center rounded-[9px] bg-[#d5d5d5] text-black">
-                  <Lock className="h-[24px] w-[24px]" strokeWidth={1.9} />
+                  <Timer className="h-[24px] w-[24px]" strokeWidth={1.9} />
                 </div>
-                <span className="mt-[8px] block text-center text-[16px] text-black">Locked</span>
+                <span className="mt-[8px] block text-center text-[16px] text-black">Focus</span>
               </button>
             </div>
           </div>
 
-          <div className="mt-[18px] flex justify-end">
-            <button
-              type="button"
-              onClick={handleSaveRoom}
-              className={cn(
-                'flex h-[34px] w-[79px] items-center justify-center rounded-[8px] border border-[#a29bfc] bg-white text-[15px] font-medium text-[#454545] hover:bg-[#f7f5ff]',
-                purplePressClass
-              )}
-            >
-              Save
-            </button>
-          </div>
+          <p className="mt-[18px] text-right text-[12px] font-medium text-[#858585]">Use Save Changes to apply all room edits.</p>
         </section>
       </div>
     </div>
@@ -3335,7 +3363,7 @@ export function EmployerDashboard({ user, onEnterWorkspace }: { user: User; onEn
                   }}
                 />
               ) : isSettingsPage ? (
-                <WorkspaceSettingsPage role={user.role} />
+                <WorkspaceSettingsPage role={user.role} onBack={() => setActiveItem('dashboard')} />
               ) : stage === 'dashboard' ? (
                 <EmployerDashboardHome
                   onCreateRoom={() => setStage('create-room')}
@@ -3343,6 +3371,9 @@ export function EmployerDashboard({ user, onEnterWorkspace }: { user: User; onEn
                   onEnterWorkspace={onEnterWorkspace}
                   onBroadcast={() => {
                     if (canManageRooms) setIsBroadcastModalOpen(true);
+                  }}
+                  onManageRooms={() => {
+                    if (canManageRooms) setActiveItem('settings');
                   }}
                   canManageRooms={canManageRooms}
                 />
