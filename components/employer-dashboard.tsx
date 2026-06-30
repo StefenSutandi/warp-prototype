@@ -279,7 +279,7 @@ const moderatorTeamMembers: ModeratorTeamMember[] = [
   },
 ];
 
-const broadcastRecipients = ['Everyone', 'Room 1', 'Room 2'] as const;
+const broadcastRecipients = ['All Members', 'Coordinators', 'Current Room'] as const;
 type BroadcastRecipient = (typeof broadcastRecipients)[number];
 
 const projectTimelineWarpMonths = ['Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'] as const;
@@ -1070,7 +1070,13 @@ function ModeratorMemberDetail({ member }: { member: ModeratorTeamMember | null 
   );
 }
 
-function ModeratorOverviewSection({ onBroadcast }: { onBroadcast: () => void }) {
+function ModeratorOverviewSection({
+  onBroadcast,
+  canBroadcast,
+}: {
+  onBroadcast: () => void;
+  canBroadcast: boolean;
+}) {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const selectedMember = moderatorTeamMembers.find((member) => member.id === selectedMemberId) ?? null;
 
@@ -1080,17 +1086,19 @@ function ModeratorOverviewSection({ onBroadcast }: { onBroadcast: () => void }) 
         <div>
           <p className="warp-font-display text-[13px] font-extrabold uppercase tracking-[0.04em] text-[#9b96b8]">Team Overview</p>
           <h2 className="mt-[5px] text-[20px] font-extrabold tracking-[-0.03em] text-black">Team Status</h2>
-          <button
-            type="button"
-            onClick={onBroadcast}
-            className={cn(
-              'mt-[12px] inline-flex h-[34px] items-center gap-[8px] rounded-[12px] border border-[#d8d3f2] bg-white px-[14px] text-[12px] font-extrabold text-[#685eeb] shadow-[0_8px_16px_rgba(104,94,235,0.08)] hover:bg-[#f7f5ff]',
-              purplePressClass
-            )}
-          >
-            <MessageSquarePlus className="h-[14px] w-[14px]" strokeWidth={2.2} />
-            Broadcast
-          </button>
+          {canBroadcast ? (
+            <button
+              type="button"
+              onClick={onBroadcast}
+              className={cn(
+                'mt-[12px] inline-flex h-[34px] items-center gap-[8px] rounded-[12px] border border-[#d8d3f2] bg-white px-[14px] text-[12px] font-extrabold text-[#685eeb] shadow-[0_8px_16px_rgba(104,94,235,0.08)] hover:bg-[#f7f5ff]',
+                purplePressClass
+              )}
+            >
+              <MessageSquarePlus className="h-[14px] w-[14px]" strokeWidth={2.2} />
+              Broadcast Message
+            </button>
+          ) : null}
         </div>
         <div className="flex max-w-[360px] items-start gap-[12px] rounded-[16px] border border-[#f2cccc] bg-white px-[14px] py-[12px] shadow-[0_8px_18px_rgba(224,82,82,0.08)]">
           <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-[#fff0f0] text-[#e05252]">
@@ -1439,7 +1447,7 @@ function EmployerDashboardHome({
         </DashboardCard>
       </div>
 
-      <ModeratorOverviewSection onBroadcast={onBroadcast} />
+      <ModeratorOverviewSection onBroadcast={onBroadcast} canBroadcast={canManageRooms} />
     </div>
   );
 }
@@ -1743,8 +1751,9 @@ function BroadcastMessageModal({
 }: {
   onClose: () => void;
 }) {
-  const [selectedRecipients, setSelectedRecipients] = useState<BroadcastRecipient[]>(['Everyone']);
+  const [selectedRecipients, setSelectedRecipients] = useState<BroadcastRecipient[]>(['All Members']);
   const [message, setMessage] = useState('');
+  const [sentConfirmation, setSentConfirmation] = useState('');
   const trimmedMessage = message.trim();
 
   useEffect(() => {
@@ -1773,12 +1782,10 @@ function BroadcastMessageModal({
     event.preventDefault();
     if (!trimmedMessage) return;
 
-    console.log('Broadcast message:', {
-      recipients: selectedRecipients,
-      message: trimmedMessage,
-    });
+    setSentConfirmation(
+      `Broadcast sent to ${selectedRecipients.join(', ')}. Demo only — no real notifications were delivered.`
+    );
     setMessage('');
-    onClose();
   };
 
   return (
@@ -1847,22 +1854,44 @@ function BroadcastMessageModal({
           <span className="text-[14px] font-extrabold uppercase text-black">Message</span>
           <textarea
             value={message}
-            onChange={(event) => setMessage(event.target.value)}
+            onChange={(event) => {
+              setMessage(event.target.value);
+              if (sentConfirmation) setSentConfirmation('');
+            }}
+            placeholder="Write a message for your team"
             className="mt-[12px] min-h-[130px] w-full resize-none rounded-[15px] border border-[#e2e0f0] bg-white px-[16px] py-[14px] text-[14px] font-medium text-[#27213f] outline-none transition focus:border-[#685eeb] focus:ring-2 focus:ring-[#685eeb]/12"
           />
         </label>
 
-        <button
-          type="submit"
-          disabled={!trimmedMessage}
-          className={cn(
-            'mt-[36px] flex h-[51px] w-full items-center justify-center rounded-[15px] bg-[linear-gradient(105deg,#685eeb_2%,#7970f0_56%,#a29bfc_111%)] text-[20px] font-extrabold text-white shadow-[0_1px_12px_rgba(162,155,252,0.58)] transition hover:brightness-[1.03]',
-            !trimmedMessage && 'cursor-not-allowed opacity-45 hover:brightness-100',
-            purplePressClass
-          )}
-        >
-          Send Broadcast
-        </button>
+        {sentConfirmation ? (
+          <p role="status" className="mt-[24px] rounded-[13px] border border-[#bdebdc] bg-[#effcf7] px-4 py-3 text-center text-sm font-semibold text-[#287c63]">
+            {sentConfirmation}
+          </p>
+        ) : null}
+
+        <div className="mt-[30px] grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className={cn(
+              'flex h-[51px] items-center justify-center rounded-[15px] border border-[#d8d3f2] bg-white text-[16px] font-bold text-[#685eeb] hover:bg-[#f7f5ff]',
+              purplePressClass
+            )}
+          >
+            {sentConfirmation ? 'Close' : 'Cancel'}
+          </button>
+          <button
+            type="submit"
+            disabled={!trimmedMessage}
+            className={cn(
+              'flex h-[51px] items-center justify-center rounded-[15px] bg-[linear-gradient(105deg,#685eeb_2%,#7970f0_56%,#a29bfc_111%)] text-[16px] font-extrabold text-white shadow-[0_1px_12px_rgba(162,155,252,0.58)] transition hover:brightness-[1.03]',
+              !trimmedMessage && 'cursor-not-allowed opacity-45 hover:brightness-100',
+              purplePressClass
+            )}
+          >
+            Send Broadcast
+          </button>
+        </div>
       </form>
     </div>
   );
@@ -3312,7 +3341,9 @@ export function EmployerDashboard({ user, onEnterWorkspace }: { user: User; onEn
                   onCreateRoom={() => setStage('create-room')}
                   onJoinRoom={openRoomCodeModal}
                   onEnterWorkspace={onEnterWorkspace}
-                  onBroadcast={() => setIsBroadcastModalOpen(true)}
+                  onBroadcast={() => {
+                    if (canManageRooms) setIsBroadcastModalOpen(true);
+                  }}
                   canManageRooms={canManageRooms}
                 />
               ) : (
@@ -3344,7 +3375,7 @@ export function EmployerDashboard({ user, onEnterWorkspace }: { user: User; onEn
           onClose={closeRoomCodeModal}
         />
       ) : null}
-      {isBroadcastModalOpen ? (
+      {canManageRooms && isBroadcastModalOpen ? (
         <BroadcastMessageModal onClose={() => setIsBroadcastModalOpen(false)} />
       ) : null}
       {createdInvite ? (
