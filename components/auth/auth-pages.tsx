@@ -14,9 +14,9 @@ const AUTH_ILLUSTRATION = '/assets/figma-export/auth/auth-illustration.png';
 const DEMO_CREDENTIALS = {
   owner: { password: 'owner', role: 'owner', destination: '/owner' },
   coordinator: { password: 'coordinator', role: 'coordinator', destination: '/coordinator' },
-  member: { password: 'member', role: 'member', destination: '/member' },
+  member: { password: 'member', role: 'member', destination: '/avatar' },
   employer: { password: 'employer', role: 'owner', destination: '/owner' },
-  employee: { password: 'employee', role: 'member', destination: '/member' },
+  employee: { password: 'employee', role: 'member', destination: '/avatar' },
 } as const;
 
 const SIGNUP_ROLES: { id: AppRole; label: string; description: string }[] = [

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { type ChangeEvent, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import {
   Check,
@@ -7,12 +8,13 @@ import {
   Bell,
   CalendarDays,
   ChevronRight,
-  Circle,
   Download,
   Eye,
   FileText,
   Filter,
   Hourglass,
+  Lock,
+  MonitorPlay,
   RotateCcw,
   Search,
   SendHorizontal,
@@ -34,6 +36,7 @@ type TaskActivityItem = {
   time: string;
   bold?: boolean;
   avatarGradient?: string;
+  avatarName?: string;
 };
 
 type AttachmentFile = {
@@ -60,6 +63,7 @@ type TaskCardData = {
   assigneeRole?: string;
   avatarGradient: string;
   due: string;
+  phase?: string;
   progress: number;
   status: TaskStatus;
   title: string;
@@ -71,6 +75,53 @@ type TaskCardData = {
   revisionNote?: string;
   activity: TaskActivityItem[];
 };
+
+const TASK_PROFILE_IMAGES = [
+  '/assets/avatar/profile/Frame 3865.png',
+  '/assets/avatar/profile/Frame 3866.png',
+  '/assets/avatar/profile/Frame 3867.png',
+  '/assets/avatar/profile/Frame 3868.png',
+  '/assets/avatar/profile/Frame 3869.png',
+  '/assets/avatar/profile/Frame 3870.png',
+  '/assets/avatar/profile/Frame 3871.png',
+  '/assets/avatar/profile/Frame 3872.png',
+] as const;
+
+function taskProfileImage(name: string) {
+  const normalized = name.toLowerCase();
+  if (normalized.includes('maya') || normalized.includes('nadine')) return TASK_PROFILE_IMAGES[1];
+  if (normalized.includes('alex') || normalized.includes('farhan')) return TASK_PROFILE_IMAGES[2];
+  if (normalized.includes('jordan') || normalized.includes('kevin')) return TASK_PROFILE_IMAGES[3];
+  if (normalized.includes('casey') || normalized.includes('salsa')) return TASK_PROFILE_IMAGES[4];
+  if (normalized.includes('baskara')) return TASK_PROFILE_IMAGES[6];
+  if (normalized.includes('nadira')) return TASK_PROFILE_IMAGES[7];
+  if (normalized.includes('kenzo')) return TASK_PROFILE_IMAGES[0];
+  if (normalized.includes('raka')) return TASK_PROFILE_IMAGES[2];
+  if (normalized.includes('you')) return TASK_PROFILE_IMAGES[5];
+  return TASK_PROFILE_IMAGES[normalized.length % TASK_PROFILE_IMAGES.length];
+}
+
+function buildTaskActivity(task: Task, status: TaskStatus, progress: number): TaskActivityItem[] {
+  if (status === 'IN REVIEW') {
+    return [
+      { title: 'You submitted the task for review', time: 'Today, 09.35', avatarName: 'You' },
+      { title: `${task.assignee || 'Kevin'} is reviewing your work`, time: 'Today, 10.35', bold: true, avatarName: task.assignee || 'Kevin' },
+    ];
+  }
+
+  if (status === 'IN PROGRESS' || status === 'REVISION REQUESTED') {
+    return [
+      { title: `${task.assignee || 'Maya Chen'} started this task`, time: 'Today, 09.10', avatarName: task.assignee || 'Maya Chen' },
+      { title: `Progress updated to ${progress}%`, time: 'Today, 09.25', bold: true, avatarName: task.assignee || 'Maya Chen' },
+      { title: 'You opened the latest task brief', time: 'Today, 09.35', avatarName: 'You' },
+    ];
+  }
+
+  return [
+    { title: `${task.assignee || 'Casey Park'} was assigned to this task`, time: 'Yesterday, 16.10', avatarName: task.assignee || 'Casey Park' },
+    { title: 'The latest task brief is ready', time: 'Today, 08.45', bold: true, avatarName: 'You' },
+  ];
+}
 
 const taskCards: TaskCardData[] = [
   {
@@ -256,6 +307,7 @@ function getTaskProgress(task: Task) {
 function toTaskCardData(task: Task): TaskCardData {
   const template = taskCards.find((item) => item.title === task.title);
   const status = getTaskDisplayStatus(task);
+  const progress = getTaskProgress(task);
   return {
     id: task.id,
     canonicalStatus: task.status,
@@ -263,7 +315,7 @@ function toTaskCardData(task: Task): TaskCardData {
     assigneeRole: template?.assigneeRole,
     avatarGradient: template?.avatarGradient ?? 'linear-gradient(135deg,#A29BFC 0%,#82ECEC 100%)',
     due: formatTaskDueDate(task.dueDate, task.dueTime),
-    progress: getTaskProgress(task),
+    progress,
     status,
     title: task.title,
     description: task.description,
@@ -278,7 +330,7 @@ function toTaskCardData(task: Task): TaskCardData {
       ? task.revisionNote || 'Open the task, continue the work, and resubmit it for review.'
       : template?.currentActionSubtitle ?? 'Current shared status: ' + status.toLowerCase() + '.',
     revisionNote: task.revisionNote,
-    activity: template?.activity ?? [],
+    activity: template?.activity?.length ? template.activity : buildTaskActivity(task, status, progress),
   };
 }
 
@@ -359,11 +411,17 @@ function getDeadlineBadge(due: string) {
 }
 
 function buildUpcomingDeadlines(tasks: TaskCardData[]) {
+  const figmaSampleBadges = [
+    { label: 'Due Soon', className: 'bg-[#ffeeee] text-[#ff7675]' },
+    { label: '2 Days', className: 'bg-[#fff4d5] text-[#e29c4c]' },
+    { label: '5 Days', className: 'bg-[#dfffd7] text-[#54b499]' },
+  ] as const;
+
   return [...tasks]
     .sort((left, right) => parseTaskDueDate(left.due).getTime() - parseTaskDueDate(right.due).getTime())
     .slice(0, 4)
-    .map((task) => {
-      const badge = getDeadlineBadge(task.due);
+    .map((task, index) => {
+      const badge = figmaSampleBadges[index] ?? getDeadlineBadge(task.due);
 
       return {
         title: task.title,
@@ -627,27 +685,31 @@ function HeaderTabs({
           <span className="absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-[#685eeb]" />
         </> : null}
       </button>
-      {canReview ? <button type="button" onClick={() => onChangeTab('review')} className={cn(
+      <button type="button" onClick={() => onChangeTab('review')} className={cn(
         'relative mb-[20px] ml-[75px] inline-flex items-center gap-[8px] px-[8px] pb-[18px] text-[16px] font-extrabold transition-colors',
         activeTab === 'review' ? 'text-[#685eeb]' : 'text-black/50 hover:text-black/70'
       )}>
         <span className="warp-font-display">Review Tasks</span>
-        <span className={cn('inline-flex h-[14px] min-w-[13px] items-center justify-center rounded-[9px] px-[3px] text-[11px] font-medium', activeTab === 'review' ? 'bg-[#ff7675] text-white' : 'bg-[#f6dede] text-[#ff7675]')}>{reviewTaskCount}</span>
+        {canReview ? (
+          <span className={cn('inline-flex h-[14px] min-w-[13px] items-center justify-center rounded-[9px] px-[3px] text-[11px] font-medium', activeTab === 'review' ? 'bg-[#ff7675] text-white' : 'bg-[#f6dede] text-[#ff7675]')}>{reviewTaskCount}</span>
+        ) : (
+          <Lock className="h-[13px] w-[13px]" strokeWidth={2.2} aria-label="Coordinator access required" />
+        )}
         {activeTab === 'review' ? <span className="absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-[#685eeb]" /> : null}
-      </button> : null}
+      </button>
     </div>
   );
 }
 function DetailHeader({ onBack }: { onBack: () => void }) {
   return (
-    <div className="relative flex h-[80px] items-center border-b border-[#e2e0f0] bg-white px-[28px]">
+    <div className="relative flex h-[52px] items-end px-[28px]">
       <button
         type="button"
         onClick={onBack}
-        className="inline-flex items-center gap-[10px] text-[16px] font-extrabold text-black/55 transition hover:text-black"
+        className="inline-flex items-center gap-[8px] text-[13px] font-bold text-[#685eeb] transition hover:text-[#4f45d9]"
       >
-        <ArrowLeft className="h-5 w-5" strokeWidth={1.8} />
-        <span className="warp-font-display">Task Detail</span>
+        <ArrowLeft className="h-4 w-4" strokeWidth={2} />
+        <span>Back to tasks</span>
       </button>
     </div>
   );
@@ -681,8 +743,14 @@ function TopActions({ rewardBalance }: { rewardBalance: number }) {
     <div className="absolute right-[25px] top-[21px] z-10 flex items-center gap-[11px]">
       <div className="h-[28px] w-[109px] rounded-[13px] border border-[#e2e0f0] bg-[#ece9f8]" />
 
-      <div className="flex h-[40px] items-center gap-[10px] rounded-[13px] border border-[#e2e0f0] bg-[#f0eff8] px-[18px] text-[#5c5780]">
-        <span className="font-['Azeret_Mono',_monospace] text-[24px] leading-none text-[#685EEB]">#</span>
+      <div className="flex h-[40px] min-w-[92px] items-center justify-center gap-[7px] rounded-[13px] border border-[#e2e0f0] bg-[#f0eff8] px-[12px] text-[#5c5780]">
+        <Image
+          src="/assets/figma-export/avatar-customization/icons/warp-coin.svg"
+          alt="WARP coin"
+          width={22}
+          height={22}
+          className="h-[22px] w-[22px] shrink-0"
+        />
         <span className="text-[20px] font-medium">{rewardBalance}</span>
       </div>
 
@@ -702,20 +770,29 @@ function TaskMeta({
   label,
   value,
   calendar = false,
+  phase = false,
   avatarGradient,
 }: {
   label: string;
   value: string;
   calendar?: boolean;
+  phase?: boolean;
   avatarGradient?: string;
 }) {
+  const showsProfile = !calendar && !phase;
+
   return (
     <div className="flex items-center gap-[10px]">
       <div
-        className={cn('flex h-[30px] w-[30px] items-center justify-center rounded-full', calendar ? 'bg-[#f2eefc] text-[#9b96b8]' : '')}
-        style={!calendar ? { background: avatarGradient || 'linear-gradient(135deg,#a29bfc_10%,#82ecec_100%)' } : undefined}
+        className={cn(
+          'relative flex h-[30px] w-[30px] shrink-0 items-center justify-center overflow-hidden rounded-full',
+          calendar || phase ? 'bg-[#f2eefc] text-[#7c7398]' : 'bg-[#f4f2ff]'
+        )}
+        style={showsProfile ? { background: avatarGradient || 'linear-gradient(135deg,#a29bfc_10%,#82ecec_100%)' } : undefined}
       >
         {calendar ? <CalendarDays className="h-4 w-4" strokeWidth={1.8} /> : null}
+        {phase ? <FileText className="h-4 w-4" strokeWidth={1.8} /> : null}
+        {showsProfile ? <Image src={taskProfileImage(value)} alt="" fill sizes="30px" className="object-cover" /> : null}
       </div>
       <div>
         <p className="text-[10px] leading-none text-[#858585]">{label}</p>
@@ -879,6 +956,41 @@ function UpcomingDeadlinesCard({ tasks }: { tasks: TaskCardData[] }) {
         ))}
       </div>
     </section>
+  );
+}
+
+function LiveScreenCard({ onWatch }: { onWatch?: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onWatch}
+      className="group w-full overflow-hidden rounded-[14px] border border-[#d8d5ea] bg-white text-left shadow-[0_7px_20px_rgba(84,86,106,0.1)] transition hover:-translate-y-0.5 hover:border-[#8f86f5] hover:shadow-[0_12px_28px_rgba(104,94,235,0.16)]"
+      aria-label="Watch Coworker A's live screen"
+    >
+      <span className="relative block h-[164px] w-full overflow-hidden bg-[#ecebfa]">
+        <img
+          src="/assets/figma-export/live/thumbnails/Group%201310%201.png"
+          alt="Coworker A live screen thumbnail"
+          className="h-full w-full object-cover object-left-top transition-transform duration-300 group-hover:scale-[1.025]"
+        />
+        <span className="absolute left-[13px] top-[13px] rounded-full bg-[#ff7675] px-[9px] py-[4px] text-[10px] font-bold uppercase tracking-[0.08em] text-white shadow-sm">
+          Live
+        </span>
+      </span>
+      <span className="flex items-center gap-[12px] px-[16px] py-[14px]">
+        <span className="flex h-[39px] w-[39px] shrink-0 items-center justify-center rounded-[12px] bg-[#eeeafe] text-[#685eeb]">
+          <MonitorPlay className="h-[19px] w-[19px]" strokeWidth={2} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[14px] font-bold text-[#252233]">Coworker A&apos;s Screen</span>
+          <span className="mt-[3px] block truncate text-[11px] text-[#8d89a8]">Character design review</span>
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-[5px] text-[11px] font-bold text-[#685eeb]">
+          <Eye className="h-[14px] w-[14px]" strokeWidth={2} />
+          Watch screen
+        </span>
+      </span>
+    </button>
   );
 }
 
@@ -1202,9 +1314,9 @@ function ReviewTaskDetailView({
     <>
       <ReviewDetailHeader onBack={onBack} />
 
-      <div className="grid min-h-[calc(100vh-80px)] w-full grid-cols-[minmax(0,1fr)_360px] gap-[26px] px-[22px] pb-[37px] pt-[32px]">
+      <div className="grid min-h-[calc(100vh-160px)] w-full grid-cols-[minmax(0,1fr)_363px] gap-[26px] px-[22px] pb-[37px] pt-[32px]">
         <section className="min-w-0">
-          <article className="rounded-[13px] border border-[#e2e0f0] bg-white px-[34px] py-[36px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
+          <article className="rounded-[16px] border border-[#e2e0f0] bg-white px-[34px] py-[32px] shadow-[0_8px_24px_rgba(104,94,235,0.08)]">
             <div className="flex items-start justify-between gap-4">
               <h1 className="text-[20px] font-bold text-black">{task.title}</h1>
               <span className="inline-flex h-[33px] items-center justify-center rounded-[10px] bg-[#a29bfc] px-[16px] text-[16px] font-extrabold text-white">
@@ -1348,6 +1460,7 @@ function DetailView({
             <div className="mt-[30px] flex flex-wrap items-center gap-[46px]">
               <TaskMeta label="ASSIGNED TO" value={task.assignee} avatarGradient={task.avatarGradient} />
               <TaskMeta label="DUE" value={task.due} calendar />
+              <TaskMeta label="PHASE" value={task.phase ?? 'Research & Concept'} phase />
             </div>
 
             <div className="mt-[28px] w-full">
@@ -1374,7 +1487,7 @@ function DetailView({
 
             <div className="mt-[22px]">
               <h2 className="text-[14px] font-bold text-black">Current Action</h2>
-              <div className="mt-[9px] rounded-[8px] bg-[#f8f7fc] px-[22px] py-[18px]">
+              <div className="mt-[9px] rounded-[10px] border border-[#efedf7] bg-[#f8f7fc] px-[30px] py-[22px]">
                 <div className="flex items-center gap-[22px]">
                   <div className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-[#ece7ff] text-[#7c5cfc]">
                     <Hourglass className="h-6 w-6" strokeWidth={1.9} />
@@ -1389,26 +1502,31 @@ function DetailView({
 
             <div className="mt-[20px]">
               <h2 className="text-[14px] font-bold text-black">Activity</h2>
-              <div className="mt-[18px] flex gap-[22px]">
-                <div className="relative ml-[2px] w-[18px] shrink-0">
-                  <div className="absolute left-[7px] top-[8px] h-[58px] w-px bg-[#cfc7ff]" />
-                  <Circle className="relative z-[1] h-[10px] w-[10px] fill-white text-[#685eeb]" strokeWidth={2} />
-                  <Circle className="relative z-[1] mt-[34px] h-[10px] w-[10px] fill-white text-[#685eeb]" strokeWidth={3} />
-                </div>
-
-                <div className="space-y-[28px]">
-                  {task.activity.map((item) => (
-                    <div key={item.title} className="flex items-start gap-[10px]">
-                      <div className="mt-[2px] h-[30px] w-[30px] rounded-full" style={{ background: item.avatarGradient || task.avatarGradient }} />
-                      <div>
-                        <p className={cn('text-[14px] text-black', item.bold ? 'font-bold' : 'font-normal')}>
-                          {item.title}
-                        </p>
-                        <p className="mt-[2px] text-[11px] text-black">{item.time}</p>
-                      </div>
+              <div className="mt-[18px] space-y-0 rounded-[10px] bg-white px-[4px] py-[4px]">
+                {task.activity.map((item, index) => (
+                  <div key={`${item.title}-${item.time}`} className="relative grid min-h-[66px] grid-cols-[18px_30px_minmax(0,1fr)] gap-[12px]">
+                    <div className="relative flex justify-center">
+                      {index < task.activity.length - 1 ? (
+                        <span className="absolute left-1/2 top-[10px] h-full w-[2px] -translate-x-1/2 rounded-full bg-[#cfc7ff]" />
+                      ) : null}
+                      <span
+                        className={cn(
+                          'relative z-10 mt-[5px] h-[12px] w-[12px] rounded-full border-2 border-[#685eeb] bg-white',
+                          index === task.activity.length - 1 && 'bg-[#685eeb] ring-2 ring-[#ece9ff]'
+                        )}
+                      />
                     </div>
-                  ))}
-                </div>
+                    <div className="relative h-[30px] w-[30px] overflow-hidden rounded-full bg-[#f4f2ff]">
+                      <Image src={taskProfileImage(item.avatarName ?? item.title)} alt="" fill sizes="30px" className="object-cover" />
+                    </div>
+                    <div className="pb-[18px]">
+                      <p className={cn('text-[14px] leading-[1.25] text-black', item.bold ? 'font-bold' : 'font-medium')}>
+                        {item.title}
+                      </p>
+                      <p className="mt-[3px] text-[11px] text-[#858585]">{item.time}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -1430,7 +1548,7 @@ function DetailView({
             submittedMessage={submittedMessage}
             onSubmit={handlePrimaryAction}
           />
-          <div className="pt-[81px]">
+          <div>
             <CommentsCard
               initialComments={[
                 {
@@ -1457,6 +1575,7 @@ function ListView({
   tasks,
   canReview,
   reviewTaskCount,
+  onOpenLiveScreen,
 }: {
   onOpenTask: (task: TaskCardData) => void;
   onOpenCreateTask: () => void;
@@ -1465,12 +1584,13 @@ function ListView({
   tasks: TaskCardData[];
   canReview: boolean;
   reviewTaskCount: number;
+  onOpenLiveScreen?: () => void;
 }) {
   return (
     <>
       <HeaderTabs activeTab={activeTab} onChangeTab={onChangeTab} canReview={canReview} myTaskCount={tasks.length} reviewTaskCount={reviewTaskCount} />
 
-      <div className="grid min-h-[calc(100vh-80px)] w-full grid-cols-[minmax(0,1fr)_360px] gap-[38px] px-[26px] pb-[32px] pt-[36px]">
+      <div className="grid min-h-[calc(100vh-160px)] w-full grid-cols-[minmax(0,1fr)_360px] gap-[38px] px-[26px] pb-[32px] pt-[30px]">
         <section className="min-w-0">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-[8px]">
@@ -1516,6 +1636,7 @@ function ListView({
         <aside className="space-y-[23px]">
           <OverallProgressCard tasks={tasks} />
           <UpcomingDeadlinesCard tasks={tasks} />
+          <LiveScreenCard onWatch={onOpenLiveScreen} />
         </aside>
       </div>
     </>
@@ -1601,7 +1722,43 @@ function ReviewTasksView({
   );
 }
 
-export function EmployerTaskManagementPage({ initialTaskId }: { initialTaskId?: string } = {}) {
+function RestrictedReviewView({
+  onChangeTab,
+  myTaskCount,
+}: {
+  onChangeTab: (tab: EmployerTaskTab) => void;
+  myTaskCount: number;
+}) {
+  return (
+    <>
+      <HeaderTabs activeTab="review" onChangeTab={onChangeTab} canReview={false} myTaskCount={myTaskCount} reviewTaskCount={0} />
+      <div className="flex min-h-[calc(100vh-80px)] items-start justify-center px-6 pt-[88px]">
+        <div className="flex w-full max-w-[570px] flex-col items-center rounded-[28px] border border-white/80 bg-white/88 px-[54px] py-[62px] text-center shadow-[0_24px_70px_rgba(84,86,106,0.13)] backdrop-blur">
+          <span className="flex h-[72px] w-[72px] items-center justify-center rounded-[22px] bg-[#eeeafe] text-[#685eeb]">
+            <Lock className="h-[30px] w-[30px]" strokeWidth={2} />
+          </span>
+          <h2 className="warp-font-display mt-[24px] text-[25px] font-extrabold text-[#252233]">Review Tasks is restricted</h2>
+          <p className="mt-[12px] max-w-[390px] text-[15px] leading-[1.55] text-[#787a90]">
+            to review tasks, you have to be assigned as a coordinator
+          </p>
+          <button type="button" onClick={() => onChangeTab('my')} className="mt-[28px] rounded-[13px] bg-[#685eeb] px-[22px] py-[11px] text-[13px] font-bold text-white transition hover:bg-[#5d53df]">
+            Back to My Tasks
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function EmployerTaskManagementPage({
+  initialTaskId,
+  onTitleChange,
+  onOpenLiveScreen,
+}: {
+  initialTaskId?: string;
+  onTitleChange?: (title: string) => void;
+  onOpenLiveScreen?: () => void;
+} = {}) {
   const currentUser = useUserStore((state) => state.currentUser);
   const tasks = useTaskStore((state) => state.tasks);
   const approveTask = useTaskStore((state) => state.approveTask);
@@ -1622,19 +1779,15 @@ export function EmployerTaskManagementPage({ initialTaskId }: { initialTaskId?: 
   const selectedReviewTask = selectedReviewTaskId ? reviewTasks.find((task) => task.id === selectedReviewTaskId) : undefined;
 
   useEffect(() => {
-    if (!canReview && activeTab === 'review') {
-      setActiveTab('my');
-      setView('list');
-      setSelectedReviewTaskId(null);
-    }
-  }, [activeTab, canReview]);
-
-  useEffect(() => {
     if (!initialTaskId || !tasks.some((task) => task.id === initialTaskId)) return;
     setSelectedTaskId(initialTaskId);
     setActiveTab('my');
     setView('detail');
   }, [initialTaskId, tasks]);
+
+  useEffect(() => {
+    onTitleChange?.(view === 'detail' || view === 'review-detail' ? 'Task Detail' : 'To-Do');
+  }, [onTitleChange, view]);
 
   const handleOpenTask = (task: TaskCardData) => {
     setSelectedTaskId(task.id);
@@ -1642,9 +1795,9 @@ export function EmployerTaskManagementPage({ initialTaskId }: { initialTaskId?: 
   };
 
   const handleChangeTab = (tab: EmployerTaskTab) => {
-    if (tab === 'review' && !canReview) return;
     setActiveTab(tab);
     setView('list');
+    setSelectedReviewTaskId(null);
   };
 
   const handleOpenReviewTask = (task: ReviewTaskData) => {
@@ -1682,8 +1835,8 @@ export function EmployerTaskManagementPage({ initialTaskId }: { initialTaskId?: 
   return (
     <div className="relative min-h-screen w-full bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)]">
       <TopActions rewardBalance={rewardBalance} />
-      {canReview && activeTab === 'review' ? (
-        view === 'review-detail' && selectedReviewTask ? (
+      {activeTab === 'review' ? (
+        canReview ? (view === 'review-detail' && selectedReviewTask ? (
           <ReviewTaskDetailView
             task={selectedReviewTask}
             onBack={() => setView('list')}
@@ -1700,6 +1853,8 @@ export function EmployerTaskManagementPage({ initialTaskId }: { initialTaskId?: 
             onApprove={handleApproveTask}
             onRequestRevision={handleRequestRevision}
           />
+        )) : (
+          <RestrictedReviewView onChangeTab={handleChangeTab} myTaskCount={taskCardsFromStore.length} />
         )
       ) : view === 'detail' && selectedTask ? (
         <DetailView task={selectedTask} onBack={() => setView('list')} />
@@ -1712,6 +1867,7 @@ export function EmployerTaskManagementPage({ initialTaskId }: { initialTaskId?: 
           tasks={taskCardsFromStore}
           canReview={canReview}
           reviewTaskCount={reviewTasks.length}
+          onOpenLiveScreen={onOpenLiveScreen}
         />
       )}
       <CreateNewTaskModal open={isCreateTaskOpen} onClose={() => setIsCreateTaskOpen(false)} />

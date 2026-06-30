@@ -306,11 +306,31 @@ const COWORKER_OUTFIT_IDLE_FILES: Record<OutfitType, string> = {
   short: 'outfit3_idle.png',
   suit: 'outfit4_idle.png',
 };
-const PLAYER_OUTFIT_IDLE_FILES: Record<OutfitType, { front: string; back: string }> = {
-  long: { front: 'outfit1_idle.png', back: 'outfit1_idle_back.png' },
-  hoodie: { front: 'outfit2_idle.png', back: 'outfit2_idle_back.png' },
-  short: { front: 'outfit3_idle_front left.png', back: 'outfit3_idle_back right.png' },
-  suit: { front: 'outfit4_idle.png', back: 'outfit4_idle_back.png' },
+const PLAYER_OUTFIT_IDLE_FILES: Record<OutfitType, Record<AvatarDirection, string>> = {
+  long: {
+    FR: 'outfit1_idle.png',
+    FL: 'outfit1_idle_front left.png',
+    BR: 'outfit1_idle_back right.png',
+    BL: 'outfit1_idle_back.png',
+  },
+  hoodie: {
+    FR: 'outfit2_idle.png',
+    FL: 'outfit2_idle_front left.png',
+    BR: 'outfit2_idle_back right.png',
+    BL: 'outfit2_idle_back.png',
+  },
+  short: {
+    FR: 'outfit3_idle.png',
+    FL: 'outfit3_idle_front left.png',
+    BR: 'outfit3_idle_back right.png',
+    BL: 'outfit3_idle_back.png',
+  },
+  suit: {
+    FR: 'outfit4_idle.png',
+    FL: 'outfit4_idle_front left.png',
+    BR: 'outfit4_idle_back right.png',
+    BL: 'outfit4_idle_back.png',
+  },
 };
 const AVATAR_CLAP_BODY_SPRITESHEET_PATHS: Partial<Record<BodyTone, string>> = {
   light: '/assets/avatar/emotes/clap/body/light/source/spritesheet%20(4).png',
@@ -554,8 +574,11 @@ function avatarOutfitTextureKey(outfitType: OutfitType, direction: AvatarDirecti
 }
 
 function avatarOutfitAssetPath(outfitType: OutfitType, direction: AvatarDirection, fileName: string): string {
-  const isIdle = Object.values(PLAYER_OUTFIT_IDLE_FILES[outfitType]).includes(fileName);
-  return `${AVATAR_OUTFIT_BASE_PATH}/${outfitType}${isIdle ? '' : `/${direction}`}/${encodeURIComponent(fileName)}`;
+  return `${AVATAR_OUTFIT_BASE_PATH}/${outfitType}/${direction}/${encodeURIComponent(fileName)}`;
+}
+
+function avatarOutfitIdleAssetPath(outfitType: OutfitType, direction: AvatarDirection): string {
+  return `${AVATAR_OUTFIT_BASE_PATH}/${outfitType}/${encodeURIComponent(PLAYER_OUTFIT_IDLE_FILES[outfitType][direction])}`;
 }
 
 function avatarSittingBodyTextureKey(tone: BodyTone, side: SittingAssetSide): string {
@@ -683,6 +706,7 @@ const TEAM_LOUNGE_SOURCE = {
   height: 1440,
   door: { x: 1840, y: 315, w: 225, h: 435 },
 } as const;
+const TEAM_LOUNGE_SAFE_SPAWN_SOURCE: FigmaPoint = { x: 1280, y: 900 };
 const TEAM_LOUNGE_ARTWORK_Y_OFFSET = 65;
 
 interface DeskData {
@@ -930,12 +954,9 @@ export default class MainOfficeScene extends Phaser.Scene {
 
     PLAYER_OUTFIT_TYPES.forEach((outfitType) => {
       AVATAR_DIRECTIONS.forEach((direction) => {
-        const idleFile = direction === 'FR' || direction === 'FL'
-          ? PLAYER_OUTFIT_IDLE_FILES[outfitType].front
-          : PLAYER_OUTFIT_IDLE_FILES[outfitType].back;
         this.load.image(
           avatarOutfitTextureKey(outfitType, direction, 'idle'),
-          avatarOutfitAssetPath(outfitType, direction, idleFile),
+          avatarOutfitIdleAssetPath(outfitType, direction),
         );
 
         Array.from({ length: 13 }, (_, index) => avatarOutfitWalkFile(outfitType, direction, index + 1)).forEach((fileName, index) => {
@@ -1895,16 +1916,7 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   private getOutfitIdleLayerConfig(direction: AvatarDirection): OutfitIdleLayerConfig {
-    switch (direction) {
-      case 'FR':
-        return { texture: this.getOutfitIdleTexture(direction), flipX: true, offsetX: 0, offsetY: 0 };
-      case 'FL':
-        return { texture: this.getOutfitIdleTexture(direction), flipX: false, offsetX: 0, offsetY: 0 };
-      case 'BR':
-        return { texture: this.getOutfitIdleTexture(direction), flipX: false, offsetX: -4, offsetY: 0 };
-      case 'BL':
-        return { texture: this.getOutfitIdleTexture(direction), flipX: true, offsetX: 0, offsetY: 0 };
-    }
+    return { texture: this.getOutfitIdleTexture(direction), flipX: false, offsetX: 0, offsetY: 0 };
   }
 
   private getOutfitWalkLayerConfig(direction: AvatarDirection): OutfitWalkLayerConfig {
@@ -1912,7 +1924,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       case 'FR':
         return { sourceDirection: 'FR', flipX: false, offsetX: 0, offsetY: 0 };
       case 'FL':
-        return { sourceDirection: 'FR', flipX: true, offsetX: 0, offsetY: 0 };
+        return { sourceDirection: 'FL', flipX: false, offsetX: 0, offsetY: 0 };
       case 'BR':
         return { sourceDirection: 'BR', flipX: false, offsetX: 0, offsetY: 4 };
       case 'BL':
@@ -1954,9 +1966,9 @@ export default class MainOfficeScene extends Phaser.Scene {
       case 'FL':
         return { texture: avatarHairTextureKey(this.playerHairStyleIndex, this.playerHairColorSuffix, 'front'), flipX: true, offsetX: 0, offsetY: 0 };
       case 'BR':
-        return { texture: avatarHairTextureKey(this.playerHairStyleIndex, this.playerHairColorSuffix, 'back'), flipX: true, offsetX: 8, offsetY: 6 };
+        return { texture: avatarHairTextureKey(this.playerHairStyleIndex, this.playerHairColorSuffix, 'back'), flipX: false, offsetX: 0, offsetY: 0 };
       case 'BL':
-        return { texture: avatarHairTextureKey(this.playerHairStyleIndex, this.playerHairColorSuffix, 'back'), flipX: false, offsetX: -8, offsetY: 6 };
+        return { texture: avatarHairTextureKey(this.playerHairStyleIndex, this.playerHairColorSuffix, 'back'), flipX: true, offsetX: 0, offsetY: 0 };
     }
   }
 
@@ -2189,7 +2201,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       .setDepth(0);
     this.roomObjects.push(roomArtwork);
 
-    this.mainRoomBounds = new Phaser.Geom.Rectangle(roomLeft, centeredRoomTop, roomWidth, roomHeight);
+    this.mainRoomBounds = new Phaser.Geom.Rectangle(roomLeft, roomTop, roomWidth, roomHeight);
     // Preserve the existing full-canvas lounge movement behavior for this visual-only pass.
     this.playerMovementBounds = new Phaser.Geom.Rectangle(0, 0, width, height);
 
@@ -2722,6 +2734,12 @@ export default class MainOfficeScene extends Phaser.Scene {
     if (roomId === 'main') {
       const footPoint = this.mapMainRoomPoint(MAIN_ROOM_SAFE_SPAWN_FOOT);
       return new Phaser.Math.Vector2(footPoint.x, footPoint.y - this.getPlayerFootYOffset());
+    }
+
+    if (roomId === 'lounge' && this.mainRoomBounds) {
+      const footX = this.mainRoomBounds.x + (TEAM_LOUNGE_SAFE_SPAWN_SOURCE.x / TEAM_LOUNGE_SOURCE.width) * this.mainRoomBounds.width;
+      const footY = this.mainRoomBounds.y + (TEAM_LOUNGE_SAFE_SPAWN_SOURCE.y / TEAM_LOUNGE_SOURCE.height) * this.mainRoomBounds.height;
+      return new Phaser.Math.Vector2(footX, footY - this.getPlayerFootYOffset());
     }
 
     const width = this.cameras.main.width;

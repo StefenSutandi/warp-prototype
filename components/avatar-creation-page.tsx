@@ -22,6 +22,14 @@ type AvatarOption = {
   closedSrc?: string;
 };
 
+type PurchasableAvatarCategory = 'face' | 'hair' | 'outfit';
+
+type PendingAvatarPurchase = {
+  option: AvatarOption;
+  category: PurchasableAvatarCategory;
+  price: number;
+};
+
 type AvatarSelectionSnapshot = {
   face: AvatarOption;
   hair: AvatarOption;
@@ -120,7 +128,7 @@ const faceOptions: AvatarOption[] = [
   },
   {
     id: 'face-4-default',
-    label: 'Face 4 default',
+    label: 'Angry Face',
     src: '/assets/avatar/face/Layer_1-7.png',
     optionCardSrc: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/face/face-4.png`,
     previewLayerSrc: `${AVATAR_CUSTOMIZATION_ASSET_BASE}/face-preview/face-4-default-fr.png`,
@@ -142,7 +150,7 @@ const hairOptionsByColor: Record<HairColorId, AvatarOption[]> = {
     { id: 'hair-brown-1', label: 'Bob brown', src: '/assets/avatar/hair/hair_1%201.svg' },
     { id: 'hair-brown-2', label: 'Side brown', src: '/assets/avatar/hair/hair_2%201.svg' },
     { id: 'hair-brown-3', label: 'Wave brown', src: '/assets/avatar/hair/hair_3%201.svg' },
-    { id: 'hair-brown-4', label: 'Crop brown', src: '/assets/avatar/hair/hair_4%201.svg' },
+    { id: 'hair-brown-4', label: 'Crop Brown', src: '/assets/avatar/hair/hair_4%201.svg' },
     { id: 'hair-brown-1-back', label: 'Bob brown back', src: '/assets/avatar/hair/hair_1_back%201.svg' },
     { id: 'hair-brown-2-back', label: 'Side brown back', src: '/assets/avatar/hair/hair_2_back%201.svg' },
     { id: 'hair-brown-3-back', label: 'Wave brown back', src: '/assets/avatar/hair/hair_3_back%201.svg' },
@@ -175,7 +183,7 @@ const outfitOptions: AvatarOption[] = [
   { id: 'outfit-1', label: 'Studio', src: '/assets/avatar/outfit/outfit1_idle.png' },
   { id: 'outfit-2', label: 'Casual', src: '/assets/avatar/outfit/outfit2_idle.png' },
   { id: 'outfit-3', label: 'Classic', src: '/assets/avatar/outfit/outfit3_idle.png' },
-  { id: 'outfit-4', label: 'Smart', src: '/assets/avatar/outfit/outfit4_idle.png' },
+  { id: 'outfit-4', label: 'Boss’ Suit', src: '/assets/avatar/outfit/outfit4_idle.png' },
 ];
 
 const outfitTypesById: Record<string, string> = {
@@ -301,12 +309,14 @@ function AvatarOptionCard({
   onSelect,
   locked = false,
   compact = false,
+  price = 200,
 }: {
   option?: AvatarOption;
   selected?: boolean;
   onSelect?: () => void;
   locked?: boolean;
   compact?: boolean;
+  price?: number;
 }) {
   const cardClassName = cn(
     'relative flex items-center justify-center rounded-[10px] border-2',
@@ -321,11 +331,10 @@ function AvatarOptionCard({
     <button
       type="button"
       onClick={onSelect}
-      disabled={locked}
       className={cn(
         cardClassName,
         'group transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685EEB] focus-visible:ring-offset-2',
-        locked && 'cursor-not-allowed border-[#DFDFDF] bg-[#F0F0F0] grayscale-[0.35]',
+        locked && 'cursor-pointer border-[#DFDFDF] bg-[#F0F0F0] grayscale-[0.35] hover:border-[#A29BFC]',
         selected
           ? 'border-[#685EEB] bg-white shadow-[0_9px_20px_rgba(104,94,235,0.14)]'
           : 'border-[#DFDFDF] bg-[#F0F0F0] hover:border-[#B9B4FF] hover:bg-white/80'
@@ -339,7 +348,7 @@ function AvatarOptionCard({
       {locked ? (
         <span className="absolute bottom-[8px] left-1/2 inline-flex h-[34px] -translate-x-1/2 items-center gap-[4px] rounded-full border-2 border-[#685EEB] bg-[#F0EFF8] px-[7px] text-[17px] font-semibold text-[#685EEB] shadow-[0_4px_10px_rgba(104,94,235,0.14)]">
           <Image src={WARP_COIN_ASSET} alt="" width={22} height={22} className="h-[22px] w-[22px]" />
-          200
+          {price}
         </span>
       ) : null}
     </button>
@@ -379,6 +388,7 @@ function AvatarPreview({
   canRedo,
   onUndo,
   onRedo,
+  coinBalance,
 }: {
   selectedFace: AvatarOption;
   selectedHair: AvatarOption;
@@ -389,6 +399,7 @@ function AvatarPreview({
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  coinBalance: number;
 }) {
   const bodyAsset = bodyPreviewAssets[selectedBodyTone] ?? bodyPreviewAssets.light;
   const outfitType = getPreviewOutfitType(selectedOutfit);
@@ -402,7 +413,7 @@ function AvatarPreview({
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_26%_18%,rgba(217,255,244,0.95),rgba(255,255,255,0.46)_43%,rgba(213,210,255,0.74)_100%)]" />
       <div className="absolute left-[14px] top-[14px] z-10 inline-flex h-[40px] items-center gap-[6px] rounded-full border-2 border-[#685EEB] bg-[#F0EFF8] px-[9px] text-[20px] font-semibold text-[#111111] shadow-[0_5px_14px_rgba(104,94,235,0.12)] lg:left-[26px] lg:top-[22px]">
         <Image src={WARP_COIN_ASSET} alt="WARP coin" width={26} height={26} className="h-[26px] w-[26px]" />
-        <span>200</span>
+        <span>{coinBalance}</span>
       </div>
       <div className="relative flex h-full min-h-[440px] items-center justify-center lg:min-h-[539px]">
         <div className="relative aspect-square w-[260px] max-w-full lg:w-[318px]" aria-label="Avatar preview">
@@ -449,6 +460,8 @@ function AvatarOptionsPanel({
   setSelectedHairColorId,
   selectedBodyTone,
   setSelectedBodyTone,
+  unlockedOptionIds,
+  onPurchaseRequest,
 }: {
   activeTab: AvatarTab;
   setActiveTab: (tab: AvatarTab) => void;
@@ -462,6 +475,8 @@ function AvatarOptionsPanel({
   setSelectedHairColorId: (color: HairColorId) => void;
   selectedBodyTone: BodyToneId;
   setSelectedBodyTone: (tone: BodyToneId) => void;
+  unlockedOptionIds: Set<string>;
+  onPurchaseRequest: (purchase: PendingAvatarPurchase) => void;
 }) {
   const visibleOptions = useMemo(() => {
     if (activeTab === 'face') return faceOptions;
@@ -518,19 +533,28 @@ function AvatarOptionsPanel({
             )}
           >
             {optionCards.map((option, index) => {
-              const locked = Boolean(
+              const requiresPurchase = Boolean(
                 option && (
                   (activeTab === 'face' && option.id === 'face-4-default') ||
                   (activeTab === 'hair' && option.id.endsWith('-4')) ||
                   (activeTab === 'outfit' && option.id === 'outfit-4')
                 )
               );
+              const locked = Boolean(option && requiresPurchase && !unlockedOptionIds.has(option.id));
+              const price =
+                activeTab === 'face' || (activeTab === 'outfit' && option?.id === 'outfit-4')
+                  ? 250
+                  : 200;
               const selected =
                 (activeTab === 'face' && option?.id === selectedFace.id) ||
                 (activeTab === 'hair' && option?.id === selectedHair.id) ||
                 (activeTab === 'outfit' && option?.id === selectedOutfit.id);
               const handleSelect = () => {
-                if (!option || locked) return;
+                if (!option) return;
+                if (locked) {
+                  onPurchaseRequest({ option, category: activeTab, price });
+                  return;
+                }
                 if (activeTab === 'face') setSelectedFace(option);
                 if (activeTab === 'hair') setSelectedHair(option);
                 if (activeTab === 'outfit') setSelectedOutfit(option);
@@ -543,6 +567,7 @@ function AvatarOptionsPanel({
                   selected={selected}
                   onSelect={handleSelect}
                   locked={locked}
+                  price={price}
                   compact={activeTab === 'face' || activeTab === 'hair'}
                 />
               );
@@ -551,6 +576,77 @@ function AvatarOptionsPanel({
         </div>
       </div>
     </section>
+  );
+}
+
+function AvatarPurchaseModal({
+  purchase,
+  coinBalance,
+  message,
+  onCancel,
+  onBuy,
+}: {
+  purchase: PendingAvatarPurchase;
+  coinBalance: number;
+  message: string;
+  onCancel: () => void;
+  onBuy: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#171329]/45 px-4 backdrop-blur-[3px]" role="presentation" onMouseDown={onCancel}>
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="avatar-purchase-title"
+        onMouseDown={(event) => event.stopPropagation()}
+        className="relative w-full max-w-[430px] rounded-[32px] border border-white/80 bg-white px-[32px] pb-[30px] pt-[34px] text-center shadow-[0_28px_80px_rgba(52,46,117,0.28)]"
+      >
+        <button
+          type="button"
+          onClick={onCancel}
+          aria-label="Close purchase confirmation"
+          className="absolute right-[18px] top-[18px] flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[#f0eff8] text-[#858585] transition hover:text-[#685eeb]"
+        >
+          <X className="h-[18px] w-[18px]" strokeWidth={2.2} />
+        </button>
+
+        <div className="relative mx-auto h-[150px] w-[150px] rounded-[24px] border border-[#e2e0f0] bg-[linear-gradient(145deg,#f0eff8,#fbfaff)] p-[12px]">
+          <Image src={purchase.option.optionCardSrc ?? purchase.option.src} alt={purchase.option.label} fill sizes="150px" className="object-contain p-[12px]" />
+        </div>
+
+        <h2 id="avatar-purchase-title" className="mt-[22px] text-[22px] font-extrabold text-[#111111]">
+          Buy {purchase.option.label} for {purchase.price} coins?
+        </h2>
+        <div className="mt-[12px] inline-flex items-center gap-[6px] rounded-full bg-[#f0eff8] px-[12px] py-[7px] text-[14px] font-semibold text-[#5c5780]">
+          <Image src={WARP_COIN_ASSET} alt="" width={22} height={22} className="h-[22px] w-[22px]" />
+          Balance: {coinBalance}
+        </div>
+
+        {message ? (
+          <p role="alert" className="mt-[14px] rounded-[12px] border border-[#ffcaca] bg-[#fff0f0] px-[14px] py-[10px] text-[13px] font-semibold text-[#c54e4e]">
+            {message}
+          </p>
+        ) : null}
+
+        <div className="mt-[26px] grid grid-cols-2 gap-[12px]">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="h-[44px] rounded-[13px] border border-[#d8d3f2] bg-white text-[15px] font-bold text-[#685eeb] transition hover:bg-[#f7f5ff]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onBuy}
+            className="inline-flex h-[44px] items-center justify-center gap-[7px] rounded-[13px] bg-[#685eeb] text-[15px] font-bold text-white shadow-[0_10px_22px_rgba(104,94,235,0.24)] transition hover:bg-[#5d54df]"
+          >
+            <Image src={WARP_COIN_ASSET} alt="" width={20} height={20} className="h-[20px] w-[20px]" />
+            Buy
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -680,6 +776,10 @@ export function AvatarCreationPage() {
   const [selectedBodyTone, setSelectedBodyTone] = useState<BodyToneId>(initialBodyTone);
   const [undoStack, setUndoStack] = useState<AvatarSelectionSnapshot[]>([]);
   const [redoStack, setRedoStack] = useState<AvatarSelectionSnapshot[]>([]);
+  const [coinBalance, setCoinBalance] = useState(250);
+  const [unlockedOptionIds, setUnlockedOptionIds] = useState<Set<string>>(() => new Set());
+  const [pendingPurchase, setPendingPurchase] = useState<PendingAvatarPurchase | null>(null);
+  const [purchaseMessage, setPurchaseMessage] = useState('');
   const [displayName, setDisplayName] = useState(() => avatarProfile.displayName);
   const [position, setPosition] = useState(() => avatarProfile.position);
   const [interests, setInterests] = useState<string[]>(() => avatarProfile.interests.length > 0 ? avatarProfile.interests : defaultInterests);
@@ -740,6 +840,26 @@ export function AvatarCreationPage() {
     if (option.id === selectedOutfit.id) return;
     recordSelectionChange();
     setSelectedOutfit(option);
+  };
+
+  const closePurchaseModal = () => {
+    setPendingPurchase(null);
+    setPurchaseMessage('');
+  };
+
+  const handlePurchase = () => {
+    if (!pendingPurchase) return;
+    if (coinBalance < pendingPurchase.price) {
+      setPurchaseMessage(`Not enough WARP coins. You need ${pendingPurchase.price - coinBalance} more.`);
+      return;
+    }
+
+    setCoinBalance((balance) => balance - pendingPurchase.price);
+    setUnlockedOptionIds((current) => new Set(current).add(pendingPurchase.option.id));
+    if (pendingPurchase.category === 'face') handleFaceSelect(pendingPurchase.option);
+    if (pendingPurchase.category === 'hair') handleHairSelect(pendingPurchase.option);
+    if (pendingPurchase.category === 'outfit') handleOutfitSelect(pendingPurchase.option);
+    closePurchaseModal();
   };
 
   const handleBodyToneSelect = (tone: BodyToneId) => {
@@ -829,6 +949,7 @@ export function AvatarCreationPage() {
             canRedo={redoStack.length > 0}
             onUndo={handleUndo}
             onRedo={handleRedo}
+            coinBalance={coinBalance}
           />
 
           <AvatarOptionsPanel
@@ -844,6 +965,11 @@ export function AvatarCreationPage() {
             setSelectedHairColorId={handleHairColorSelect}
             selectedBodyTone={selectedBodyTone}
             setSelectedBodyTone={handleBodyToneSelect}
+            unlockedOptionIds={unlockedOptionIds}
+            onPurchaseRequest={(purchase) => {
+              setPurchaseMessage('');
+              setPendingPurchase(purchase);
+            }}
           />
 
           <ProfileInfoCard
@@ -876,6 +1002,15 @@ export function AvatarCreationPage() {
           </button>
         </div>
       </div>
+      {pendingPurchase ? (
+        <AvatarPurchaseModal
+          purchase={pendingPurchase}
+          coinBalance={coinBalance}
+          message={purchaseMessage}
+          onCancel={closePurchaseModal}
+          onBuy={handlePurchase}
+        />
+      ) : null}
     </main>
   );
 }

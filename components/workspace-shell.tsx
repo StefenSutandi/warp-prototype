@@ -19,7 +19,7 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
   const initUser = useUserStore(state => state.initialize);
   const initTasks = useTaskStore(state => state.initialize);
   const isMemberWorkspace = user.role === 'member' || user.role === 'employee';
-  const [activeView, setActiveView] = useState<'management' | 'room'>(isMemberWorkspace ? 'room' : 'management');
+  const [activeView, setActiveView] = useState<'management' | 'room'>('management');
 
   useEffect(() => {
     initUser(user);
@@ -27,15 +27,16 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
   }, [user, tasks, teammates, initUser, initTasks]);
 
   useEffect(() => {
-    setActiveView(isMemberWorkspace ? 'room' : 'management');
+    setActiveView('management');
   }, [isMemberWorkspace, user.role]);
 
-  if (isMemberWorkspace || activeView === 'room') {
+  if (activeView === 'room') {
     return (
       <>
         <VirtualRoomLayout
           user={user}
-          onBackToDashboard={isMemberWorkspace ? undefined : () => setActiveView('management')}
+          initialRoomId={isMemberWorkspace ? 'lounge' : 'main'}
+          onBackToDashboard={() => setActiveView('management')}
         />
         <LevelUpModal />
         <AvatarCustomizer />
@@ -43,7 +44,7 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
     );
   }
 
-  // Owner and Coordinator share the management shell for the role-foundation stage.
+  // All roles share the dashboard shell; role checks inside it limit privileged controls.
   return (
     <>
       <EmployerDashboard user={user} onEnterWorkspace={() => setActiveView('room')} />

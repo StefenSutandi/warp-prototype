@@ -16,7 +16,7 @@ import {
   Edit3,
   Flame,
   Hash,
-  LayoutGrid,
+  House,
   Lock,
   type LucideIcon,
   MessageCircle,
@@ -54,11 +54,17 @@ const EMPLOYER_DASHBOARD_ASSETS = {
   focusTomato: '/assets/virtual-room/ui/tomato.png',
 } as const;
 
+const PROFILE_BADGES = [
+  { src: '/assets/figma-export/profile/badges/badge-fire.png', label: 'Focus streak badge' },
+  { src: '/assets/figma-export/profile/badges/badge-target.png', label: 'Goal setter badge' },
+  { src: '/assets/figma-export/profile/badges/badge-star.png', label: 'Team star badge' },
+] as const;
+
 const purplePressClass =
   'transition-all duration-150 ease-out active:translate-y-[1px] active:scale-[0.98] active:shadow-[inset_0_2px_6px_rgba(63,53,190,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685eeb]/30 focus-visible:ring-offset-2';
 
 const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
+  { id: 'dashboard', label: 'Dashboard', icon: House },
   { id: 'stats', label: 'My Stats', icon: ChartColumnBig },
   { id: 'tasks', label: 'To-Do', icon: ClipboardCheck },
   { id: 'chat', label: 'Chat', icon: MessageCircle },
@@ -97,19 +103,50 @@ const recapCards = [
 ] as const;
 
 const achievementCards = [
-  { id: 'first-room', title: 'First Room', subtitle: 'Joined your first room', unlocked: true, icon: DoorOpen },
-  { id: 'focus-starter', title: 'Focus Starter', subtitle: 'Completed a focus session', unlocked: true, icon: Target },
-  { id: 'task-finisher', title: 'Task Finisher', subtitle: 'Finished your first task', unlocked: true, icon: ShieldCheck },
-  { id: 'seven-day-streak', title: '7-Day Streak', subtitle: 'Keep working for a week', unlocked: false, icon: Sparkles },
-  { id: 'team-player', title: 'Team Player', subtitle: 'Collaborate in five rooms', unlocked: false, icon: UsersRound },
-  { id: 'deep-work', title: 'Deep Work', subtitle: 'Reach 4 hours of focus', unlocked: false, icon: Timer },
-  { id: 'deadline-master', title: 'Deadline Master', subtitle: 'Beat three deadlines', unlocked: false, icon: Trophy },
-  { id: 'room-creator', title: 'Room Creator', subtitle: 'Create a workspace room', unlocked: false, icon: DoorOpen },
-  { id: 'social-warper', title: 'Social Warper', subtitle: 'Chat with your whole team', unlocked: false, icon: Star },
+  {
+    id: 'on-fire-seven',
+    title: 'ON FIRE',
+    subtitle: 'Maintain a productivity streak for 7 consecutive days.',
+    progress: 100,
+    reward: 20,
+    state: 'claimable',
+    icon: Flame,
+    badgeSrc: '/assets/figma-export/achievement/badge-fire.png',
+  },
+  {
+    id: 'speed-runner',
+    title: 'SPEED RUNNER',
+    subtitle: 'Complete 5 tasks before their estimated completion time.',
+    progress: 50,
+    reward: 30,
+    state: 'locked',
+    icon: Timer,
+    badgeSrc: '/assets/figma-export/achievement/badge-speed-runner.png',
+  },
+  {
+    id: 'mission-cleared',
+    title: 'MISSION CLEARED',
+    subtitle: 'Complete 100% of tasks within a project milestone.',
+    progress: 50,
+    reward: 100,
+    state: 'locked',
+    icon: Star,
+    badgeSrc: '/assets/figma-export/achievement/badge-mission-cleared.png',
+  },
+  {
+    id: 'on-fire-three',
+    title: 'ON FIRE',
+    subtitle: 'Maintain a productivity streak for 3 consecutive days.',
+    progress: 100,
+    reward: 20,
+    state: 'completed',
+    icon: Flame,
+    badgeSrc: '/assets/figma-export/achievement/badge-fire.png',
+  },
 ] as const;
 
 const studioTabs = [
-  { id: 'papers-studio', name: 'Papers Studio', focus: 'Brand refresh', activeMembers: 3 },
+  { id: 'papers-studio', name: 'Papers Studio', focus: 'Brand refresh', activeMembers: 4 },
   { id: 'pencil-studio', name: 'Pencil Studio', focus: 'Illustration system', activeMembers: 2 },
   { id: 'eraser-studio', name: 'Eraser Studio', focus: 'Launch cleanup', activeMembers: 1 },
 ] as const;
@@ -118,6 +155,7 @@ const onlineMembers = [
   { name: 'Baskara Putra', role: 'UI/UX Designer', task: 'Icon Set Exploration', status: 'In Review', progress: 70, avatar: PROFILE_THUMBNAILS[6] },
   { name: 'Nadira Salma', role: 'Illustrator', task: 'Character Pose Cleanup', status: 'In Progress', progress: 55, avatar: PROFILE_THUMBNAILS[7] },
   { name: 'Kenzo Pratama', role: 'Motion Designer', task: 'Micro-interaction Pass', status: 'Review Today', progress: 82, avatar: PROFILE_THUMBNAILS[0] },
+  { name: 'Raka Mahendra', role: 'Frontend Developer', task: 'Dashboard Integration', status: 'In Progress', progress: 62, avatar: PROFILE_THUMBNAILS[2] },
 ] as const;
 
 const teamActivityItems = [
@@ -282,48 +320,38 @@ const moderatorTeamMembers: ModeratorTeamMember[] = [
 const broadcastRecipients = ['All Members', 'Coordinators', 'Current Room'] as const;
 type BroadcastRecipient = (typeof broadcastRecipients)[number];
 
-const projectTimelineWarpMonths = ['Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'] as const;
+const projectTimelineWarpMonths = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP'] as const;
 
 const projectTimelineWarpPhases = [
   {
-    id: 'research-concept',
-    name: 'Research & Concept',
-    dateRange: 'Mar-Apr 2026',
+    id: 'pre-production',
+    name: 'PRE-PRODUCTION',
+    dateRange: 'Jan-Mar 2026',
     progress: 100,
     status: 'Completed',
-    tone: 'green',
-    startColumn: 1,
-    spanColumns: 2,
-  },
-  {
-    id: 'ui-design',
-    name: 'UI Design',
-    dateRange: 'Apr-Jun 2026',
-    progress: 55,
-    status: 'Active',
     tone: 'purple',
-    startColumn: 2,
+    startColumn: 1,
     spanColumns: 3,
   },
   {
-    id: 'dev-handoff',
-    name: 'Dev Handoff',
-    dateRange: 'Jun-Jul 2026',
-    progress: 15,
+    id: 'production',
+    name: 'PRODUCTION',
+    dateRange: 'Mar-Jul 2026',
+    progress: 55,
     status: 'Active',
-    tone: 'purple',
-    startColumn: 4,
-    spanColumns: 2,
+    tone: 'mint',
+    startColumn: 3,
+    spanColumns: 5,
   },
   {
-    id: 'testing-launch',
-    name: 'Testing & Launch',
-    dateRange: 'Jul-Aug 2026',
-    progress: 0,
-    status: 'Not started',
-    tone: 'gray',
-    startColumn: 5,
-    spanColumns: 2,
+    id: 'review-launch',
+    name: 'REVIEW & LAUNCH',
+    dateRange: 'Jul-Sep 2026',
+    progress: 30,
+    status: 'Active',
+    tone: 'pink',
+    startColumn: 7,
+    spanColumns: 3,
   },
 ] as const;
 
@@ -548,7 +576,7 @@ function TopBar({
   title?: string;
 }) {
   return (
-    <div className="flex h-[80px] flex-wrap items-center justify-between gap-4 border-b border-[#e2e0f0] bg-white px-[26px] py-[16px] lg:px-[27px]">
+    <div className="flex h-[80px] shrink-0 flex-wrap items-center justify-between gap-4 border-b border-[#e2e0f0] bg-white px-[26px] py-[16px] lg:px-[27px]">
       <h1 className="warp-font-header text-[24px] font-extrabold tracking-[-0.03em] text-[#111111]">
         {title ? (
           title
@@ -563,11 +591,23 @@ function TopBar({
       </h1>
 
       <div className="flex items-center gap-[11px]">
-        <div className="hidden h-[40px] w-[151px] items-center justify-end rounded-[13px] border border-[#e2e0f0] bg-[#f0eff8] px-[12px] text-[#5c5780] md:flex">
-          <Search className="h-5 w-5" strokeWidth={1.8} />
-        </div>
-        <div className="flex h-[40px] items-center gap-2 rounded-[13px] border border-[#e2e0f0] bg-[#f0eff8] px-[14px] text-[#5c5780]">
-          <Hash className="h-5 w-5 text-[#685eeb]" strokeWidth={2.4} />
+        <label className="hidden h-[40px] w-[151px] items-center gap-[8px] rounded-[13px] border border-[#e2e0f0] bg-[#f0eff8] px-[12px] text-[#5c5780] transition focus-within:border-[#a29bfc] focus-within:ring-2 focus-within:ring-[#685eeb]/10 md:flex">
+          <Search className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />
+          <input
+            type="search"
+            aria-label="Search workspace"
+            placeholder="Search"
+            className="min-w-0 flex-1 bg-transparent text-[12px] font-medium text-[#5c5780] outline-none placeholder:text-[#9b96b8]"
+          />
+        </label>
+        <div className="flex h-[40px] min-w-[92px] items-center justify-center gap-[7px] rounded-[13px] border border-[#e2e0f0] bg-[#f0eff8] px-[12px] text-[#5c5780]">
+          <Image
+            src="/assets/figma-export/avatar-customization/icons/warp-coin.svg"
+            alt=""
+            width={24}
+            height={24}
+            className="h-[24px] w-[24px]"
+          />
           <span className="text-[20px] font-medium">{rewardBalance}</span>
         </div>
 
@@ -1138,13 +1178,13 @@ function ModeratorOverviewSection({
   );
 }
 
-function ProjectTimelineWarpSection() {
-  const [selectedPhaseId, setSelectedPhaseId] = useState<ProjectTimelineWarpPhase['id']>('ui-design');
+function ProjectTimelineWarpSection({ canAddPhase }: { canAddPhase: boolean }) {
+  const [selectedPhaseId, setSelectedPhaseId] = useState<ProjectTimelineWarpPhase['id']>('production');
   const selectedPhase = projectTimelineWarpPhases.find((phase) => phase.id === selectedPhaseId) ?? projectTimelineWarpPhases[0];
   const barToneClass = {
-    green: 'bg-[#56c596]',
     purple: 'bg-[#685eeb]',
-    gray: 'bg-[#cfd0d8]',
+    mint: 'bg-[linear-gradient(90deg,#56c596_0%,#46d2d2_100%)]',
+    pink: 'bg-[#ef8eb8]',
   } as const;
   const statusToneClass = {
     Completed: 'bg-[#eafff4] text-[#229b63]',
@@ -1158,7 +1198,7 @@ function ProjectTimelineWarpSection() {
         <div>
           <h2 className="warp-font-display text-[21px] font-extrabold tracking-[-0.03em] text-[#111111]">Project Timeline WARP</h2>
           <p className="mt-[6px] text-[12px] font-semibold text-[#858585]">
-            4 phases &middot; 16 total tasks &middot; Project deadline: June 30, 2026
+            3 phases &middot; 16 total tasks &middot; Project deadline: September 30, 2026
           </p>
         </div>
         <div className="flex flex-wrap gap-[10px]">
@@ -1171,16 +1211,18 @@ function ProjectTimelineWarpSection() {
           >
             Summary
           </button>
-          <button
-            type="button"
-            className={cn(
-              'inline-flex h-[34px] items-center gap-[7px] rounded-[11px] bg-[#685eeb] px-[13px] text-[12px] font-extrabold text-white shadow-[0_10px_20px_rgba(104,94,235,0.16)] hover:bg-[#5d54df]',
-              purplePressClass
-            )}
-          >
-            <Plus className="h-[14px] w-[14px]" strokeWidth={2.4} />
-            Add phase
-          </button>
+          {canAddPhase ? (
+            <button
+              type="button"
+              className={cn(
+                'inline-flex h-[34px] items-center gap-[7px] rounded-[11px] bg-[#685eeb] px-[13px] text-[12px] font-extrabold text-white shadow-[0_10px_20px_rgba(104,94,235,0.16)] hover:bg-[#5d54df]',
+                purplePressClass
+              )}
+            >
+              <Plus className="h-[14px] w-[14px]" strokeWidth={2.4} />
+              Add phase
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -1239,18 +1281,24 @@ function ProjectTimelineWarpSection() {
         </div>
 
         <div className="overflow-x-auto rounded-[16px] border border-[#e2e0f0] bg-white px-[16px] py-[14px]">
-          <div className="min-w-[620px]">
-            <div className="grid grid-cols-6 border-b border-[#eceaf6] pb-[11px] text-center text-[12px] font-extrabold text-[#5c5780]">
+          <div className="min-w-[760px]">
+            <div className="grid grid-cols-9 border-b border-[#eceaf6] pb-[11px] text-center text-[12px] font-extrabold text-[#5c5780]">
               {projectTimelineWarpMonths.map((month) => (
                 <span key={month}>{month}</span>
               ))}
             </div>
 
             <div className="relative mt-[14px] space-y-[14px]">
-              <div className="pointer-events-none absolute inset-y-0 left-0 right-0 grid grid-cols-6">
+              <div className="pointer-events-none absolute inset-y-0 left-0 right-0 grid grid-cols-9">
                 {projectTimelineWarpMonths.map((month) => (
                   <span key={month} className="border-r border-[#f0eef8] last:border-r-0" />
                 ))}
+              </div>
+              <div className="pointer-events-none absolute inset-y-[-7px] left-[52.5%] z-20 w-px bg-[#ff5f68] shadow-[0_0_0_1px_rgba(255,95,104,0.08)]">
+                <span className="absolute -left-[4px] -top-[3px] h-[9px] w-[9px] rounded-full bg-[#ff5f68] ring-2 ring-white" />
+                <span className="absolute left-[7px] top-[-8px] whitespace-nowrap rounded-full bg-[#fff0f1] px-[6px] py-[3px] text-[9px] font-extrabold text-[#d94852]">
+                  TODAY
+                </span>
               </div>
 
               {projectTimelineWarpPhases.map((phase) => {
@@ -1261,7 +1309,7 @@ function ProjectTimelineWarpSection() {
                     key={phase.id}
                     type="button"
                     onClick={() => setSelectedPhaseId(phase.id)}
-                    className="relative grid h-[36px] w-full grid-cols-6 items-center text-left"
+                    className="relative grid h-[36px] w-full grid-cols-9 items-center text-left"
                     aria-label={`Select ${phase.name}`}
                   >
                     <span
@@ -1401,6 +1449,8 @@ function EmployerDashboardHome({
   onBroadcast,
   onManageRooms,
   canManageRooms,
+  canViewRooms,
+  canReview,
 }: {
   onCreateRoom: () => void;
   onJoinRoom: () => void;
@@ -1408,6 +1458,8 @@ function EmployerDashboardHome({
   onBroadcast: () => void;
   onManageRooms: () => void;
   canManageRooms: boolean;
+  canViewRooms: boolean;
+  canReview: boolean;
 }) {
   return (
     <div className="space-y-[15px] px-[21px] py-[22px]">
@@ -1418,18 +1470,28 @@ function EmployerDashboardHome({
         canManageRooms={canManageRooms}
       />
 
-      <div className={cn('grid gap-[14px]', canManageRooms ? 'xl:grid-cols-2' : 'xl:grid-cols-1')}>
-        {canManageRooms ? (
+      <div className={cn('grid gap-[14px]', canViewRooms ? 'xl:grid-cols-2' : 'xl:grid-cols-1')}>
+        {canViewRooms ? (
           <DashboardCard
             title="Your Rooms"
             action={
-              <button type="button" onClick={onManageRooms} className="text-[14px] font-semibold text-[#685eeb] transition hover:text-[#4f45d9]">
-                Room Administration
+              <button
+                type="button"
+                onClick={canManageRooms ? onManageRooms : onEnterWorkspace}
+                className="text-[14px] font-semibold text-[#685eeb] transition hover:text-[#4f45d9]"
+              >
+                {canManageRooms ? 'Room Administration' : 'View all'}
               </button>
             }
           >
             {recentRooms.map((room) => (
-              <RoomRow key={room.id} title={room.title} level={room.level} membersOnline={room.membersOnline} onEnterRoom={onJoinRoom} />
+              <RoomRow
+                key={room.id}
+                title={room.title}
+                level={room.level}
+                membersOnline={room.membersOnline}
+                onEnterRoom={canManageRooms ? onJoinRoom : onEnterWorkspace}
+              />
             ))}
           </DashboardCard>
         ) : null}
@@ -1449,7 +1511,7 @@ function EmployerDashboardHome({
         </DashboardCard>
       </div>
 
-      <ModeratorOverviewSection onBroadcast={onBroadcast} canBroadcast={canManageRooms} />
+      {canReview ? <ModeratorOverviewSection onBroadcast={onBroadcast} canBroadcast={canManageRooms} /> : null}
     </div>
   );
 }
@@ -1690,7 +1752,10 @@ function AchievementCard({
   id,
   title,
   subtitle,
-  unlocked,
+  progress,
+  reward,
+  state,
+  badgeSrc,
   selected,
   onSelect,
   icon: Icon,
@@ -1698,51 +1763,88 @@ function AchievementCard({
   id: string;
   title: string;
   subtitle: string;
-  unlocked: boolean;
+  progress: number;
+  reward: number;
+  state: 'claimable' | 'locked' | 'completed';
+  badgeSrc?: string;
   selected: boolean;
   onSelect: (id: string) => void;
   icon: LucideIcon;
 }) {
+  const isLocked = state === 'locked';
+  const isCompleted = state === 'completed';
+
   return (
     <button
       type="button"
       onClick={() => onSelect(id)}
       className={cn(
-        'group relative min-h-[160px] rounded-[18px] border px-[18px] py-[19px] text-left transition-all duration-200 active:translate-y-[1px] active:scale-[0.99]',
-        unlocked
-          ? 'border-[#e2e0f0] bg-white shadow-[0_8px_22px_rgba(104,94,235,0.05)] hover:-translate-y-[2px] hover:border-[#bfb8ff] hover:shadow-[0_16px_34px_rgba(104,94,235,0.13)]'
-          : 'border-[#e7e5f0] bg-[#f0eff8]/80 text-[#9b96b8] hover:-translate-y-[1px] hover:border-[#d7d2e8] hover:bg-[#f4f2fb]',
+        'group relative grid min-h-[176px] grid-cols-[108px_minmax(0,1fr)] gap-[15px] rounded-[20px] border border-white/80 bg-white px-[20px] py-[20px] text-left shadow-[0_8px_22px_rgba(104,94,235,0.05)] transition-all duration-200 active:translate-y-[1px] active:scale-[0.99] sm:grid-cols-[130px_minmax(0,1fr)]',
+        'hover:-translate-y-[2px] hover:border-[#cfc9ff] hover:shadow-[0_16px_34px_rgba(104,94,235,0.12)]',
         selected && 'ring-2 ring-[#685eeb]/25 ring-offset-2 ring-offset-[#f9fbfd]'
       )}
     >
-      {unlocked ? (
-        <span className="absolute right-[14px] top-[14px] flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[#56efc4] text-white shadow-[0_6px_12px_rgba(86,239,196,0.26)]">
-          <Check className="h-[13px] w-[13px]" strokeWidth={2.6} />
-        </span>
-      ) : (
-        <span className="absolute right-[14px] top-[14px] flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[#dedbea] text-[#9b96b8]">
-          <Lock className="h-[12px] w-[12px]" strokeWidth={2} />
-        </span>
-      )}
-
       <div
         className={cn(
-          'flex h-[54px] w-[54px] items-center justify-center rounded-[18px] transition-transform duration-200 group-hover:scale-[1.04]',
-          unlocked
-            ? 'bg-[linear-gradient(140deg,#ebe9fe_0%,#f8f7ff_100%)] text-[#685eeb] shadow-[inset_0_0_0_1px_rgba(104,94,235,0.08)]'
-            : 'bg-[#e5e2ef] text-[#a5a0bd]'
+          'flex h-[135px] w-full items-center justify-center rounded-[18px] border-[7px] transition-transform duration-200 group-hover:scale-[1.02]',
+          isLocked
+            ? 'border-[#c9c5f5] bg-[linear-gradient(145deg,#e6e3ff,#f3f2ff)] text-[#8c84dc]'
+            : 'border-[#bdb6ff] bg-[linear-gradient(145deg,#d8d4ff,#f4f2ff)] text-[#685eeb]'
         )}
       >
-        <Icon className="h-[25px] w-[25px]" strokeWidth={1.8} />
+        {badgeSrc ? (
+          <Image src={badgeSrc} alt="" width={130} height={135} className="h-full w-full object-contain p-[5px]" />
+        ) : (
+          <Icon className="h-[58px] w-[58px]" strokeWidth={1.7} />
+        )}
       </div>
-      <h3 className={cn('mt-[19px] text-[15px] font-bold leading-tight', unlocked ? 'text-[#111111]' : 'text-[#85809d]')}>
-        {title}
-      </h3>
-      <p className={cn('mt-[5px] text-[11px] font-medium leading-[1.35]', unlocked ? 'text-[#858585]' : 'text-[#aaa5bd]')}>
-        {subtitle}
-      </p>
-      <div className={cn('mt-[14px] h-[5px] w-full overflow-hidden rounded-full', unlocked ? 'bg-[#f0eff8]' : 'bg-[#e1deeb]')}>
-        <div className={cn('h-full rounded-full transition-all duration-200', unlocked ? 'w-[72%] bg-[linear-gradient(90deg,#685eeb,#a29bfc)]' : 'w-[28%] bg-[#c8c4db]')} />
+
+      <div className="flex min-w-0 flex-col justify-center">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="pt-[4px] text-[20px] font-extrabold leading-tight text-[#111111]">{title}</h3>
+          {!isCompleted ? (
+            <span className="inline-flex shrink-0 items-center gap-[5px] rounded-full border border-[#e2e0f0] bg-[#f0eff8] py-[5px] pl-[6px] pr-[9px] text-[12px] font-semibold text-black">
+              <Image
+                src="/assets/figma-export/avatar-customization/icons/warp-coin.svg"
+                alt=""
+                width={22}
+                height={22}
+                className="h-[22px] w-[22px]"
+              />
+              {reward}
+            </span>
+          ) : (
+            <Check className="mt-[4px] h-[18px] w-[18px] text-[#111111]" strokeWidth={2} />
+          )}
+        </div>
+
+        <p className="mt-[5px] max-w-[250px] text-[13px] font-medium leading-[1.35] text-[#111111]">{subtitle}</p>
+
+        {isCompleted ? (
+          <span className="mt-[18px] inline-flex h-[31px] w-[127px] items-center justify-center rounded-[10px] border border-[#d8ede6] bg-[#e6f5ef] text-[13px] font-semibold text-[#5cb391]">
+            Completed
+          </span>
+        ) : (
+          <div className="mt-auto flex items-end justify-between gap-[14px] pt-[15px]">
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] font-medium text-[#9b96b8]">Progress : {progress}%</p>
+              <div className="mt-[6px] h-[8px] overflow-hidden rounded-full bg-[#dfdfdf]">
+                <div className="h-full rounded-full bg-[#685eeb]" style={{ width: `${progress}%` }} />
+              </div>
+            </div>
+            <span
+              className={cn(
+                'inline-flex h-[31px] w-[127px] shrink-0 items-center justify-center gap-[6px] rounded-[10px] text-[12px] font-semibold',
+                isLocked
+                  ? 'border border-[#e2e0f0] bg-[#f0eff8] text-[#9b96b8]'
+                  : 'bg-[#685eeb] text-white shadow-[0_2px_17.7px_rgba(104,94,235,0.31)]'
+              )}
+            >
+              {isLocked ? <Lock className="h-[14px] w-[14px]" strokeWidth={1.9} /> : <Trophy className="h-[14px] w-[14px]" strokeWidth={1.9} />}
+              Claim Reward
+            </span>
+          </div>
+        )}
       </div>
     </button>
   );
@@ -1900,37 +2002,15 @@ function BroadcastMessageModal({
 }
 
 export function WorkspaceStatsPage() {
-  const [selectedAchievement, setSelectedAchievement] = useState<string>('first-room');
+  const [selectedAchievement, setSelectedAchievement] = useState<string>('on-fire-seven');
 
   return (
-    <div className="px-[30px] py-[27px]">
-      <section className="mb-[27px] overflow-hidden rounded-[22px] border border-[#e2e0f0] bg-[linear-gradient(135deg,#ffffff_0%,#f3f1ff_49%,#effdf9_108%)] px-[25px] py-[23px] shadow-[0_10px_28px_rgba(104,94,235,0.08)]">
-        <div className="flex flex-wrap items-center justify-between gap-5">
-          <div>
-            <h2 className="warp-font-display text-[30px] font-extrabold leading-none tracking-[-0.04em] text-[#111111]">
-              My Stats
-            </h2>
-            <p className="mt-[9px] max-w-[560px] text-[13px] font-medium leading-[1.45] text-[#858585]">
-              Track your monthly WARP progress, focus momentum, and workspace milestones.
-            </p>
-          </div>
-          <button
-            type="button"
-            className={cn(
-              'rounded-[14px] border border-[#d8d3f2] bg-white px-[14px] py-[9px] text-[12px] font-semibold text-[#685eeb] shadow-[0_6px_18px_rgba(104,94,235,0.07)] hover:bg-[#f8f6ff]',
-              purplePressClass
-            )}
-          >
-            May 2026
-          </button>
-        </div>
-      </section>
-
+    <div className="px-[30px] pb-[38px] pt-[27px]">
       <section>
         <div className="flex items-end justify-between gap-4">
           <div>
             <h3 className="warp-font-display text-[20px] font-extrabold tracking-[-0.03em] text-[#111111]">WARP Recap</h3>
-            <p className="mt-[5px] text-[12px] font-medium text-[#858585]">A snapshot of your latest workspace activity.</p>
+            <p className="mt-[5px] text-[14px] font-medium text-[#5c5780]">A recap of your latest workspace activity</p>
           </div>
         </div>
         <div className="mt-[16px] grid gap-[15px] sm:grid-cols-2 xl:grid-cols-4">
@@ -1953,20 +2033,20 @@ export function WorkspaceStatsPage() {
         <div className="flex items-end justify-between gap-4">
           <div>
             <h3 className="warp-font-display text-[20px] font-extrabold tracking-[-0.03em] text-[#111111]">Achievements</h3>
-            <p className="mt-[5px] text-[12px] font-medium text-[#858585]">Unlock badges as you keep warping with the team.</p>
+            <p className="mt-[5px] text-[14px] font-medium text-[#5c5780]">Unlock badges and rewards as you keep warping with the team</p>
           </div>
-          <span className="rounded-full bg-white px-[13px] py-[7px] text-[12px] font-semibold text-[#5c5780] shadow-[0_6px_18px_rgba(104,94,235,0.05)]">
-            3 / 9 unlocked
-          </span>
         </div>
-        <div className="mt-[17px] grid gap-[15px] sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-[17px] grid gap-[20px] xl:grid-cols-2">
           {achievementCards.map((achievement) => (
             <AchievementCard
               key={achievement.id}
               id={achievement.id}
               title={achievement.title}
               subtitle={achievement.subtitle}
-              unlocked={achievement.unlocked}
+              progress={achievement.progress}
+              reward={achievement.reward}
+              state={achievement.state}
+              badgeSrc={achievement.badgeSrc}
               selected={selectedAchievement === achievement.id}
               onSelect={setSelectedAchievement}
               icon={achievement.icon}
@@ -1978,7 +2058,13 @@ export function WorkspaceStatsPage() {
   );
 }
 
-export function WorkspaceTeamPage({ onMessageTeammate }: { onMessageTeammate?: (teammate: TeamMemberProfile) => void }) {
+export function WorkspaceTeamPage({
+  onMessageTeammate,
+  role = 'member',
+}: {
+  onMessageTeammate?: (teammate: TeamMemberProfile) => void;
+  role?: Role;
+}) {
   const [selectedStudioId, setSelectedStudioId] = useState<(typeof studioTabs)[number]['id']>('papers-studio');
   const [selectedTeammate, setSelectedTeammate] = useState<TeamMemberProfile | null>(null);
   const [activeProfileTab, setActiveProfileTab] = useState<ProfileModalTab>('activity');
@@ -2046,14 +2132,18 @@ export function WorkspaceTeamPage({ onMessageTeammate }: { onMessageTeammate?: (
           </span>
         </div>
 
-        <div className="mt-[14px] flex gap-[16px] overflow-x-auto overscroll-x-contain pb-3">
+        <div
+          className="mt-[14px] flex flex-nowrap gap-[18px] overflow-x-auto overscroll-x-contain pb-5 [scrollbar-color:#a29bfc_#eceafd] [scrollbar-width:auto] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#a29bfc] hover:[&::-webkit-scrollbar-thumb]:bg-[#685eeb] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#eceafd]"
+          style={{ scrollbarGutter: 'stable' }}
+          aria-label="Currently online teammates"
+        >
           {onlineMembers.map((member) => (
             <article
               key={member.name}
               tabIndex={0}
               onClick={() => openProfileModal(member.name)}
               onKeyDown={(event) => handleProfileCardKeyDown(event, member.name)}
-              className="group min-w-[300px] flex-1 cursor-pointer rounded-[26px] bg-white p-[18px] shadow-[0_12px_26px_rgba(104,94,235,0.08)] ring-1 ring-[#e2e0f0]/70 transition hover:-translate-y-[1px] hover:shadow-[0_16px_30px_rgba(104,94,235,0.11)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685eeb]/30 focus-visible:ring-offset-2"
+              className="group w-[420px] min-w-[420px] flex-none cursor-pointer rounded-[26px] bg-white p-[20px] shadow-[0_12px_26px_rgba(104,94,235,0.08)] ring-1 ring-[#e2e0f0]/70 transition hover:-translate-y-[1px] hover:shadow-[0_16px_30px_rgba(104,94,235,0.11)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#685eeb]/30 focus-visible:ring-offset-2"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex min-w-0 items-center gap-[16px]">
@@ -2146,7 +2236,7 @@ export function WorkspaceTeamPage({ onMessageTeammate }: { onMessageTeammate?: (
         ) : null}
       </section>
 
-      <ProjectTimelineWarpSection />
+      <ProjectTimelineWarpSection canAddPhase={role === 'owner' || role === 'employer' || role === 'coordinator'} />
 
       {selectedTeammate ? (
         <ProfileModal
@@ -2217,7 +2307,7 @@ function ProfileModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#111111]/32 px-4 py-6 backdrop-blur-[2px]"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#29253f]/35 px-4 py-6 backdrop-blur-[4px]"
       role="presentation"
       onMouseDown={onClose}
     >
@@ -2226,7 +2316,7 @@ function ProfileModal({
         aria-modal="true"
         aria-label={`${teammate.name} profile`}
         onMouseDown={(event) => event.stopPropagation()}
-        className="relative grid max-h-[90vh] w-full max-w-[920px] overflow-y-auto rounded-[28px] border border-[#e2e0f0] bg-white shadow-[0_22px_60px_rgba(72,66,140,0.18)] lg:min-h-[660px] lg:grid-cols-[300px_minmax(0,1fr)]"
+        className="relative grid max-h-[90vh] w-full max-w-[940px] overflow-y-auto rounded-[40px] border border-[#e2e0f0] bg-white shadow-[0_28px_80px_rgba(52,46,117,0.24)] lg:min-h-[692px] lg:grid-cols-[321px_minmax(0,1fr)]"
       >
         <button
           type="button"
@@ -2240,7 +2330,7 @@ function ProfileModal({
           <X className="h-[17px] w-[17px]" strokeWidth={2.2} />
         </button>
 
-        <aside className="rounded-t-[28px] bg-[#f1f3ff] px-[36px] pb-[34px] pt-[42px] lg:rounded-l-[28px] lg:rounded-tr-none">
+        <aside className="rounded-t-[40px] bg-[#f1f3ff] px-[40px] pb-[34px] pt-[46px] lg:rounded-l-[40px] lg:rounded-tr-none">
           <div className="relative h-[92px] w-[92px]">
             <div className={cn('absolute inset-0 rounded-full bg-gradient-to-br p-[4px]', teammate.avatarGradient)}>
               <div className="relative h-full w-full overflow-hidden rounded-full bg-[#f8f7fc]">
@@ -2285,10 +2375,18 @@ function ProfileModal({
             </button>
           </div>
 
-          <div className="mt-[32px] grid grid-cols-3 gap-[10px]">
-            {[0, 1, 2].map((item) => (
-              <div key={item} className="h-[65px] rounded-[10px] bg-white shadow-[0_8px_16px_rgba(104,94,235,0.03)]" />
-            ))}
+          <div className="mt-[30px]">
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#9b96b8]">Badges</p>
+            <div className="mt-[10px] grid grid-cols-3 gap-[10px]">
+              {PROFILE_BADGES.map((badge) => (
+                <div
+                  key={badge.src}
+                  className="relative flex h-[72px] items-center justify-center overflow-hidden rounded-[12px] bg-white p-[7px] shadow-[0_8px_16px_rgba(104,94,235,0.05)]"
+                >
+                  <Image src={badge.src} alt={badge.label} fill sizes="72px" className="object-contain p-[7px]" />
+                </div>
+              ))}
+            </div>
           </div>
         </aside>
 
@@ -3307,6 +3405,7 @@ export function EmployerDashboard({ user, onEnterWorkspace }: { user: User; onEn
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
   const [createdInvite, setCreatedInvite] = useState<RoomInvite | null>(null);
   const [roomCode, setRoomCode] = useState('');
+  const [taskPageTitle, setTaskPageTitle] = useState('To-Do');
   const joinRoomByCode = useRoomStore((state) => state.joinRoomByCode);
   const avatarProfile = useAvatarStore((state) => state.profile);
 
@@ -3314,6 +3413,8 @@ export function EmployerDashboard({ user, onEnterWorkspace }: { user: User; onEn
   const roleLabel = avatarProfile.position.trim() || user.roleLabel;
   const rewardBalance = Math.max(200, Math.round(user.xp / 26));
   const canManageRooms = user.role === 'owner' || user.role === 'employer';
+  const canViewRooms = canManageRooms || user.role === 'member' || user.role === 'employee';
+  const canReview = user.role === 'owner' || user.role === 'employer' || user.role === 'coordinator';
   const isTaskPage = activeItem === 'tasks';
   const isChatPage = activeItem === 'chat';
   const isStatsPage = activeItem === 'stats';
@@ -3337,53 +3438,63 @@ export function EmployerDashboard({ user, onEnterWorkspace }: { user: User; onEn
   };
 
   return (
-    <div className="warp-font-ui min-h-screen w-full bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)] text-[#111111]">
-      <div className={cn('grid min-h-screen w-full', isTaskPage || isChatPage || isStatsPage || isTeamPage || isSettingsPage ? 'grid-cols-[283px_minmax(0,1fr)]' : 'grid-cols-[283px_minmax(0,1fr)_285px]')}>
+    <div className="warp-font-ui h-screen w-full overflow-hidden bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)] text-[#111111]">
+      <div className={cn('grid h-screen min-h-0 w-full', isTaskPage || isChatPage || isStatsPage || isTeamPage || isSettingsPage ? 'grid-cols-[283px_minmax(0,1fr)]' : 'grid-cols-[283px_minmax(0,1fr)_285px]')}>
         <SidebarNav activeItem={activeItem} onSelect={setActiveItem} />
 
         <main
-          className="min-h-screen min-w-0 w-full border-r border-[#e2e0f0] bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)]"
+          className="flex h-screen min-h-0 min-w-0 w-full flex-col overflow-hidden border-r border-[#e2e0f0] bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)]"
           style={{ fontFamily: 'var(--font-ui-stack)' }}
         >
           {isTaskPage ? (
-            <EmployerTaskManagementPage />
+            <>
+              <TopBar displayName={displayName} rewardBalance={rewardBalance} title={taskPageTitle} />
+              <div className="min-h-0 flex-1 overflow-y-auto [&>div>div.absolute]:hidden [&>div]:min-h-0">
+                <EmployerTaskManagementPage onTitleChange={setTaskPageTitle} onOpenLiveScreen={onEnterWorkspace} />
+              </div>
+            </>
           ) : (
             <>
               <TopBar displayName={displayName} rewardBalance={rewardBalance} title={isChatPage ? 'Chat' : isStatsPage ? 'My Stats' : isTeamPage ? 'My Team & Project' : isSettingsPage ? 'Settings' : undefined} />
 
-              {isChatPage ? (
-                <WorkspaceChatPage selectedTeammate={selectedChatTeammate} />
-              ) : isStatsPage ? (
-                <WorkspaceStatsPage />
-              ) : isTeamPage ? (
-                <WorkspaceTeamPage
-                  onMessageTeammate={(teammate) => {
-                    setSelectedChatTeammate(teammate);
-                    setActiveItem('chat');
-                  }}
-                />
-              ) : isSettingsPage ? (
-                <WorkspaceSettingsPage role={user.role} onBack={() => setActiveItem('dashboard')} />
-              ) : stage === 'dashboard' ? (
-                <EmployerDashboardHome
-                  onCreateRoom={() => setStage('create-room')}
-                  onJoinRoom={openRoomCodeModal}
-                  onEnterWorkspace={onEnterWorkspace}
-                  onBroadcast={() => {
-                    if (canManageRooms) setIsBroadcastModalOpen(true);
-                  }}
-                  onManageRooms={() => {
-                    if (canManageRooms) setActiveItem('settings');
-                  }}
-                  canManageRooms={canManageRooms}
-                />
-              ) : (
-                <EmployerCreateRoomFlow
-                  onBack={() => setStage('dashboard')}
-                  createdByRole={user.role}
-                  onCreated={setCreatedInvite}
-                />
-              )}
+              <div className={cn('min-h-0 flex-1', isChatPage ? 'overflow-hidden' : 'overflow-y-auto')}>
+                {isChatPage ? (
+                  <WorkspaceChatPage selectedTeammate={selectedChatTeammate} />
+                ) : isStatsPage ? (
+                  <WorkspaceStatsPage />
+                ) : isTeamPage ? (
+                  <WorkspaceTeamPage
+                    role={user.role}
+                    onMessageTeammate={(teammate) => {
+                      setSelectedChatTeammate(teammate);
+                      setActiveItem('chat');
+                    }}
+                  />
+                ) : isSettingsPage ? (
+                  <WorkspaceSettingsPage role={user.role} onBack={() => setActiveItem('dashboard')} />
+                ) : stage === 'dashboard' ? (
+                  <EmployerDashboardHome
+                    onCreateRoom={() => setStage('create-room')}
+                    onJoinRoom={openRoomCodeModal}
+                    onEnterWorkspace={onEnterWorkspace}
+                    onBroadcast={() => {
+                      if (canManageRooms) setIsBroadcastModalOpen(true);
+                    }}
+                    onManageRooms={() => {
+                      if (canManageRooms) setActiveItem('settings');
+                    }}
+                    canManageRooms={canManageRooms}
+                    canViewRooms={canViewRooms}
+                    canReview={canReview}
+                  />
+                ) : (
+                  <EmployerCreateRoomFlow
+                    onBack={() => setStage('dashboard')}
+                    createdByRole={user.role}
+                    onCreated={setCreatedInvite}
+                  />
+                )}
+              </div>
             </>
           )}
         </main>
