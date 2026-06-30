@@ -357,7 +357,7 @@ const MAIN_ROOM_COWORKER_CONFIGS: Omit<RoomCoworkerConfig, 'x' | 'y'>[] = [
     direction: 'FL',
     bodyTone: 'light',
     outfitType: 'hoodie',
-    hairTextureKey: 'avatar-coworker-hair-2-1',
+    hairTextureKey: 'avatar-coworker-hair-4-1',
     faceDefaultTextureKey: 'avatar-coworker-face-2-default-2',
     faceBlinkTextureKey: 'avatar-coworker-face-2-blink-2',
     faceFlipX: false,
@@ -886,6 +886,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.load.image('avatar-coworker-hair-2-1', avatarHairColorVariantAssetPath('hair_2 1.png'));
     this.load.image('avatar-coworker-hair-3', avatarHairColorVariantAssetPath('hair_3 3.png'));
     this.load.image('avatar-coworker-hair-4', avatarHairColorVariantAssetPath('hair_4 2.png'));
+    this.load.image('avatar-coworker-hair-4-1', avatarHairColorVariantAssetPath('hair_4 1.png'));
     this.load.image('avatar-coworker-face-1-default', avatarFaceAssetPath('face_1_default.png'));
     this.load.image('avatar-coworker-face-1-blink', avatarFaceAssetPath('face_1_blink.png'));
     this.load.image('avatar-coworker-face-1-default-2', avatarFaceVariantAssetPath('face_1_default 2.png'));
@@ -989,6 +990,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     [
       'avatar-coworker-body-dark-FL-idle-tone',
       'avatar-coworker-hair-2-1',
+      'avatar-coworker-hair-4-1',
       'avatar-coworker-face-2-default-2',
       'avatar-coworker-face-2-blink-2',
       'avatar-coworker-hair-1-3',
