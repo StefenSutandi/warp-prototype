@@ -18,7 +18,7 @@ interface WorkspaceShellProps {
 export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) {
   const initUser = useUserStore(state => state.initialize);
   const initTasks = useTaskStore(state => state.initialize);
-  const isMemberWorkspace = user.role === 'member' || user.role === 'employee';
+  const isLoungeFirstRole = user.role === 'member' || user.role === 'employee' || user.role === 'coordinator';
   const [activeView, setActiveView] = useState<'dashboard' | 'room' | 'workspacePanel'>('dashboard');
   const [dashboardSection, setDashboardSection] = useState<
     'dashboard' | 'stats' | 'tasks' | 'chat' | 'team' | 'settings'
@@ -32,7 +32,7 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
   useEffect(() => {
     setActiveView('dashboard');
     setDashboardSection('dashboard');
-  }, [isMemberWorkspace, user.role]);
+  }, [isLoungeFirstRole, user.role]);
 
   const openWorkspacePanel = (
     section: 'stats' | 'todo' | 'chat' | 'team' | 'settings',
@@ -47,7 +47,7 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
         <div className={activeView === 'room' ? 'block' : 'hidden'}>
         <VirtualRoomLayout
           user={user}
-          initialRoomId={isMemberWorkspace ? 'lounge' : 'main'}
+          initialRoomId={isLoungeFirstRole ? 'lounge' : 'main'}
           onBackToDashboard={() => {
             setDashboardSection('dashboard');
             setActiveView('dashboard');

@@ -240,6 +240,7 @@ type RoomCoworkerConfig = {
   bodyTone: BodyTone;
   bodyTextureKey?: string;
   outfitType: OutfitType;
+  outfitTextureKey?: string;
   hairTextureKey: string;
   faceDefaultTextureKey: string;
   faceBlinkTextureKey: string;
@@ -260,6 +261,10 @@ type RoomCoworkerLayers = {
   hitArea?: Phaser.GameObjects.Arc;
   nameBadge?: Phaser.GameObjects.Container;
   pomodoroIndicator?: Phaser.GameObjects.Container;
+};
+type CoworkerPomodoroVisual = {
+  container: Phaser.GameObjects.Container;
+  graphics: Phaser.GameObjects.Graphics;
 };
 type StaticSeatedCoworkerConfig = {
   id: string;
@@ -286,9 +291,13 @@ const AVATAR_DEPTH_OFFSET = 16;
 const AVATAR_DISPLAY_SIZE = 180;
 const AVATAR_SITTING_INTERACTION_RANGE = 145;
 const AVATAR_WALK_FRAME_RATE = 16;
-const AVATAR_CLAP_FRAME_WIDTH = 500;
-const AVATAR_CLAP_FRAME_HEIGHT = 500;
-const AVATAR_CLAP_FRAME_COUNT = 20;
+const AVATAR_CLAP_SHEET_COLUMNS = 5;
+const AVATAR_CLAP_SHEET_ROWS = 4;
+const AVATAR_CLAP_SHEET_WIDTH = 5120;
+const AVATAR_CLAP_SHEET_HEIGHT = 4096;
+const AVATAR_CLAP_FRAME_WIDTH = AVATAR_CLAP_SHEET_WIDTH / AVATAR_CLAP_SHEET_COLUMNS;
+const AVATAR_CLAP_FRAME_HEIGHT = AVATAR_CLAP_SHEET_HEIGHT / AVATAR_CLAP_SHEET_ROWS;
+const AVATAR_CLAP_FRAME_COUNT = AVATAR_CLAP_SHEET_COLUMNS * AVATAR_CLAP_SHEET_ROWS;
 const AVATAR_CLAP_FRAME_RATE = 18;
 const AVATAR_CLAP_SOURCE_DIRECTION = 'FR';
 const AVATAR_FACE_BLINK_INTERVAL_MS = 3500;
@@ -335,15 +344,16 @@ const PLAYER_OUTFIT_IDLE_FILES: Record<OutfitType, Record<AvatarDirection, strin
     BL: 'outfit4_idle_back.png',
   },
 };
-const AVATAR_CLAP_BODY_SPRITESHEET_PATHS: Partial<Record<BodyTone, string>> = {
-  light: '/assets/avatar/emotes/clap/body/light/source/spritesheet%20(4).png',
-  medium: '/assets/avatar/emotes/clap/body/medium/source/spritesheet%20(4).png',
-  dark: '/assets/avatar/emotes/clap/body/dark/source/spritesheet%20(4).png',
+const AVATAR_CLAP_BODY_SPRITESHEET_PATHS: Record<BodyTone, string> = {
+  light: '/assets/avatar/emotes/clap/body/light/EMOTE_body%201.png',
+  medium: '/assets/avatar/emotes/clap/body/medium/EMOTE_body%202.png',
+  dark: '/assets/avatar/emotes/clap/body/dark/EMOTE_body%203.png',
 };
-const AVATAR_CLAP_OUTFIT_SPRITESHEET_PATHS: Partial<Record<OutfitType, string>> = {
-  hoodie: '/assets/avatar/emotes/clap/outfit/hoodie/source/spritesheet%20(1).png',
-  short: '/assets/avatar/emotes/clap/outfit/short/source/spritesheet%20(2).png',
-  suit: '/assets/avatar/emotes/clap/outfit/suit/source/spritesheet%20(16).png',
+const AVATAR_CLAP_OUTFIT_SPRITESHEET_PATHS: Record<OutfitType, string> = {
+  long: '/assets/avatar/emotes/clap/outfit/long/EMOTE_outfit%201.png',
+  hoodie: '/assets/avatar/emotes/clap/outfit/hoodie/EMOTE_outfit%202.png',
+  short: '/assets/avatar/emotes/clap/outfit/short/EMOTE_outfit%203.png',
+  suit: '/assets/avatar/emotes/clap/outfit/suit/EMOTE_outfit%204.png',
 };
 const AVATAR_CLAP_FACE_ASSET_PATH = '/assets/avatar/emotes/clap/face/EMOTE_face%201.png';
 const HAIR_COLOR_SUFFIX_BY_ID: Record<string, string> = {
@@ -380,7 +390,9 @@ const MAIN_ROOM_COWORKER_CONFIGS: Omit<RoomCoworkerConfig, 'x' | 'y'>[] = [
     status: 'afk',
     direction: 'FL',
     bodyTone: 'light',
+    bodyTextureKey: 'avatar-coworker-body-light-FL-idle',
     outfitType: 'hoodie',
+    outfitTextureKey: 'avatar-coworker-outfit-hoodie-FL-idle',
     hairTextureKey: 'avatar-coworker-hair-4-1',
     faceDefaultTextureKey: 'avatar-coworker-face-2-default-2',
     faceBlinkTextureKey: 'avatar-coworker-face-2-blink-2',
@@ -621,20 +633,20 @@ function avatarClapBodyTextureKey(tone: BodyTone): string {
   return `avatar-clap-body-${tone}`;
 }
 
-function avatarClapBodyAssetPath(tone: BodyTone): string | null {
-  return AVATAR_CLAP_BODY_SPRITESHEET_PATHS[tone] ?? null;
+function avatarClapBodyAssetPath(tone: BodyTone): string {
+  return AVATAR_CLAP_BODY_SPRITESHEET_PATHS[tone];
 }
 
 function avatarClapOutfitTextureKey(outfitType: OutfitType): string {
   return `avatar-clap-outfit-${outfitType}`;
 }
 
-function avatarClapOutfitAssetPath(outfitType: OutfitType): string | null {
-  return AVATAR_CLAP_OUTFIT_SPRITESHEET_PATHS[outfitType] ?? null;
+function avatarClapOutfitAssetPath(outfitType: OutfitType): string {
+  return AVATAR_CLAP_OUTFIT_SPRITESHEET_PATHS[outfitType];
 }
 
 function avatarClapFaceTextureKey(): string {
-  return 'avatar-clap-face-1';
+  return 'avatar-clap-face';
 }
 
 function coworkerOutfitTextureKey(outfitType: OutfitType): string {
@@ -786,6 +798,10 @@ export default class MainOfficeScene extends Phaser.Scene {
   private seats: SeatData[] = [];
   private roomCoworkers: RoomCoworkerLayers[] = [];
   private staticSeatedCoworkerBlinkEvent?: Phaser.Time.TimerEvent;
+  private coworkerPomodoroProgress = 0.8;
+  private coworkerPomodoroTick = 0;
+  private coworkerPomodoroVisuals = new Set<CoworkerPomodoroVisual>();
+  private coworkerPomodoroTimer?: Phaser.Time.TimerEvent;
   private hoveredSeat: SeatData | null = null;
   private selectedSeat: SeatData | null = null;
   private mainRoomTableDepth: number | null = null;
@@ -807,6 +823,7 @@ export default class MainOfficeScene extends Phaser.Scene {
   private debugWalkZoneGraphics?: Phaser.GameObjects.Graphics;
   private isSceneReady = false;
   private isSceneShuttingDown = false;
+  private playerWorkspaceRole: 'coordinator' | 'default' = 'default';
   private handleExternalRoomSwitch = (event: Event) => {
     const customEvent = event as CustomEvent<{ roomId?: string }>;
     const nextRoomId = customEvent.detail?.roomId;
@@ -820,6 +837,15 @@ export default class MainOfficeScene extends Phaser.Scene {
   private handleAvatarSelectionChanged = (event: Event) => {
     const customEvent = event as CustomEvent<Partial<AvatarSelection>>;
     this.applyPlayerAvatarSelection(customEvent.detail);
+  };
+  private handlePlayerRoleChanged = (event: Event) => {
+    const customEvent = event as CustomEvent<{ role?: string }>;
+    const nextRole = customEvent.detail?.role === 'coordinator' ? 'coordinator' : 'default';
+    if (this.playerWorkspaceRole === nextRole) return;
+
+    this.playerWorkspaceRole = nextRole;
+    if (this.playerLabel?.active) this.playerLabel.destroy();
+    this.playerLabel = this.createPlayerIdentityBadge(this.player.x, this.player.y - 184);
   };
   private handleDocumentFocusChange = () => {
     if (typeof window === 'undefined') {
@@ -901,10 +927,10 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.load.image('chair_back_hover_blue', VIRTUAL_ROOM_ASSETS.chairBackHoverBlue);
     this.load.image('sit_popup_primary', VIRTUAL_ROOM_ASSETS.sitPopupPrimary);
     this.load.image('coworker-pomodoro-tomato', VIRTUAL_ROOM_ASSETS.tomato);
-    this.load.image('indicator-pomodoro', `${INDICATOR_ASSET_BASE_PATH}/pomodoro.png`);
+    this.load.svg('indicator-pomodoro', `${INDICATOR_ASSET_BASE_PATH}/pomodoro.svg`, { width: 92, height: 68 });
     this.load.svg('indicator-mic', `${INDICATOR_ASSET_BASE_PATH}/mic.svg`);
     this.load.svg('indicator-crown', `${INDICATOR_ASSET_BASE_PATH}/crown.svg`);
-    this.load.svg('indicator-coordinator', `${INDICATOR_ASSET_BASE_PATH}/coordinator.svg`);
+    this.load.svg('indicator-coordinator', `${INDICATOR_ASSET_BASE_PATH}/coordinator.svg`, { width: 64, height: 64 });
     this.load.svg('indicator-member', `${INDICATOR_ASSET_BASE_PATH}/member.svg`);
     this.load.image(SITTING_LAPTOP_CONFIG_BY_POSE.front.textureKey, SITTING_LAPTOP_CONFIG_BY_POSE.front.assetPath);
     this.load.image(SITTING_LAPTOP_CONFIG_BY_POSE.back.textureKey, SITTING_LAPTOP_CONFIG_BY_POSE.back.assetPath);
@@ -947,6 +973,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.load.image('avatar-coworker-face-4-blink', avatarFaceAssetPath('face_4_blink.png'));
     this.load.image('avatar-coworker-body-dark-FL-idle-tone', '/assets/avatar/walk/body/dark/FL/base_dark_idle_FL.png');
     this.load.image('avatar-coworker-body-medium-FR-idle-tone', '/assets/avatar/walk/body/medium/FR/base_medium_idle_FR.png');
+    this.load.image('avatar-coworker-outfit-hoodie-FL-idle', avatarOutfitIdleAssetPath('hoodie', 'FL'));
     (['light', 'medium', 'dark'] as BodyTone[]).forEach((tone) => {
       COWORKER_IDLE_DIRECTIONS.forEach((direction) => {
         this.load.image(
@@ -1010,23 +1037,17 @@ export default class MainOfficeScene extends Phaser.Scene {
     });
 
     PLAYER_BODY_TONES.forEach((tone) => {
-      const assetPath = avatarClapBodyAssetPath(tone);
-      if (assetPath) {
-        this.load.spritesheet(avatarClapBodyTextureKey(tone), assetPath, {
-          frameWidth: AVATAR_CLAP_FRAME_WIDTH,
-          frameHeight: AVATAR_CLAP_FRAME_HEIGHT,
-        });
-      }
+      this.load.spritesheet(avatarClapBodyTextureKey(tone), avatarClapBodyAssetPath(tone), {
+        frameWidth: AVATAR_CLAP_FRAME_WIDTH,
+        frameHeight: AVATAR_CLAP_FRAME_HEIGHT,
+      });
     });
 
     PLAYER_OUTFIT_TYPES.forEach((outfitType) => {
-      const assetPath = avatarClapOutfitAssetPath(outfitType);
-      if (assetPath) {
-        this.load.spritesheet(avatarClapOutfitTextureKey(outfitType), assetPath, {
-          frameWidth: AVATAR_CLAP_FRAME_WIDTH,
-          frameHeight: AVATAR_CLAP_FRAME_HEIGHT,
-        });
-      }
+      this.load.spritesheet(avatarClapOutfitTextureKey(outfitType), avatarClapOutfitAssetPath(outfitType), {
+        frameWidth: AVATAR_CLAP_FRAME_WIDTH,
+        frameHeight: AVATAR_CLAP_FRAME_HEIGHT,
+      });
     });
 
     this.load.image(avatarClapFaceTextureKey(), AVATAR_CLAP_FACE_ASSET_PATH);
@@ -1175,6 +1196,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       window.addEventListener('warp:switch-room', this.handleExternalRoomSwitch as EventListener);
       window.addEventListener('warp:viewport-control', this.handleViewportControl as EventListener);
       window.addEventListener('warp:avatar-selection-changed', this.handleAvatarSelectionChanged as EventListener);
+      window.addEventListener('warp:player-role-changed', this.handlePlayerRoleChanged as EventListener);
       window.addEventListener('warp:player-emote', this.handlePlayerEmote as EventListener);
       window.addEventListener('blur', this.handleWindowBlur);
       window.addEventListener('focus', this.handleWindowFocus);
@@ -1186,6 +1208,7 @@ export default class MainOfficeScene extends Phaser.Scene {
         window.removeEventListener('warp:switch-room', this.handleExternalRoomSwitch as EventListener);
         window.removeEventListener('warp:viewport-control', this.handleViewportControl as EventListener);
         window.removeEventListener('warp:avatar-selection-changed', this.handleAvatarSelectionChanged as EventListener);
+        window.removeEventListener('warp:player-role-changed', this.handlePlayerRoleChanged as EventListener);
         window.removeEventListener('warp:player-emote', this.handlePlayerEmote as EventListener);
         window.removeEventListener('blur', this.handleWindowBlur);
         window.removeEventListener('focus', this.handleWindowFocus);
@@ -1197,6 +1220,9 @@ export default class MainOfficeScene extends Phaser.Scene {
         }
         this.blinkEvent?.remove(false);
         this.blinkEvent = undefined;
+        this.coworkerPomodoroTimer?.remove(false);
+        this.coworkerPomodoroTimer = undefined;
+        this.coworkerPomodoroVisuals.clear();
       });
     }
     this.scale.on(Phaser.Scale.Events.RESIZE, this.handleScaleResize, this);
@@ -1546,33 +1572,13 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   private getLoadedClapBodyTextureKey(tone: BodyTone): string | null {
-    const textureKeys = [
-      avatarClapBodyTextureKey(tone),
-      avatarClapBodyTextureKey('light'),
-    ];
-
-    return textureKeys.find((textureKey) => this.textures.exists(textureKey)) ?? null;
+    const textureKey = avatarClapBodyTextureKey(tone);
+    return this.textures.exists(textureKey) ? textureKey : null;
   }
 
   private getLoadedClapOutfitTextureKey(outfitType: OutfitType): string | null {
-    const textureKeys = [
-      avatarClapOutfitTextureKey(outfitType),
-      avatarClapOutfitTextureKey('short'),
-    ];
-
-    return textureKeys.find((textureKey) => this.textures.exists(textureKey)) ?? null;
-  }
-
-  private getPlayableClapBodyTone(): BodyTone | null {
-    return this.getLoadedClapBodyTextureKey(this.playerBodyTone)
-      ? this.playerBodyTone
-      : this.getLoadedClapBodyTextureKey('light') ? 'light' : null;
-  }
-
-  private getPlayableClapOutfitType(): OutfitType | null {
-    return this.getLoadedClapOutfitTextureKey(this.playerOutfitType)
-      ? this.playerOutfitType
-      : this.getLoadedClapOutfitTextureKey('short') ? 'short' : null;
+    const textureKey = avatarClapOutfitTextureKey(outfitType);
+    return this.textures.exists(textureKey) ? textureKey : null;
   }
 
   private createClapAnimation(animationKey: string, textureKey: string | null) {
@@ -1830,17 +1836,15 @@ export default class MainOfficeScene extends Phaser.Scene {
       return;
     }
 
-    const clapBodyTone = this.getPlayableClapBodyTone();
-    const clapOutfitType = this.getPlayableClapOutfitType();
-    if (!clapBodyTone || !clapOutfitType) {
-      return;
-    }
-
-    const bodyTextureKey = this.getLoadedClapBodyTextureKey(clapBodyTone);
-    const outfitTextureKey = this.getLoadedClapOutfitTextureKey(clapOutfitType);
-    const bodyAnimationKey = this.getBodyClapAnimationKey(clapBodyTone);
-    const outfitAnimationKey = this.getOutfitClapAnimationKey(clapOutfitType);
+    const bodyTextureKey = this.getLoadedClapBodyTextureKey(this.playerBodyTone);
+    const outfitTextureKey = this.getLoadedClapOutfitTextureKey(this.playerOutfitType);
+    const bodyAnimationKey = this.getBodyClapAnimationKey(this.playerBodyTone);
+    const outfitAnimationKey = this.getOutfitClapAnimationKey(this.playerOutfitType);
     if (!bodyTextureKey || !outfitTextureKey || !this.anims.exists(bodyAnimationKey) || !this.anims.exists(outfitAnimationKey)) {
+      console.warn('[WARP avatar] Clap mapping unavailable; preserving current avatar layers.', {
+        bodyTone: this.playerBodyTone,
+        outfitType: this.playerOutfitType,
+      });
       return;
     }
 
@@ -1853,6 +1857,8 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.playerOutfit.anims.stop();
     (this.player.body as Phaser.Physics.Arcade.Body | null)?.setVelocity(0);
 
+    // The clap set is FR-only. Mirror the complete matching body/outfit pose for
+    // left-facing directions while preserving the selected identity layers.
     const shouldMirrorClap = this.lastAvatarDirection === 'FL' || this.lastAvatarDirection === 'BL';
     this.player.setVisible(false);
     this.playerOutfit.setVisible(false);
@@ -1864,7 +1870,25 @@ export default class MainOfficeScene extends Phaser.Scene {
       sprite.setFlipX(shouldMirrorClap);
     });
 
-    this.applyClapFaceLayerConfig(shouldMirrorClap);
+    this.playerHair
+      .setTexture(avatarHairTextureKey(this.playerHairStyleIndex, this.playerHairColorSuffix, 'front'))
+      .setFlipX(shouldMirrorClap)
+      .setVisible(true);
+
+    if (this.textures.exists(avatarClapFaceTextureKey())) {
+      this.playerFace.setVisible(false);
+      this.playerClapFace = this.add.sprite(this.player.x, this.player.y, avatarClapFaceTextureKey());
+      this.playerClapFace
+        .setOrigin(0.5, 0.88)
+        .setDisplaySize(AVATAR_DISPLAY_SIZE, AVATAR_DISPLAY_SIZE)
+        .setFlipX(shouldMirrorClap);
+    } else {
+      console.warn('[WARP avatar] Clap face asset unavailable; preserving the selected normal face.');
+      this.playerFace
+        .setTexture(avatarFaceTextureKey(this.playerFaceIndex, 'default'))
+        .setFlipX(shouldMirrorClap)
+        .setVisible(true);
+    }
     this.syncPlayerClapLayers();
 
     this.playerClapBody.anims.play(bodyAnimationKey);
@@ -1887,37 +1911,27 @@ export default class MainOfficeScene extends Phaser.Scene {
     }
   }
 
-  private applyClapFaceLayerConfig(shouldMirrorClap: boolean) {
-    const clapFaceTextureKey = this.textures.exists(avatarClapFaceTextureKey())
-      ? avatarClapFaceTextureKey()
-      : null;
-
-    if (clapFaceTextureKey) {
-      this.playerFace.setVisible(false);
-      this.playerClapFace = this.add.sprite(this.player.x, this.player.y, clapFaceTextureKey);
-      this.playerClapFace.setOrigin(0.5, 0.88);
-      this.playerClapFace.setDisplaySize(AVATAR_DISPLAY_SIZE, AVATAR_DISPLAY_SIZE);
-      this.playerClapFace.setFlipX(shouldMirrorClap);
-      return;
-    }
-
-    this.playerFace.setTexture(avatarFaceTextureKey(this.playerFaceIndex, 'default'));
-    this.playerFace.setVisible(true);
-    this.playerFace.setFlipX(shouldMirrorClap);
-  }
-
   private syncPlayerClapLayers() {
     const shouldMirrorClap = this.lastAvatarDirection === 'FL' || this.lastAvatarDirection === 'BL';
 
     this.playerClapBody?.setPosition(this.player.x, this.player.y).setDepth(this.player.depth);
     this.playerClapOutfit?.setPosition(this.player.x, this.player.y).setDepth(this.player.depth + 1);
-    this.playerHair.setPosition(this.player.x, this.player.y);
-    this.playerHair.setDepth(this.player.depth + 2);
-    this.playerHair.setTexture(avatarHairTextureKey(this.playerHairStyleIndex, this.playerHairColorSuffix, 'front'));
-    this.playerHair.setFlipX(shouldMirrorClap);
-    this.playerFace.setPosition(this.player.x, this.player.y);
-    this.playerFace.setDepth(this.player.depth + 3);
-    this.playerClapFace?.setPosition(this.player.x, this.player.y).setDepth(this.player.depth + 3);
+    this.playerHair
+      .setPosition(this.player.x, this.player.y)
+      .setDepth(this.player.depth + 2)
+      .setFlipX(shouldMirrorClap);
+    if (this.playerClapFace?.active) {
+      this.playerClapFace
+        .setPosition(this.player.x, this.player.y)
+        .setDepth(this.player.depth + 3)
+        .setFlipX(shouldMirrorClap);
+    } else {
+      this.playerFace
+        .setPosition(this.player.x, this.player.y)
+        .setDepth(this.player.depth + 3)
+        .setFlipX(shouldMirrorClap)
+        .setVisible(true);
+    }
   }
 
   private finishPlayerClap() {
@@ -1936,15 +1950,12 @@ export default class MainOfficeScene extends Phaser.Scene {
 
     this.player.setVisible(true);
     this.playerOutfit.setVisible(true);
-    this.player.anims.stop();
-    this.playerOutfit.anims.stop();
-    this.player.setTexture(this.getBodyIdleTexture(this.lastAvatarDirection));
-    this.applyOutfitIdleLayerConfig();
+    this.playerHair.setVisible(true);
+    this.setAvatarIdle();
     this.applyHairLayerConfig();
     this.applyFaceLayerConfig();
     this.syncAvatarLayers();
   }
-
   private getOutfitIdleLayerConfig(direction: AvatarDirection): OutfitIdleLayerConfig {
     return { texture: this.getOutfitIdleTexture(direction), flipX: false, offsetX: 0, offsetY: 0 };
   }
@@ -2726,6 +2737,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       obj.destroy();
     }
     this.roomObjects = [];
+    this.coworkerPomodoroVisuals.clear();
     this.seats = [];
     this.roomCoworkers = [];
     this.hoveredSeat = null;
@@ -3062,45 +3074,90 @@ export default class MainOfficeScene extends Phaser.Scene {
     y: number,
     depth: number,
   ): Phaser.GameObjects.Container {
-    const width = 76;
-    const height = 16;
-    const background = this.add.graphics();
-    background.fillStyle(0xffffff, 0.92);
-    background.fillRoundedRect(-width / 2, -height / 2, width, height, 8);
-    background.lineStyle(1, 0xe2e0f0, 0.9);
-    background.strokeRoundedRect(-width / 2, -height / 2, width, height, 8);
-    const tomato = this.add.image(-width / 2 + 12, 0, 'indicator-pomodoro')
-      .setDisplaySize(23, 17);
-    const track = this.add.rectangle(-10, 0, 50, 5, 0xe9e6f6, 1)
-      .setOrigin(0, 0.5);
-    const trackWidth = 50;
-    const progress = this.add.rectangle(-10, 0, trackWidth * 0.8, 5, 0x685eeb, 1)
-      .setOrigin(0, 0.5);
+    const graphics = this.add.graphics();
+    const tomato = this.add.image(-55, 0, 'indicator-pomodoro')
+      .setDisplaySize(28, 21);
+    const container = this.add.container(Math.round(x), Math.round(y), [graphics, tomato])
+      .setDepth(depth)
+      .setSize(140, 32);
+    const visual: CoworkerPomodoroVisual = { container, graphics };
 
-    const container = this.add.container(Math.round(x), Math.round(y), [background, tomato, track, progress])
-      .setDepth(depth);
-    let baselineProgress = 0.8;
-    let tick = 0;
-    const progressTimer = this.time.addEvent({
-      delay: 1500,
-      loop: true,
-      callback: () => {
-        if (!container.active) {
-          progressTimer.remove(false);
-          return;
-        }
-
-        tick += 1;
-        baselineProgress = Math.max(0.12, baselineProgress - 0.0035);
-        const calmVariation = Math.sin(tick * 0.72) * 0.006;
-        const visibleProgress = Phaser.Math.Clamp(baselineProgress + calmVariation, 0.12, 0.82);
-        progress.setDisplaySize(trackWidth * visibleProgress, 5);
-      },
-    });
+    this.coworkerPomodoroVisuals.add(visual);
+    this.drawCoworkerPomodoroVisual(visual, this.getVisibleCoworkerPomodoroProgress());
+    this.ensureCoworkerPomodoroTimer();
 
     return container;
   }
 
+  private getVisibleCoworkerPomodoroProgress(): number {
+    const calmVariation = Math.sin(this.coworkerPomodoroTick * 0.72) * 0.006;
+    return Phaser.Math.Clamp(this.coworkerPomodoroProgress + calmVariation, 0, 1);
+  }
+
+  private ensureCoworkerPomodoroTimer() {
+    if (this.coworkerPomodoroTimer) {
+      return;
+    }
+
+    this.coworkerPomodoroTimer = this.time.addEvent({
+      delay: 1500,
+      loop: true,
+      callback: () => {
+        this.coworkerPomodoroTick += 1;
+        this.coworkerPomodoroProgress = Phaser.Math.Clamp(
+          this.coworkerPomodoroProgress - 0.0035,
+          0.12,
+          1,
+        );
+        const visibleProgress = this.getVisibleCoworkerPomodoroProgress();
+
+        for (const visual of this.coworkerPomodoroVisuals) {
+          if (!visual.container.active || !visual.graphics.active) {
+            this.coworkerPomodoroVisuals.delete(visual);
+            continue;
+          }
+          this.drawCoworkerPomodoroVisual(visual, visibleProgress);
+        }
+      },
+    });
+  }
+
+  private drawCoworkerPomodoroVisual(visual: CoworkerPomodoroVisual, progress: number) {
+    const graphics = visual.graphics;
+    const clampedProgress = Phaser.Math.Clamp(progress, 0, 1);
+    const trackX = -34;
+    const trackY = -7;
+    const trackWidth = 100;
+    const trackHeight = 14;
+    const innerPadding = 3;
+    const innerX = trackX + innerPadding;
+    const innerY = trackY + innerPadding;
+    const innerWidth = trackWidth - (innerPadding * 2);
+    const innerHeight = trackHeight - (innerPadding * 2);
+    const fillWidth = Phaser.Math.Clamp(Math.round(innerWidth * clampedProgress), 0, innerWidth);
+
+    graphics.clear();
+    graphics.fillStyle(0xf8f7ff, 0.98);
+    graphics.lineStyle(1, 0xe2e0f0, 1);
+    graphics.fillRoundedRect(-70, -16, 140, 32, 16);
+    graphics.strokeRoundedRect(-70, -16, 140, 32, 16);
+
+    graphics.fillStyle(0xffffff, 1);
+    graphics.lineStyle(1, 0xdedaf2, 1);
+    graphics.fillRoundedRect(trackX, trackY, trackWidth, trackHeight, 7);
+    graphics.strokeRoundedRect(trackX, trackY, trackWidth, trackHeight, 7);
+
+    if (fillWidth > 0) {
+      graphics.fillStyle(0x685eeb, 1);
+      graphics.fillRoundedRect(
+        innerX,
+        innerY,
+        fillWidth,
+        innerHeight,
+        Math.min(innerHeight / 2, fillWidth / 2),
+      );
+    }
+  }
   private getStaticCoworkerFaceTexture(textureKey: string): string {
     return this.textures.exists(textureKey) ? textureKey : 'avatar-coworker-face-2-default-2';
   }
@@ -3161,18 +3218,19 @@ export default class MainOfficeScene extends Phaser.Scene {
   // =============================================
 
   private createPlayerIdentityBadge(x: number, y: number): Phaser.GameObjects.Container {
-    const width = 58;
+    const isCoordinator = this.playerWorkspaceRole === 'coordinator';
+    const width = isCoordinator ? 132 : 58;
     const height = 24;
     const background = this.add.graphics();
     background.fillStyle(0x27213f, 0.94);
-    background.lineStyle(1, 0xffffff, 0.16);
+    background.lineStyle(1, isCoordinator ? 0xa29bfc : 0xffffff, isCoordinator ? 0.5 : 0.16);
     background.fillRoundedRect(-width / 2, -height / 2, width, height, 12);
     background.strokeRoundedRect(-width / 2, -height / 2, width, height, 12);
 
-    const crown = this.add.image(-15, 0, 'indicator-crown')
-      .setDisplaySize(12, 12);
+    const icon = this.add.image(isCoordinator ? -52 : -15, 0, isCoordinator ? 'indicator-coordinator' : 'indicator-crown')
+      .setDisplaySize(isCoordinator ? 15 : 12, isCoordinator ? 15 : 12);
 
-    const text = this.add.text(-1, 0, 'You', {
+    const text = this.add.text(isCoordinator ? 9 : -1, 0, isCoordinator ? 'Coordinator (You)' : 'You', {
       fontFamily: 'Funnel Sans, Arial, sans-serif',
       fontSize: '11px',
       color: '#ffffff',
@@ -3180,7 +3238,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       resolution: this.getIndicatorTextResolution(),
     }).setOrigin(0.5);
 
-    return this.add.container(x, y, [background, crown, text])
+    return this.add.container(x, y, [background, icon, text])
       .setDepth(5)
       .setSize(width, height);
   }
@@ -3243,7 +3301,7 @@ export default class MainOfficeScene extends Phaser.Scene {
   private spawnLayeredCoworker(config: RoomCoworkerConfig, hitArea?: Phaser.GameObjects.Arc): RoomCoworkerLayers {
     const shouldFlipFrontLayer = config.direction === 'FL';
     const body = this.add.sprite(config.x, config.y, config.bodyTextureKey ?? this.getCoworkerBodyIdleTexture(config.bodyTone, config.direction));
-    const outfit = this.add.sprite(config.x, config.y, this.getCoworkerOutfitIdleTexture(config.outfitType));
+    const outfit = this.add.sprite(config.x, config.y, config.outfitTextureKey ?? this.getCoworkerOutfitIdleTexture(config.outfitType));
     const hair = this.add.sprite(config.x, config.y, config.hairTextureKey);
     const face = this.add.sprite(config.x, config.y, config.faceDefaultTextureKey);
     const shadow = this.add.sprite(config.x, config.y, 'avatar-coworker-shadow');
@@ -3255,7 +3313,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     });
 
     body.setFlipX(config.bodyTextureKey ? false : shouldFlipFrontLayer);
-    outfit.setFlipX(shouldFlipFrontLayer);
+    outfit.setFlipX(config.outfitTextureKey ? false : shouldFlipFrontLayer);
     hair.setFlipX(shouldFlipFrontLayer);
     face.setFlipX(config.faceFlipX ?? shouldFlipFrontLayer);
     face.setVisible(config.faceVisible ?? true);

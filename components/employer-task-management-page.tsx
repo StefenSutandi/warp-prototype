@@ -1766,14 +1766,19 @@ export function EmployerTaskManagementPage({
   const addOfficeXp = useOfficeStore((state) => state.addOfficeXp);
   const appRole = normalizeAppRole(currentUser?.role);
   const canReview = appRole === 'owner' || appRole === 'coordinator';
+  const isCoordinator = appRole === 'coordinator';
   const taskCardsFromStore = tasks.map(toTaskCardData);
-  const reviewTasks = tasks.filter((task) => task.status === 'in_review').map(toReviewTaskData);
+  const reviewTasksFromStore = tasks.filter((task) => task.status === 'in_review').map(toReviewTaskData);
   const rewardBalance = Math.max(200, Math.round((currentUser?.xp ?? 5200) / 26));
   const [activeTab, setActiveTab] = useState<EmployerTaskTab>('my');
   const [view, setView] = useState<EmployerTaskView>('list');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedReviewTaskId, setSelectedReviewTaskId] = useState<string | null>(null);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  const [dismissedCoordinatorReviewIds, setDismissedCoordinatorReviewIds] = useState<string[]>([]);
+  const reviewTasks = reviewTasksFromStore.length > 0 || !isCoordinator
+    ? reviewTasksFromStore
+    : dismissedCoordinatorReviewIds.includes(reviewTask.id) ? [] : [reviewTask];
 
   const selectedTask = selectedTaskId ? taskCardsFromStore.find((task) => task.id === selectedTaskId) : undefined;
   const selectedReviewTask = selectedReviewTaskId ? reviewTasks.find((task) => task.id === selectedReviewTaskId) : undefined;
@@ -1808,6 +1813,12 @@ export function EmployerTaskManagementPage({
 
   const handleApproveTask = (taskId: string) => {
     if (!canReview) return;
+    if (isCoordinator && taskId === reviewTask.id) {
+      setDismissedCoordinatorReviewIds((ids) => [...ids, taskId]);
+      setSelectedReviewTaskId(null);
+      setView('list');
+      return;
+    }
     if (approveTask(taskId, currentUser?.id)) {
       // The prototype has no member-by-id XP ledger. Do not credit the active reviewer.
       // approvalXpAwarded remains the once-only approval reward guard for future member XP wiring.
@@ -1826,6 +1837,12 @@ export function EmployerTaskManagementPage({
     if (note === null) return;
 
     const revisionNote = note.trim() || 'Please address the review feedback and resubmit the task.';
+    if (isCoordinator && taskId === reviewTask.id) {
+      setDismissedCoordinatorReviewIds((ids) => [...ids, taskId]);
+      setSelectedReviewTaskId(null);
+      setView('list');
+      return;
+    }
     if (requestRevision(taskId, currentUser?.id, revisionNote)) {
       setSelectedReviewTaskId(null);
       setView('list');

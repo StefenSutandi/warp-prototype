@@ -96,6 +96,7 @@ const VIRTUAL_ROOM_LOCAL_ASSETS = {
   popupSecondary: '/assets/virtual-room/overlays/sit_popup_secondary.png',
   activityBadge1: '/assets/virtual-room/overlays/activity_badge_1.png',
   startBadge: '/assets/virtual-room/overlays/start_badge.png',
+  coordinatorIndicator: '/assets/figma-export/virtual-room/indicators/coordinator.svg',
 } as const;
 
 type VirtualRoomOption = (typeof VIRTUAL_ROOM_OPTIONS)[number];
@@ -710,9 +711,16 @@ function UserCardOverlay({ user, onOpenTeamModal }: { user: User; onOpenTeamModa
           <span className="absolute bottom-0 right-0 h-[12px] w-[12px] rounded-full border-[2px] border-white bg-[#56efc4]" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="warp-font-ui truncate text-[15px] font-semibold leading-none text-black">
-            {displayName}
-          </p>
+          <div className="flex min-w-0 items-center gap-[6px]">
+            <p className="warp-font-ui min-w-0 truncate text-[15px] font-semibold leading-none text-black">
+              {displayName}
+            </p>
+            {user.role === 'coordinator' ? (
+              <span className="grid h-[20px] w-[20px] shrink-0 place-items-center rounded-full bg-[#685eeb] shadow-[0_3px_8px_rgba(104,94,235,0.24)]" title="Coordinator" aria-label="Coordinator">
+                <img src={VIRTUAL_ROOM_LOCAL_ASSETS.coordinatorIndicator} width="16" height="16" alt="" className="block h-4 w-4 object-contain" aria-hidden="true" />
+              </span>
+            ) : null}
+          </div>
           <p className="warp-font-ui mt-[4px] truncate text-[10px] font-medium leading-none text-[#9B96B8]">
             {position}
           </p>
@@ -2541,6 +2549,7 @@ export function VirtualRoomLayout({
   const [isWatchingScreen, setIsWatchingScreen] = useState(false);
   const [selectedTeammateAction, setSelectedTeammateAction] = useState<TeammateInteractionSelection | null>(null);
   const [loungeCoworkerReady, setLoungeCoworkerReady] = useState(false);
+  const [coordinatorNotices, setCoordinatorNotices] = useState<Array<{ id: string; title: string; message: string }>>([]);
   const [loungeCoworkerScreenPosition, setLoungeCoworkerScreenPosition] = useState<{ x: number; y: number } | null>(null);
   const [activeRoom, setActiveRoom] = useState<RoomDisplayState>(
     () => VIRTUAL_ROOM_OPTIONS.find((room) => room.id === initialRoomId) ?? VIRTUAL_ROOM_OPTIONS[0]
@@ -2567,19 +2576,49 @@ export function VirtualRoomLayout({
         });
       }
 
+      let shouldAnnounceRoomEntry = true;
       if (!hasAppliedInitialRoomRef.current) {
         hasAppliedInitialRoomRef.current = true;
         if (roomId !== initialRoomId) {
+          shouldAnnounceRoomEntry = false;
           window.setTimeout(() => {
             window.dispatchEvent(new CustomEvent('warp:switch-room', { detail: { roomId: initialRoomId } }));
           }, 0);
         }
       }
+
+      window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('warp:player-role-changed', { detail: { role: user.role } }));
+      }, 0);
+
+      if (user.role === 'coordinator' && shouldAnnounceRoomEntry) {
+        setCoordinatorNotices(roomId === 'lounge'
+          ? [
+              { id: 'start-warping', title: 'START WARPING', message: 'Sit down to begin your work session.' },
+              { id: 'coordinator-assignment', title: 'OWNER', message: "assigned you as Artist Team's Coordinator" },
+            ]
+          : [{ id: 'start-warping-office', title: 'START WARPING', message: 'Sit down to begin your work session.' }]);
+      } else if (user.role !== 'coordinator') {
+        setCoordinatorNotices([]);
+      }
     };
 
     window.addEventListener('warp:room-changed', handleRoomChanged as EventListener);
     return () => window.removeEventListener('warp:room-changed', handleRoomChanged as EventListener);
-  }, [initialRoomId]);
+  }, [initialRoomId, user.role]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('warp:player-role-changed', { detail: { role: user.role } }));
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [user.role]);
+
+  useEffect(() => {
+    if (coordinatorNotices.length === 0) return;
+    const timeout = window.setTimeout(() => setCoordinatorNotices([]), 6000);
+    return () => window.clearTimeout(timeout);
+  }, [coordinatorNotices]);
 
   useEffect(() => {
     const handleLoungeCoworkerReady = (event: Event) => {
@@ -2683,6 +2722,7 @@ export function VirtualRoomLayout({
 
   const handleRoomSelection = (roomId: string) => {
     setSelectedTeammateAction(null);
+    setCoordinatorNotices([]);
     setLoungeCoworkerReady(false);
     setLoungeCoworkerScreenPosition(null);
     window.dispatchEvent(new CustomEvent('warp:switch-room', { detail: { roomId } }));
@@ -2695,6 +2735,7 @@ export function VirtualRoomLayout({
 
   const openScreenOverlay = (mode: ScreenOverlayMode) => {
     setSelectedTeammateAction(null);
+    setCoordinatorNotices([]);
     setLoungeCoworkerReady(false);
     setScreenOverlayMode(mode);
     setIsScreenOverlayOpen(true);
@@ -2763,6 +2804,19 @@ export function VirtualRoomLayout({
 
   return (
     <div className="warp-font-ui flex h-[100svh] w-full overflow-hidden bg-[#F9FBFD]" style={VIRTUAL_ROOM_SHELL_STYLE}>
+      <style jsx global>{`
+        @keyframes warpCoordinatorNoticeIn {
+          from { opacity: 0; transform: translateY(-12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .warp-coordinator-notice {
+          animation: warpCoordinatorNoticeIn 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .warp-coordinator-notice { animation: none !important; }
+        }
+      `}</style>
+
       {/* Left Nav Rail */}
       <NavRail active={activeSection} onSelect={selectSection} onExit={onBackToDashboard} />
 
@@ -2785,6 +2839,27 @@ export function VirtualRoomLayout({
                 onSwitchRooms={() => setShowChangeRooms(true)}
               />
               <TopRightHud />
+              {user.role === 'coordinator' && coordinatorNotices.length > 0 ? (
+                <div className="pointer-events-none absolute right-[24px] top-[92px] z-[72] flex w-[380px] max-w-[calc(100%-48px)] flex-col gap-[10px]" aria-live="polite">
+                  {coordinatorNotices.map((notice, index) => (
+                    <div
+                      key={notice.id}
+                      className="warp-coordinator-notice rounded-[16px] border border-[#e5e0ff] bg-white/95 px-[16px] py-[13px] shadow-[0_14px_36px_rgba(70,59,145,0.18)] backdrop-blur-sm"
+                      style={{ animationDelay: `${index * 80}ms` }}
+                    >
+                      <div className="flex items-start gap-[11px]">
+                        <span className="mt-[1px] grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-[linear-gradient(145deg,#685eeb,#8f87f7)] shadow-[0_5px_12px_rgba(104,94,235,0.22)]">
+                          <img src={VIRTUAL_ROOM_LOCAL_ASSETS.coordinatorIndicator} width="16" height="16" alt="" className="block h-4 w-4 object-contain" aria-hidden="true" />
+                        </span>
+                        <div>
+                          <p className="text-[10px] font-extrabold tracking-[0.12em] text-[#685eeb]">{notice.title}</p>
+                          <p className="mt-[3px] text-[12px] font-semibold leading-[1.35] text-[#454158]">{notice.message}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {selectedTeammateAction ? <RoomActiveTaskCard member={activeTaskMember} /> : null}
               {activeRoom.id === 'lounge' && loungeCoworkerReady && loungeCoworkerScreenPosition ? (
                 <LoungeScreenShareInvite

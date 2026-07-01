@@ -653,12 +653,12 @@ function HeroPanel({
   onCreateRoom,
   onJoinRoom,
   onEnterWorkspace,
-  canManageRooms,
+  canCreateRooms,
 }: {
   onCreateRoom: () => void;
   onJoinRoom: () => void;
   onEnterWorkspace: () => void;
-  canManageRooms: boolean;
+  canCreateRooms: boolean;
 }) {
   return (
     <section className="relative min-h-[332px] overflow-hidden rounded-[17px] bg-[linear-gradient(145deg,#eeeaff_0%,#dfd7ff_42%,#fbf8ff_100%)] px-[42px] py-[38px] shadow-[0_5px_17.6px_rgba(133,133,133,0.08)]">
@@ -675,7 +675,7 @@ function HeroPanel({
           <MetricCard icon={<FocusMetricIcon variant="timer" />} label="Today's focus" value="2h45m" detail="goal: 3h 00m" valueClassName="text-[#111111]" />
         </div>
 
-        {canManageRooms ? (
+        {canCreateRooms ? (
           <div className="mt-[18px] flex flex-wrap items-center gap-[10px]">
             <button
               type="button"
@@ -1474,6 +1474,7 @@ function EmployerDashboardHome({
   onBroadcast,
   onManageRooms,
   canManageRooms,
+  canCreateRooms,
   canViewRooms,
   canReview,
 }: {
@@ -1483,6 +1484,7 @@ function EmployerDashboardHome({
   onBroadcast: () => void;
   onManageRooms: () => void;
   canManageRooms: boolean;
+  canCreateRooms: boolean;
   canViewRooms: boolean;
   canReview: boolean;
 }) {
@@ -1492,7 +1494,7 @@ function EmployerDashboardHome({
         onCreateRoom={onCreateRoom}
         onJoinRoom={onJoinRoom}
         onEnterWorkspace={onEnterWorkspace}
-        canManageRooms={canManageRooms}
+        canCreateRooms={canCreateRooms}
       />
 
       <div className={cn('grid gap-[14px]', canViewRooms ? 'xl:grid-cols-2' : 'xl:grid-cols-1')}>
@@ -2261,7 +2263,7 @@ export function WorkspaceTeamPage({
         ) : null}
       </section>
 
-      <ProjectTimelineWarpSection canAddPhase={role === 'owner' || role === 'employer' || role === 'coordinator'} />
+      <ProjectTimelineWarpSection canAddPhase={role === 'owner' || role === 'employer'} />
 
       {selectedTeammate ? (
         <ProfileModal
@@ -3574,7 +3576,8 @@ export function EmployerDashboard({
   const roleLabel = avatarProfile.position.trim() || user.roleLabel;
   const rewardBalance = Math.max(200, Math.round(user.xp / 26));
   const canManageRooms = user.role === 'owner' || user.role === 'employer';
-  const canViewRooms = canManageRooms || user.role === 'member' || user.role === 'employee';
+  const canCreateRooms = canManageRooms || user.role === 'coordinator';
+  const canViewRooms = canCreateRooms || user.role === 'member' || user.role === 'employee';
   const canReview = user.role === 'owner' || user.role === 'employer' || user.role === 'coordinator';
   const isTaskPage = activeItem === 'tasks';
   const isChatPage = activeItem === 'chat';
@@ -3665,6 +3668,7 @@ export function EmployerDashboard({
                       if (canManageRooms) setActiveItem('settings');
                     }}
                     canManageRooms={canManageRooms}
+                    canCreateRooms={canCreateRooms}
                     canViewRooms={canViewRooms}
                     canReview={canReview}
                   />
