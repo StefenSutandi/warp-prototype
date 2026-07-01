@@ -5,8 +5,11 @@ import { mockCurrentMemberUser } from '@/lib/mock-data';
 interface UserState {
   currentUser: User | null;
   isInitialized: boolean;
+  coinBalance: number;
   initialize: (user: User) => void;
   addXp: (amount: number) => void;
+  addCoins: (amount: number) => void;
+  resetDemoCoins: () => void;
 }
 
 const XP_PER_LEVEL = 1000;
@@ -14,8 +17,12 @@ const XP_PER_LEVEL = 1000;
 export const useUserStore = create<UserState>((set) => ({
   currentUser: mockCurrentMemberUser,
   isInitialized: false,
+  coinBalance: 200,
   
   initialize: (user) => set({ currentUser: user, isInitialized: true }),
+
+  addCoins: (amount) => set((state) => ({ coinBalance: state.coinBalance + amount })),
+  resetDemoCoins: () => set({ coinBalance: 200 }),
   
   addXp: (amount) => 
     set((state) => {

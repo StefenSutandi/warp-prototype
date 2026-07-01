@@ -294,7 +294,7 @@ export function SignupPage() {
           onSubmit={(event) => {
             event.preventDefault();
             localStorage.setItem(ROLE_STORAGE_KEY, selectedRole);
-            router.push('/verify');
+            router.push(selectedRole === 'owner' ? '/owner' : '/verify');
           }}
           className="mt-[30px] space-y-[18px]"
         >
@@ -372,7 +372,7 @@ export function VerifyPage() {
             event.preventDefault();
             const storedRole = normalizeAppRole(localStorage.getItem(ROLE_STORAGE_KEY)) ?? 'member';
             localStorage.setItem(ROLE_STORAGE_KEY, storedRole);
-            router.push('/avatar');
+            router.push(storedRole === 'owner' ? '/owner' : '/avatar');
           }}
           className="mt-[30px]"
         >

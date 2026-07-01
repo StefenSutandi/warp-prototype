@@ -43,6 +43,7 @@ import {
 import { cn } from '@/lib/utils';
 import { type Role, type User } from '@/lib/types';
 import { useAvatarStore } from '@/stores/useAvatarStore';
+import { useUserStore } from '@/stores/useUserStore';
 import { type RoomCapacity, type RoomInvite, type WorkspaceRoom, useRoomStore } from '@/stores/useRoomStore';
 import { EmployerTaskManagementPage } from './employer-task-management-page';
 
@@ -1660,12 +1661,12 @@ function WorkspaceCreatedModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="workspace-created-title"
-        className="w-full max-w-[620px] rounded-[28px] border border-[#e2e0f0] bg-white px-[42px] py-[40px] text-center shadow-[0_22px_60px_rgba(72,66,140,0.18)]"
+        className="w-full max-w-[494px] rounded-[24px] border border-[#e2e0f0] bg-white px-[36px] py-[34px] text-center shadow-[0_22px_60px_rgba(72,66,140,0.22)]"
       >
         <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#e9fff8] text-[#54b499]">
           <Check className="h-7 w-7" strokeWidth={2.5} />
         </span>
-        <h2 id="workspace-created-title" className="mt-5 text-[28px] font-extrabold tracking-[-0.03em] text-[#111111]">
+        <h2 id="workspace-created-title" className="mt-4 text-[24px] font-extrabold tracking-[-0.03em] text-[#111111]">
           Your Workspace is Ready!
         </h2>
         <p className="mx-auto mt-3 max-w-[470px] text-sm leading-6 text-[#6f6a87]">
@@ -1674,8 +1675,8 @@ function WorkspaceCreatedModal({
 
         <div className="mt-7 rounded-[18px] border border-[#ded9f2] bg-[#faf9ff] p-5">
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#9b96b8]">Room code</p>
-          <p className="mt-2 text-[32px] font-extrabold tracking-[0.18em] text-[#111111]">{invite.code}</p>
-          <p className="mt-3 truncate rounded-[10px] bg-white px-3 py-2 text-xs text-[#6f6a87]">{invite.inviteLink}</p>
+          <p className="mt-2 text-[32px] font-extrabold tracking-[0.02em] text-[#685eeb]">{invite.code}</p>
+          <div className="mt-3 flex items-center gap-2 rounded-[10px] border border-[#e2e0f0] bg-white px-3 py-2"><p className="min-w-0 flex-1 truncate text-left text-[11px] text-[#6f6a87]">{invite.inviteLink}</p><Copy className="h-4 w-4 shrink-0 text-[#685eeb]" /></div>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -3244,6 +3245,40 @@ const DEFAULT_WORKSPACE_ROOMS: WorkspaceRoom[] = [
   { id: 'programmer-room', name: 'Programmer Room', capacity: 10 },
 ];
 
+type TimelinePhase = {
+  id: string;
+  name: string;
+  color: string;
+  start: number;
+  span: number;
+};
+
+type TimelineDrag = {
+  id: string;
+  mode: 'move' | 'resize-left' | 'resize-right';
+  pointerId: number;
+  startX: number;
+  trackWidth: number;
+  originalStart: number;
+  originalSpan: number;
+};
+
+const TIMELINE_MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP'];
+const TIMELINE_START = new Date(2026, 0, 1);
+const TIMELINE_END = new Date(2026, 8, 30);
+const TIMELINE_TOTAL_DAYS = Math.round((TIMELINE_END.getTime() - TIMELINE_START.getTime()) / 86_400_000) + 1;
+
+function timelineUnitToDate(unit: number) {
+  const clampedUnit = Math.max(0, Math.min(9, unit));
+  const date = new Date(TIMELINE_START);
+  date.setDate(date.getDate() + Math.round((clampedUnit / 9) * (TIMELINE_TOTAL_DAYS - 1)));
+  return date;
+}
+
+function formatTimelineDate(unit: number) {
+  return timelineUnitToDate(unit).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
 function EmployerCreateRoomFlow({
   onBack,
   createdByRole,
@@ -3258,12 +3293,94 @@ function EmployerCreateRoomFlow({
   const createRoomInvite = useRoomStore((state) => state.createRoomInvite);
 
   const [flowStep, setFlowStep] = useState<'setup' | 'timeline'>('setup');
-  const [projectName, setProjectName] = useState(savedSetup?.projectName ?? '');
+  const [projectName, setProjectName] = useState(savedSetup?.projectName ?? 'Paper Studio');
   const [workingHours, setWorkingHours] = useState(savedSetup?.workingHours ?? '09:00 – 17:00');
   const [projectDuration, setProjectDuration] = useState(savedSetup?.projectDuration ?? '9 months');
   const [rooms, setRooms] = useState<WorkspaceRoom[]>(savedSetup?.rooms ?? DEFAULT_WORKSPACE_ROOMS);
   const [projectNameError, setProjectNameError] = useState('');
   const [roomErrors, setRoomErrors] = useState<Record<string, string>>({});
+  const timelineTemplate: TimelinePhase[] = [
+    { id: 'pre-production', name: 'Pre-production', color: '#7c6ee6', start: 0.75, span: 3 },
+    { id: 'production', name: 'Production', color: '#1e9b7a', start: 3.75, span: 3.25 },
+    { id: 'review-launch', name: 'Review & launch', color: '#b53668', start: 6.75, span: 2.25 },
+  ];
+  const [timelinePhases, setTimelinePhases] = useState(timelineTemplate);
+  const [activeTimelinePhaseId, setActiveTimelinePhaseId] = useState<string | null>(null);
+  const [timelineTooltip, setTimelineTooltip] = useState<{ x: number; label: string } | null>(null);
+  const timelineDragRef = useRef<TimelineDrag | null>(null);
+  const timelineStartUnit = timelinePhases.length ? Math.min(...timelinePhases.map((phase) => phase.start)) : 0;
+  const timelineEndUnit = timelinePhases.length ? Math.max(...timelinePhases.map((phase) => phase.start + phase.span)) : 0;
+
+  const beginTimelineDrag = (
+    event: React.PointerEvent<HTMLElement>,
+    phase: TimelinePhase,
+    mode: TimelineDrag['mode'],
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const track = event.currentTarget.closest<HTMLElement>('[data-timeline-track]');
+    if (!track) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    timelineDragRef.current = {
+      id: phase.id,
+      mode,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      trackWidth: track.getBoundingClientRect().width,
+      originalStart: phase.start,
+      originalSpan: phase.span,
+    };
+    setActiveTimelinePhaseId(phase.id);
+    setTimelineTooltip({
+      x: ((mode === 'resize-right' ? phase.start + phase.span : phase.start) / 9) * 100,
+      label: formatTimelineDate(mode === 'resize-right' ? phase.start + phase.span : phase.start),
+    });
+  };
+
+  const updateTimelineDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = timelineDragRef.current;
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const rawDelta = ((event.clientX - drag.startX) / Math.max(1, drag.trackWidth)) * 9;
+    const delta = Math.round(rawDelta * 30) / 30;
+    let nextStart = drag.originalStart;
+    let nextSpan = drag.originalSpan;
+    if (drag.mode === 'move') {
+      nextStart = Math.max(0, Math.min(9 - drag.originalSpan, drag.originalStart + delta));
+    } else if (drag.mode === 'resize-left') {
+      nextStart = Math.max(0, Math.min(drag.originalStart + drag.originalSpan - 0.5, drag.originalStart + delta));
+      nextSpan = drag.originalSpan + (drag.originalStart - nextStart);
+    } else {
+      nextSpan = Math.max(0.5, Math.min(9 - drag.originalStart, drag.originalSpan + delta));
+    }
+    setTimelinePhases((phases) => phases.map((phase) => phase.id === drag.id ? { ...phase, start: nextStart, span: nextSpan } : phase));
+    const tooltipUnit = drag.mode === 'resize-right' ? nextStart + nextSpan : nextStart;
+    setTimelineTooltip({ x: (tooltipUnit / 9) * 100, label: formatTimelineDate(tooltipUnit) });
+  };
+
+  const endTimelineDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = timelineDragRef.current;
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    timelineDragRef.current = null;
+    setActiveTimelinePhaseId(null);
+    setTimelineTooltip(null);
+  };
+
+  const addTimelinePhase = () => {
+    const colors = ['#7c6ee6', '#1e9b7a', '#b53668'];
+    setTimelinePhases((items) => {
+      const nextIndex = items.length;
+      return [
+        ...items,
+        {
+          id: `phase-${Date.now()}`,
+          name: 'New phase',
+          color: colors[nextIndex % colors.length],
+          start: Math.min(7, (nextIndex * 1.5) % 7.5),
+          span: 2,
+        },
+      ];
+    });
+  };
 
   const updateRoom = (roomId: string, updates: Partial<Pick<WorkspaceRoom, 'name' | 'capacity'>>) => {
     setRooms((currentRooms) => currentRooms.map((room) => (room.id === roomId ? { ...room, ...updates } : room)));
@@ -3324,74 +3441,104 @@ function EmployerCreateRoomFlow({
       projectDuration,
       rooms: rooms.map((room) => ({ ...room, name: room.name.trim() })),
     });
-    const primaryRoom = rooms[0];
+    setFlowStep('timeline');
+  };
+
+  const handleCreateWorkspace = () => {
+    if (!savedSetup) return;
+    const primaryRoom = savedSetup.rooms[0];
     const invite = createRoomInvite({
       id: primaryRoom.id,
-      name: normalizedProjectName,
+      name: savedSetup.projectName,
       createdByRole,
     });
-    setFlowStep('timeline');
     onCreated(invite);
   };
 
   return (
-    <div className="space-y-6 px-6 py-6 lg:px-8 lg:py-7">
-      <section className="rounded-[21px] border border-[#e2e0f0] bg-white px-7 py-6 shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
-        <div className="flex flex-wrap items-center justify-between gap-5">
-          <div>
-            <p className="warp-font-display text-[13px] font-extrabold uppercase tracking-[0.08em] text-[#9b96b8]">
-              Create Room
-            </p>
-            <h2 className="warp-font-display mt-2 text-[2rem] font-extrabold tracking-[-0.03em] text-[#111111]">
-              Set up your workspace
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm text-[#5c5780]">
-              Define the project basics and the rooms your team will use.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onBack}
-            className="rounded-full border border-[#d8d3f2] px-4 py-2 text-sm font-medium text-[#685eeb] transition hover:bg-[#f6f4ff]"
-          >
-            Back to Dashboard
-          </button>
+    <div className="px-6 py-5 lg:px-6 lg:py-5">
+      <div className="flex items-center gap-[12px]">
+        <button type="button" onClick={onBack} className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-[9px] bg-white text-[#5c5780] shadow-[0_4px_12px_rgba(104,94,235,0.08)] transition hover:text-[#685eeb]" aria-label="Back to dashboard">
+          <ArrowLeft className="h-[17px] w-[17px]" strokeWidth={2.2} />
+        </button>
+        <div>
+          <h2 className="warp-font-header text-[16px] font-extrabold tracking-[-0.02em] text-[#111111]">Create a new workspace</h2>
+          <p className="mt-[3px] text-[10px] font-medium text-[#85809d]">Set up your studio’s virtual workspace, then build the project timeline that drives it.</p>
         </div>
+      </div>
 
-        <div className="mt-6 flex max-w-[620px] items-center gap-3" aria-label="Create room progress">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#685eeb] text-sm font-bold text-white">1</span>
-            <span className="text-sm font-semibold text-[#111111]">Workspace setup</span>
-          </div>
-          <div className="h-px flex-1 bg-[#ded9f2]" />
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold', flowStep === 'timeline' ? 'bg-[#685eeb] text-white' : 'bg-[#f0eff8] text-[#9b96b8]')}>2</span>
-            <span className={cn('text-sm font-semibold', flowStep === 'timeline' ? 'text-[#111111]' : 'text-[#9b96b8]')}>Build project timeline</span>
-          </div>
-        </div>
-      </section>
-
+      <div className="mt-[18px] flex items-center gap-[10px]" aria-label="Create room progress">
+        <span className={cn('flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white', flowStep === 'timeline' ? 'bg-[#1e9b7a]' : 'bg-[#685eeb]')}>1</span>
+        <span className="shrink-0 text-[11px] font-semibold text-[#252233]">Workspace setup</span>
+        <span className={cn('h-[2px] flex-1 rounded-full', flowStep === 'timeline' ? 'bg-[#1e9b7a]' : 'bg-[#ded9f2]')} />
+        <span className="flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-full bg-[#7970f0] text-[11px] font-bold text-white">2</span>
+        <span className="shrink-0 text-[11px] font-semibold text-[#252233]">Build project timeline</span>
+      </div>
       {flowStep === 'timeline' && savedSetup ? (
-        <section className="rounded-[21px] border border-[#e2e0f0] bg-white px-8 py-10 text-center shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
-          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#eeeaff] text-[#685eeb]">
-            <CalendarClock className="h-6 w-6" strokeWidth={2} />
-          </span>
-          <p className="mt-5 text-sm font-bold uppercase tracking-[0.08em] text-[#9b96b8]">Stage A complete</p>
-          <h3 className="mt-2 text-[1.8rem] font-bold tracking-[-0.03em] text-[#111111]">Timeline setup coming next</h3>
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#5c5780]">
-            The workspace setup for <strong className="text-[#685eeb]">{savedSetup.projectName}</strong> is saved in memory with {savedSetup.rooms.length} {savedSetup.rooms.length === 1 ? 'room' : 'rooms'}. The timeline builder will be added in Stage B.
-          </p>
-          <button
-            type="button"
-            onClick={() => setFlowStep('setup')}
-            className="mt-7 rounded-[13px] border border-[#a29bfc] bg-white px-5 py-2.5 text-sm font-semibold text-[#685eeb] transition hover:bg-[#f7f5ff]"
-          >
-            Edit workspace setup
-          </button>
+        <section className="mt-[18px] rounded-[17px] border border-[#e2e0f0] bg-white px-[24px] pb-[20px] pt-[23px] shadow-[0_8px_24px_rgba(84,86,106,0.08)]">
+          <h3 className="warp-font-header text-[18px] font-extrabold tracking-[-0.025em] text-[#111111]">Set up your project timeline</h3>
+          <p className="mt-[6px] max-w-[850px] text-[10px] leading-[1.45] text-[#5c5780]">This timeline is the backbone of your workspace. Each phase becomes a space where teams are assigned, tasks are broken down, and progress is validated to level up the room. We’ve started you with a standard game-production structure — adjust the phases until they match how your studio actually works.</p>
+
+          <div className="mt-[16px] overflow-x-auto">
+            <div className="min-w-[790px]">
+              <div className="grid grid-cols-[132px_repeat(9,minmax(54px,1fr))] border-b border-[#eceaf5] pb-[8px] text-center text-[9px] font-bold text-[#5c5780]">
+                <span />
+                {TIMELINE_MONTHS.map((month) => <span key={month}>{month}</span>)}
+              </div>
+              <div className="relative">
+                <div className="pointer-events-none absolute bottom-0 left-[132px] right-0 top-0 grid grid-cols-9">
+                  {Array.from({ length: 9 }, (_, index) => <span key={index} className="border-l border-[#f0eef7] last:border-r" />)}
+                </div>
+                <div className="relative space-y-[8px] py-[8px]">
+                  {timelinePhases.map((phase) => (
+                    <div key={phase.id} className="grid h-[37px] grid-cols-[132px_minmax(0,1fr)] items-center">
+                      <div className="flex items-center gap-[10px] pr-[10px]">
+                        <span className="h-[8px] w-[8px] shrink-0 rounded-[2px]" style={{ backgroundColor: phase.color }} />
+                        <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-[#252233]">{phase.name}</span>
+                        <button type="button" onClick={() => setTimelinePhases((items) => items.filter((item) => item.id !== phase.id))} className="text-[#9b96b8] transition hover:text-[#d95772]" aria-label={`Delete ${phase.name}`}><Trash2 className="h-[12px] w-[12px]" strokeWidth={1.8} /></button>
+                      </div>
+                      <div data-timeline-track className="relative h-[28px] px-[6px]">
+                        {activeTimelinePhaseId === phase.id && timelineTooltip ? (
+                          <span className="pointer-events-none absolute bottom-[31px] z-20 -translate-x-1/2 whitespace-nowrap rounded-[7px] bg-[#252233] px-[7px] py-[4px] text-[8px] font-bold text-white shadow-lg" style={{ left: `${timelineTooltip.x}%` }}>
+                            {timelineTooltip.label}
+                          </span>
+                        ) : null}
+                        <div
+                          onPointerDown={(event) => beginTimelineDrag(event, phase, 'move')}
+                          onPointerMove={updateTimelineDrag}
+                          onPointerUp={endTimelineDrag}
+                          onPointerCancel={endTimelineDrag}
+                          className={`absolute top-[4px] flex h-[20px] touch-none select-none items-center rounded-full border px-[12px] text-[9px] font-semibold text-white shadow-[0_5px_12px_rgba(84,86,106,0.13)] ${activeTimelinePhaseId === phase.id ? 'cursor-grabbing border-dashed border-white outline outline-1 outline-white/70' : 'cursor-grab border-white/80'}`}
+                          style={{ left: `calc(${(phase.start / 9) * 100}% + 6px)`, width: `calc(${(phase.span / 9) * 100}% - 12px)`, backgroundColor: phase.color }}
+                        >
+                          <span onPointerDown={(event) => beginTimelineDrag(event, phase, 'resize-left')} className="absolute left-[3px] top-1/2 h-[12px] w-[4px] -translate-y-1/2 cursor-ew-resize rounded-full bg-white/85 shadow" aria-hidden="true" />
+                          <span className="truncate">{phase.name}</span>
+                          <span onPointerDown={(event) => beginTimelineDrag(event, phase, 'resize-right')} className="absolute right-[3px] top-1/2 h-[12px] w-[4px] -translate-y-1/2 cursor-ew-resize rounded-full bg-white/85 shadow" aria-hidden="true" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <button type="button" onClick={addTimelinePhase} className="mt-[2px] flex h-[36px] w-full items-center justify-center gap-[9px] rounded-[10px] border border-dashed border-[#d9d5e9] text-[11px] font-medium text-[#5c5780] transition hover:border-[#a29bfc] hover:bg-[#faf9ff]"><Plus className="h-[13px] w-[13px]" /> Add phase</button>
+            </div>
+          </div>
+
+          <div className="mt-[12px] flex items-start gap-[9px] rounded-[10px] border border-[#f1d99e] bg-[#fff5da] px-[13px] py-[10px] text-[10px] leading-[1.45] text-[#8a5d18]">
+            <span className="mt-[1px] grid h-[14px] w-[14px] shrink-0 place-items-center rounded-full border border-[#b78324] text-[9px] font-bold">i</span>
+            <p><strong>How to adjust:</strong> drag the middle of a bar to move a phase, drag either end to extend or shorten it, and click a phase name to rename it. Once the room is created, each phase is where you assign teams, appoint coordinators, and break work into tasks.</p>
+          </div>
+
+          <div className="mt-[15px] flex flex-wrap items-center justify-between gap-3 border-t border-[#eceaf5] pt-[15px]">
+            <p className="text-[10px] text-[#5c5780]"><strong className="font-extrabold text-[#252233]">{timelinePhases.length} phases</strong> · total span <strong className="text-[#252233]">{formatTimelineDate(timelineStartUnit)} – {formatTimelineDate(timelineEndUnit)}</strong></p>
+            <div className="flex items-center gap-[9px]">
+              <button type="button" onClick={() => setTimelinePhases(timelineTemplate)} className="h-[36px] rounded-[11px] border border-[#e2e0f0] bg-white px-[18px] text-[11px] font-bold text-[#5c5780] transition hover:bg-[#f7f5ff]">Reset to template</button>
+              <button type="button" onClick={handleCreateWorkspace} className="h-[36px] rounded-[11px] bg-[linear-gradient(97deg,#685eeb,#7970f0)] px-[18px] text-[11px] font-bold text-white shadow-[0_8px_18px_rgba(104,94,235,0.2)] transition hover:brightness-105">Create room &amp; timeline ✓</button>
+            </div>
+          </div>
         </section>
       ) : (
-        <form onSubmit={handleSubmit} noValidate className="rounded-[21px] border border-[#e2e0f0] bg-white px-7 py-7 shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
+        <form onSubmit={handleSubmit} noValidate className="mt-[18px] rounded-[21px] border border-[#e2e0f0] bg-white px-7 py-7 shadow-[0_5px_17.6px_rgba(133,133,133,0.16)]">
           <div className="grid gap-5 lg:grid-cols-3">
             <label className="block lg:col-span-1">
               <span className="mb-2 block text-sm font-semibold text-[#3f3a5f]">Project / studio name</span>
@@ -3547,6 +3694,8 @@ export function EmployerDashboard({
   user,
   onEnterWorkspace,
   initialActiveItem = 'dashboard',
+  initialTaskId,
+  initialReviewTaskId,
   workspaceContext = false,
   onWorkspaceHome,
   onWorkspaceSettings,
@@ -3555,6 +3704,8 @@ export function EmployerDashboard({
   user: User;
   onEnterWorkspace: () => void;
   initialActiveItem?: (typeof navItems)[number]['id'];
+  initialTaskId?: string;
+  initialReviewTaskId?: string;
   workspaceContext?: boolean;
   onWorkspaceHome?: () => void;
   onWorkspaceSettings?: () => void;
@@ -3571,10 +3722,17 @@ export function EmployerDashboard({
   const [taskPageTitle, setTaskPageTitle] = useState('To-Do');
   const joinRoomByCode = useRoomStore((state) => state.joinRoomByCode);
   const avatarProfile = useAvatarStore((state) => state.profile);
+  const coinBalance = useUserStore((state) => state.coinBalance);
 
-  const displayName = avatarProfile.displayName.trim() || user.name;
-  const roleLabel = avatarProfile.position.trim() || user.roleLabel;
-  const rewardBalance = Math.max(200, Math.round(user.xp / 26));
+  const displayName = user.role === 'owner' || user.role === 'employer'
+    ? 'Stefen'
+    : avatarProfile.displayName.trim() || user.name;
+  const roleLabel = user.role === 'owner' || user.role === 'employer'
+    ? 'Owner'
+    : avatarProfile.position.trim() || user.roleLabel;
+  const rewardBalance = user.role === 'member' || user.role === 'employee'
+    ? coinBalance
+    : Math.max(200, Math.round(user.xp / 26));
   const canManageRooms = user.role === 'owner' || user.role === 'employer';
   const canCreateRooms = canManageRooms || user.role === 'coordinator';
   const canViewRooms = canCreateRooms || user.role === 'member' || user.role === 'employee';
@@ -3608,7 +3766,7 @@ export function EmployerDashboard({
 
   return (
     <div className="warp-font-ui h-screen w-full overflow-hidden bg-[linear-gradient(141deg,#d5d2ff_12%,#f2f8fe_52%,#f0f9fd_80%,#d9fff4_110%)] text-[#111111]">
-      <div className={cn('grid h-screen min-h-0 w-full', isTaskPage || isChatPage || isStatsPage || isTeamPage || isSettingsPage ? 'grid-cols-[283px_minmax(0,1fr)]' : 'grid-cols-[283px_minmax(0,1fr)_285px]')}>
+      <div className={cn('grid h-screen min-h-0 w-full', isTaskPage || isChatPage || isStatsPage || isTeamPage || isSettingsPage || stage === 'create-room' ? 'grid-cols-[283px_minmax(0,1fr)]' : 'grid-cols-[283px_minmax(0,1fr)_285px]')}>
         <SidebarNav
           activeItem={activeItem}
           onSelect={(item) => {
@@ -3631,7 +3789,7 @@ export function EmployerDashboard({
             <>
               <TopBar displayName={displayName} rewardBalance={rewardBalance} title={taskPageTitle} />
               <div className="min-h-0 flex-1 overflow-y-auto [&>div>div.absolute]:hidden [&>div]:min-h-0">
-                <EmployerTaskManagementPage onTitleChange={setTaskPageTitle} onOpenLiveScreen={onEnterWorkspace} />
+                <EmployerTaskManagementPage initialTaskId={initialTaskId} initialReviewTaskId={initialReviewTaskId} onTitleChange={setTaskPageTitle} onOpenLiveScreen={onEnterWorkspace} />
               </div>
             </>
           ) : (
@@ -3684,7 +3842,7 @@ export function EmployerDashboard({
           )}
         </main>
 
-        {!isTaskPage && !isChatPage && !isStatsPage && !isTeamPage && !isSettingsPage ? (
+        {!isTaskPage && !isChatPage && !isStatsPage && !isTeamPage && !isSettingsPage && stage === 'dashboard' ? (
           <ProfilePanel
             displayName={displayName}
             roleLabel={roleLabel}

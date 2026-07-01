@@ -18,7 +18,13 @@ interface WorkspaceShellProps {
 export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) {
   const initUser = useUserStore(state => state.initialize);
   const initTasks = useTaskStore(state => state.initialize);
-  const isLoungeFirstRole = user.role === 'member' || user.role === 'employee' || user.role === 'coordinator';
+  const resetMemberTasks = useTaskStore(state => state.resetDemoSession);
+  const resetMemberCoins = useUserStore(state => state.resetDemoCoins);
+  const isMemberRole = user.role === 'member' || user.role === 'employee';
+  const isOwnerRole = user.role === 'owner' || user.role === 'employer';
+  const isLoungeFirstRole = isMemberRole || isOwnerRole || user.role === 'coordinator';
+  const [selectedWorkspaceTaskId, setSelectedWorkspaceTaskId] = useState<string>();
+  const [selectedWorkspaceReviewTaskId, setSelectedWorkspaceReviewTaskId] = useState<string>();
   const [activeView, setActiveView] = useState<'dashboard' | 'room' | 'workspacePanel'>('dashboard');
   const [dashboardSection, setDashboardSection] = useState<
     'dashboard' | 'stats' | 'tasks' | 'chat' | 'team' | 'settings'
@@ -26,17 +32,32 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
 
   useEffect(() => {
     initUser(user);
-    initTasks(tasks, teammates);
-  }, [user, tasks, teammates, initUser, initTasks]);
+    if (isMemberRole) {
+      resetMemberTasks(tasks, teammates);
+      resetMemberCoins();
+    } else {
+      initTasks(tasks, teammates);
+    }
+  }, [user, tasks, teammates, initUser, initTasks, isMemberRole, resetMemberCoins, resetMemberTasks]);
 
   useEffect(() => {
     setActiveView('dashboard');
     setDashboardSection('dashboard');
   }, [isLoungeFirstRole, user.role]);
 
+  const returnToRoom = () => {
+    setActiveView('room');
+    window.setTimeout(() => window.dispatchEvent(new CustomEvent('warp:member-room-visible')), 0);
+  };
+
   const openWorkspacePanel = (
     section: 'stats' | 'todo' | 'chat' | 'team' | 'settings',
+    taskId?: string,
+    reviewTaskId?: string,
   ) => {
+    if (isMemberRole) window.dispatchEvent(new CustomEvent('warp:member-room-hidden'));
+    setSelectedWorkspaceTaskId(taskId);
+    setSelectedWorkspaceReviewTaskId(reviewTaskId);
     setDashboardSection(section === 'todo' ? 'tasks' : section);
     setActiveView('workspacePanel');
   };
@@ -61,8 +82,10 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
       <EmployerDashboard
         user={user}
         initialActiveItem={dashboardSection}
+        initialTaskId={selectedWorkspaceTaskId}
+        initialReviewTaskId={selectedWorkspaceReviewTaskId}
         workspaceContext={activeView === 'workspacePanel'}
-        onWorkspaceHome={() => setActiveView('room')}
+        onWorkspaceHome={returnToRoom}
         onWorkspaceSettings={() => {
           window.dispatchEvent(new CustomEvent('warp:open-workspace-section', { detail: { section: 'settings' } }));
           setActiveView('room');
@@ -72,6 +95,12 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
           setActiveView('dashboard');
         }}
         onEnterWorkspace={() => {
+          if (isMemberRole) {
+            resetMemberTasks(tasks, teammates);
+            resetMemberCoins();
+            setSelectedWorkspaceTaskId(undefined);
+            setSelectedWorkspaceReviewTaskId(undefined);
+          }
           setDashboardSection('dashboard');
           setActiveView('room');
         }}

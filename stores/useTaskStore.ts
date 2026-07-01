@@ -1,16 +1,29 @@
 import { create } from 'zustand';
 import { normalizeTaskStatus, type LegacyTaskStatus, type Task, type TaskStatus, type Teammate } from '@/lib/types';
 import { mockEmployeeTasks, mockTeammates } from '@/lib/mock-data';
+import { useUserStore } from '@/stores/useUserStore';
+
+export interface MemberDemoEvent {
+  id: string;
+  kind: 'revision_requested' | 'approved';
+  taskId: string;
+}
+
+const memberDemoReviewTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 interface TaskState {
   tasks: Task[];
   teammates: Teammate[];
   isInitialized: boolean;
+  memberDemoEvents: MemberDemoEvent[];
   initialize: (tasks: Task[], teammates: Teammate[]) => void;
+  resetDemoSession: (tasks: Task[], teammates: Teammate[]) => void;
   addTask: (task: Task) => void;
   updateTaskStatus: (taskId: string, newStatus: TaskStatus | LegacyTaskStatus) => void;
   startTask: (taskId: string, actorId?: string) => boolean;
   submitForReview: (taskId: string, actorId?: string, note?: string) => boolean;
+  submitMemberDemoTask: (taskId: string, actorId?: string, note?: string) => boolean;
+  dismissMemberDemoEvent: (eventId: string) => void;
   approveTask: (taskId: string, reviewerId?: string) => boolean;
   requestRevision: (taskId: string, reviewerId: string | undefined, note: string) => boolean;
   assignRandomTask: () => void;
@@ -20,6 +33,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: mockEmployeeTasks,
   teammates: mockTeammates,
   isInitialized: false,
+  memberDemoEvents: [],
   
   initialize: (tasks, teammates) => set((state) => {
     if (state.isInitialized) return state;
@@ -30,6 +44,27 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     };
   }),
   
+  resetDemoSession: (tasks, teammates) => {
+    memberDemoReviewTimers.forEach((timer) => clearTimeout(timer));
+    memberDemoReviewTimers.clear();
+    set({
+    tasks: tasks.map((task) => ({
+      ...task,
+      status: normalizeTaskStatus(task.status),
+      reviewedAt: undefined,
+      reviewedBy: undefined,
+      revisionNote: undefined,
+      submittedAt: undefined,
+      submissionNote: undefined,
+      approvalXpAwarded: undefined,
+      demoReviewRound: 0,
+    })),
+    teammates,
+    isInitialized: true,
+    memberDemoEvents: [],
+    });
+  },
+
   addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
   
   updateTaskStatus: (taskId, newStatus) =>
@@ -78,6 +113,89 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     return true;
   },
 
+  submitMemberDemoTask: (taskId, _actorId, note) => {
+    const task = get().tasks.find((entry) => entry.id === taskId);
+    if (!task || (task.status !== 'in_progress' && task.status !== 'revision_requested')) return false;
+
+    const previousRound = task.demoReviewRound ?? 0;
+    const finalReview = previousRound >= 1;
+    const existingTimer = memberDemoReviewTimers.get(taskId);
+    if (existingTimer) clearTimeout(existingTimer);
+
+    set((state) => ({
+      tasks: state.tasks.map((entry) =>
+        entry.id === taskId
+          ? {
+              ...entry,
+              status: 'in_review',
+              submissionNote: note?.trim() || entry.submissionNote,
+              submittedAt: new Date().toISOString(),
+            }
+          : entry
+      ),
+    }));
+
+    const timer = setTimeout(() => {
+      memberDemoReviewTimers.delete(taskId);
+      const currentTask = get().tasks.find((entry) => entry.id === taskId);
+      if (!currentTask || currentTask.status !== 'in_review') return;
+
+      if (!finalReview) {
+        const event: MemberDemoEvent = {
+          id: `member-revision-${Date.now()}`,
+          kind: 'revision_requested',
+          taskId,
+        };
+        set((state) => ({
+          tasks: state.tasks.map((entry) =>
+            entry.id === taskId
+              ? {
+                  ...entry,
+                  status: 'revision_requested',
+                  demoReviewRound: 1,
+                  revisionNote: 'Please refine the latest changes and resubmit the task.',
+                  reviewedAt: new Date().toISOString(),
+                  reviewedBy: 'sarah',
+                }
+              : entry
+          ),
+          memberDemoEvents: [...state.memberDemoEvents, event],
+        }));
+        return;
+      }
+
+      if (currentTask.approvalXpAwarded) return;
+      const event: MemberDemoEvent = {
+        id: `member-approved-${Date.now()}`,
+        kind: 'approved',
+        taskId,
+      };
+      set((state) => ({
+        tasks: state.tasks.map((entry) =>
+          entry.id === taskId
+            ? {
+                ...entry,
+                status: 'approved',
+                demoReviewRound: 2,
+                revisionNote: undefined,
+                reviewedAt: new Date().toISOString(),
+                reviewedBy: 'sarah',
+                approvalXpAwarded: true,
+              }
+            : entry
+        ),
+        memberDemoEvents: [...state.memberDemoEvents, event],
+      }));
+      useUserStore.getState().addCoins(50);
+    }, 1350);
+    memberDemoReviewTimers.set(taskId, timer);
+    return true;
+  },
+
+  dismissMemberDemoEvent: (eventId) => set((state) => ({
+    memberDemoEvents: state.memberDemoEvents.filter((event) => event.id !== eventId),
+  })),
+
   approveTask: (taskId, reviewerId) => {
     const task = get().tasks.find((entry) => entry.id === taskId);
     if (!task || task.status !== 'in_review' || task.approvalXpAwarded) return false;
@@ -92,6 +210,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
               reviewedBy: reviewerId,
               revisionNote: undefined,
               approvalXpAwarded: true,
+              demoReviewRound: 2,
             }
           : entry
       ),

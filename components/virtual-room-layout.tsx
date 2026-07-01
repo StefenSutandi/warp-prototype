@@ -13,8 +13,9 @@ import {
 import { useTaskStore } from '@/stores/useTaskStore';
 import { useUserStore } from '@/stores/useUserStore';
 import { useAvatarStore } from '@/stores/useAvatarStore';
+import { useRoomStore, type CoordinatorAssignment } from '@/stores/useRoomStore';
 import { type Task, type User } from '@/lib/types';
-import { CalendarClock, ChevronRight, Eye, ListTodo, MessageCircle, Mic, Pause, PhoneOff, Plus, ScreenShare, SkipForward, Smile, VideoOff, X } from 'lucide-react';
+import { CalendarClock, ChevronRight, Eye, ListTodo, Megaphone, MessageCircle, MoreVertical, Mic, Pause, PhoneOff, Plus, ScreenShare, SkipForward, Smile, VideoOff, X } from 'lucide-react';
 
 // =============================================
 //  DESIGN TOKENS (Figma typography + colors)
@@ -97,6 +98,7 @@ const VIRTUAL_ROOM_LOCAL_ASSETS = {
   activityBadge1: '/assets/virtual-room/overlays/activity_badge_1.png',
   startBadge: '/assets/virtual-room/overlays/start_badge.png',
   coordinatorIndicator: '/assets/figma-export/virtual-room/indicators/coordinator.svg',
+  ownerIndicator: '/assets/figma-export/virtual-room/indicators/crown.svg',
 } as const;
 
 type VirtualRoomOption = (typeof VIRTUAL_ROOM_OPTIONS)[number];
@@ -635,7 +637,7 @@ function RoomTitle({
 // =============================================
 
 function TopRightHud({ balance }: { balance?: number } = {}) {
-  const user = useUserStore(s => s.currentUser);
+  const coinBalance = useUserStore(s => s.coinBalance);
 
   return (
     <div className="absolute right-[21px] top-[22px] z-30 flex items-center gap-[11px] pointer-events-auto">
@@ -647,7 +649,7 @@ function TopRightHud({ balance }: { balance?: number } = {}) {
           className="h-[22px] w-[22px] shrink-0"
         />
         <span className="warp-font-ui inline-flex h-[14px] items-center text-[20px] font-medium leading-none text-[#5C5780] tabular-nums">
-          {balance ?? user?.xp ?? 200}
+          {balance ?? coinBalance}
         </span>
       </div>
 
@@ -681,7 +683,7 @@ function UserCardOverlay({ user, onOpenTeamModal }: { user: User; onOpenTeamModa
   const cardRef = useRef<HTMLDivElement>(null);
   const activityPillStyles = ['bg-[#EEF2FF]', 'bg-[#FFEBEC]', 'bg-[#EAFBF3]'];
   const displayName = avatarProfile.displayName.trim() || user.name;
-  const position = avatarProfile.position.trim() || user.roleLabel;
+  const position = user.role === 'owner' || user.role === 'employer' ? 'Owner' : avatarProfile.position.trim() || user.roleLabel;
 
   useEffect(() => {
     if (!isExpanded) return;
@@ -715,7 +717,11 @@ function UserCardOverlay({ user, onOpenTeamModal }: { user: User; onOpenTeamModa
             <p className="warp-font-ui min-w-0 truncate text-[15px] font-semibold leading-none text-black">
               {displayName}
             </p>
-            {user.role === 'coordinator' ? (
+            {user.role === 'owner' || user.role === 'employer' ? (
+              <span className="grid h-[20px] w-[20px] shrink-0 place-items-center rounded-full bg-[#685eeb] shadow-[0_3px_8px_rgba(104,94,235,0.24)]" title="Owner" aria-label="Owner">
+                <img src={VIRTUAL_ROOM_LOCAL_ASSETS.ownerIndicator} width="14" height="14" alt="" className="block h-[14px] w-[14px] object-contain" aria-hidden="true" />
+              </span>
+            ) : user.role === 'coordinator' ? (
               <span className="grid h-[20px] w-[20px] shrink-0 place-items-center rounded-full bg-[#685eeb] shadow-[0_3px_8px_rgba(104,94,235,0.24)]" title="Coordinator" aria-label="Coordinator">
                 <img src={VIRTUAL_ROOM_LOCAL_ASSETS.coordinatorIndicator} width="16" height="16" alt="" className="block h-4 w-4 object-contain" aria-hidden="true" />
               </span>
@@ -864,8 +870,10 @@ function PomodoroCard() {
 
 function TomatoWidget() {
   const TOTAL_SECONDS = 25 * 60;
+  const DEMO_DURATION_MS = 25_000;
   const [popupState, setPopupState] = useState<'closed' | 'idle' | 'running'>('closed');
   const [remainingSeconds, setRemainingSeconds] = useState(TOTAL_SECONDS);
+  const sessionStartedAtRef = useRef<number | null>(null);
   const isOpen = popupState !== 'closed';
   const isRunning = popupState === 'running';
   const circleSize = isRunning ? 98 : 118;
@@ -879,22 +887,28 @@ function TomatoWidget() {
 
   useEffect(() => {
     if (!isRunning) {
+      window.dispatchEvent(new CustomEvent('warp:member-pomodoro-stop'));
       return;
     }
 
-    const interval = window.setInterval(() => {
-      setRemainingSeconds((current) => {
-        if (current <= 1) {
-          window.clearInterval(interval);
-          setPopupState('idle');
-          return 0;
-        }
-
-        return current - 1;
-      });
-    }, 1000);
-
-    return () => window.clearInterval(interval);
+    const startedAt = sessionStartedAtRef.current ?? performance.now();
+    sessionStartedAtRef.current = startedAt;
+    let frame = 0;
+    const update = (now: number) => {
+      const progress = Math.max(0, Math.min(1, 1 - (now - startedAt) / DEMO_DURATION_MS));
+      setRemainingSeconds(Math.ceil(TOTAL_SECONDS * progress));
+      window.dispatchEvent(new CustomEvent('warp:member-pomodoro-progress', { detail: { progress } }));
+      if (progress <= 0) {
+        sessionStartedAtRef.current = null;
+        setPopupState('closed');
+        window.dispatchEvent(new CustomEvent('warp:member-pomodoro-stop'));
+        window.dispatchEvent(new CustomEvent('warp:member-pomodoro-complete'));
+        return;
+      }
+      frame = window.requestAnimationFrame(update);
+    };
+    frame = window.requestAnimationFrame(update);
+    return () => window.cancelAnimationFrame(frame);
   }, [isRunning]);
 
   return (
@@ -977,9 +991,11 @@ function TomatoWidget() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (remainingSeconds <= 0) {
-                      setRemainingSeconds(TOTAL_SECONDS);
-                    }
+                    const restarting = remainingSeconds <= 0;
+                    if (restarting) setRemainingSeconds(TOTAL_SECONDS);
+                    sessionStartedAtRef.current = restarting
+                      ? performance.now()
+                      : performance.now() - ((TOTAL_SECONDS - remainingSeconds) / TOTAL_SECONDS) * DEMO_DURATION_MS;
                     setPopupState('running');
                   }}
                   className="warp-font-ui mt-[20px] flex h-[29px] w-[88px] items-center justify-center rounded-[9px] bg-[#685EEB] text-[16px] font-semibold text-[#F8F7FC] shadow-[0_2px_17.7px_rgba(104,94,235,0.31)] hover:bg-[#7970F0]"
@@ -1231,6 +1247,7 @@ function TaskCard({
   if (isCompleted) {
     return (
       <div
+        data-room-task-id={task.id}
         role="button"
         tabIndex={0}
         onClick={() => onOpen(task.id)}
@@ -1269,6 +1286,7 @@ function TaskCard({
   // Active tasks expose only lifecycle-safe actions; approval remains reviewer-only.
   return (
     <div
+      data-room-task-id={task.id}
       role="button"
       tabIndex={0}
       onClick={() => onOpen(task.id)}
@@ -1333,40 +1351,91 @@ function RightPanel({
   onCreateTask,
   onOpenTask,
   onWatchScreen,
+  onOpenBroadcast,
+  canBroadcast,
+  isMemberDemo,
+  showLiveReview,
+  activeRoomId,
+  activeRoomName,
+  visibleTaskId,
 }: {
   onCreateTask: () => void;
   onOpenTask: (taskId: string) => void;
   onWatchScreen: () => void;
+  onOpenBroadcast: () => void;
+  canBroadcast: boolean;
+  isMemberDemo: boolean;
+  showLiveReview: boolean;
+  activeRoomId: string;
+  activeRoomName: string;
+  visibleTaskId?: string | null;
 }) {
   const tasks = useTaskStore(s => s.tasks);
   const startTask = useTaskStore(s => s.startTask);
   const submitForReview = useTaskStore(s => s.submitForReview);
+  const submitMemberDemoTask = useTaskStore(s => s.submitMemberDemoTask);
 
   const handleTaskAction = (task: Task) => {
     if (task.status === 'todo' || task.status === 'revision_requested') {
       startTask(task.id);
     } else if (task.status === 'in_progress') {
-      submitForReview(task.id);
+      if (isMemberDemo) submitMemberDemoTask(task.id);
+      else submitForReview(task.id);
     }
   };
 
-  const activeCount = tasks.filter(t => t.status !== 'approved').length;
+  const visibleTasks = visibleTaskId === undefined ? tasks : tasks.filter((task) => task.id === visibleTaskId);
+  const activeCount = visibleTasks.filter(t => t.status !== 'approved').length;
   const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState([
+  const [chatMessages, setChatMessages] = useState<Array<{ id: number; sender: string; text: string; time: string; isMe: boolean; broadcast?: boolean }>>([
     { id: 1, sender: 'You', text: 'On it matee', time: '13.35', isMe: true },
     { id: 2, sender: 'Coworker', text: 'im still working on it', time: '13.35', isMe: false },
   ]);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const taskScrollRef = useRef<HTMLDivElement>(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const emojiChoices = ['\u{1F600}', '\u{1F525}', '\u{1F44D}', '\u{1F389}', '\u2764\uFE0F', '\u2705'];
 
   useEffect(() => {
+    const handleRevealTask = (event: Event) => {
+      const taskId = (event as CustomEvent<{ taskId?: string }>).detail?.taskId;
+      window.requestAnimationFrame(() => {
+        const viewport = taskScrollRef.current;
+        if (!viewport) return;
+        const card = taskId ? viewport.querySelector<HTMLElement>(`[data-room-task-id="${taskId}"]`) : null;
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        else viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+      });
+    };
+    window.addEventListener('warp:member-reveal-task', handleRevealTask as EventListener);
+    return () => window.removeEventListener('warp:member-reveal-task', handleRevealTask as EventListener);
+  }, []);
+
+  useEffect(() => {
     const viewport = chatScrollRef.current;
     if (!viewport) return;
     viewport.scrollTop = viewport.scrollHeight;
   }, [chatMessages]);
+
+  useEffect(() => {
+    if (!canBroadcast) return;
+    const handleBroadcast = (event: Event) => {
+      const detail = (event as CustomEvent<{ message?: string; targetId?: string; targetName?: string }>).detail;
+      const message = detail?.message?.trim();
+      const reachesActiveRoom = detail?.targetId === 'everyone'
+        || detail?.targetId === activeRoomId
+        || detail?.targetName === activeRoomName;
+      if (!message || !reachesActiveRoom) return;
+      setChatMessages((current) => [
+        ...current,
+        { id: Date.now(), sender: 'You', text: message, time: formatChatTime(), isMe: true, broadcast: true },
+      ]);
+    };
+    window.addEventListener('warp:owner-broadcast', handleBroadcast as EventListener);
+    return () => window.removeEventListener('warp:owner-broadcast', handleBroadcast as EventListener);
+  }, [activeRoomId, activeRoomName, canBroadcast]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -1432,7 +1501,7 @@ function RightPanel({
           </button>
         </div>
 
-        <button
+        {showLiveReview ? <button
           type="button"
           onClick={onWatchScreen}
           className="group mx-[22px] mb-[12px] flex h-[104px] shrink-0 overflow-hidden rounded-[14px] border border-[#d8d5ea] bg-white text-left shadow-[0_7px_20px_rgba(84,86,106,0.1)] transition hover:border-[#8f86f5] hover:shadow-[0_10px_26px_rgba(104,94,235,0.18)]"
@@ -1453,11 +1522,11 @@ function RightPanel({
               <Eye className="h-[13px] w-[13px]" /> Watch screen
             </span>
           </span>
-        </button>
+        </button> : null}
 
         {/* TASK LIST */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-[22px] pb-[20px] space-y-[14px]">
-          {tasks.slice(0, 5).map((task, index) => (
+        <div ref={taskScrollRef} className="min-h-0 flex-1 overflow-y-auto px-[22px] pb-[20px] space-y-[14px]">
+          {visibleTasks.slice(0, 5).map((task, index) => (
             <TaskCard key={task.id} task={task} index={index} onAction={handleTaskAction} onOpen={onOpenTask} />
           ))}
         </div>
@@ -1465,7 +1534,14 @@ function RightPanel({
 
       {/* ROOM CHAT */}
       <div className="flex h-[413px] flex-col bg-[#fcfcff]">
-        <p className="warp-font-header px-[22px] pb-[16px] pt-[18px] text-[13px] font-bold uppercase tracking-[0.04em] text-[#9B96B8]">Room Chat</p>
+        <div className="flex items-center justify-between px-[22px] pb-[16px] pt-[18px]">
+          <p className="warp-font-header text-[13px] font-bold uppercase tracking-[0.04em] text-[#9B96B8]">Room Chat</p>
+          {canBroadcast ? (
+            <button type="button" onClick={onOpenBroadcast} className="rounded-full bg-[#685eeb] px-[11px] py-[6px] text-[10px] font-bold text-white shadow-[0_5px_12px_rgba(104,94,235,0.22)] transition hover:bg-[#5d54df]">
+              + Broadcast
+            </button>
+          ) : null}
+        </div>
 
         <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-[22px] pb-[12px]">
           {chatMessages.map(msg => (
@@ -1482,6 +1558,7 @@ function RightPanel({
                   ? 'border-[#685EEB] bg-[#685EEB] text-white'
                   : 'border-[#E2E0F0] bg-white text-[#4C4E62]'
               }`}>
+                {msg.broadcast ? <span className="mb-[3px] block text-[9px] font-extrabold uppercase tracking-[0.1em] text-white/75">Broadcast</span> : null}
                 {msg.text}
               </div>
               {!msg.isMe && <span className="warp-font-ui mt-[5px] pl-[46px] text-[10px] font-normal tracking-[0.01em] text-[#9B96B8]">{msg.time}</span>}
@@ -1720,95 +1797,27 @@ function RoomActiveTaskCard({ member }: { member: ModeratorMember }) {
   );
 }
 
-function LoungeScreenShareInvite({
-  onJoin,
-  screenX,
-  screenY,
-}: {
-  onJoin: () => void;
-  screenX: number;
-  screenY: number;
-}) {
-  const participantAvatars = [
-    '/assets/avatar/profile/Frame%203866.png',
-    '/assets/avatar/profile/Frame%203865.png',
-    '/assets/avatar/profile/Frame%203867.png',
-  ];
-
-  return (
-    <div
-      className="pointer-events-auto absolute z-30 flex -translate-x-1/2 flex-col items-center"
-      style={{ left: screenX, top: Math.max(72, screenY - 400) }}
-    >
-      <div className="lounge-invite-card relative w-[236px] overflow-hidden rounded-[18px] border border-[#d8d5ea] bg-white p-[8px] shadow-[0_16px_38px_rgba(48,42,91,0.24)]">
-        <div className="relative h-[118px] overflow-hidden rounded-[12px] bg-[#ecebfa]">
-          <img
-            src="/assets/figma-export/live/thumbnails/Group%201310%201.png"
-            alt="Coworker A shared screen preview"
-            className="h-full w-full object-cover object-left-top"
-          />
-          <span className="absolute left-[9px] top-[9px] rounded-full bg-[#ff7675] px-[8px] py-[4px] text-[9px] font-bold uppercase tracking-[0.08em] text-white shadow-sm">
-            Live
-          </span>
-        </div>
-
-        <div className="flex items-center gap-[10px] px-[4px] pb-[3px] pt-[9px]">
-          <div className="flex -space-x-[7px]">
-            {participantAvatars.map((avatar, index) => (
-              <span key={avatar} className="relative h-[27px] w-[27px] overflow-hidden rounded-full border-2 border-white bg-[#f0eff8]" style={{ zIndex: participantAvatars.length - index }}>
-                <img src={avatar} alt="" className="h-full w-full object-cover" />
-              </span>
-            ))}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[11px] font-bold text-[#252233]">Coworker A is sharing</p>
-            <p className="mt-[2px] text-[9px] text-[#9b96b8]">3 people watching</p>
-          </div>
-          <button
-            type="button"
-            onClick={onJoin}
-            className="flex h-[30px] items-center justify-center rounded-[10px] bg-[#685eeb] px-[13px] text-[11px] font-bold text-white shadow-[0_7px_16px_rgba(104,94,235,0.25)] transition hover:bg-[#5d53df] active:scale-[0.97]"
-          >
-            Join
-          </button>
-        </div>
-      </div>
-      <style jsx>{`
-        .lounge-invite-card {
-          animation: lounge-invite-enter 360ms ease-out both;
-        }
-        @keyframes lounge-invite-enter {
-          from {
-            opacity: 0;
-            transform: translateY(8px) scale(0.98);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .lounge-invite-card {
-            animation: none;
-          }
-        }
-      `}</style>
-    </div>
-  );
-}
-
 function TeammateInteractionCard({
   selection,
   onClose,
   onProfile,
   onMessage,
+  canAssignCoordinator = false,
+  assignedAsCoordinator = false,
+  onAssignCoordinator,
+  onKick,
 }: {
   selection: TeammateInteractionSelection | null;
   onClose: () => void;
   onProfile: (selection: TeammateInteractionSelection) => void;
   onMessage: (selection: TeammateInteractionSelection) => void;
+  canAssignCoordinator?: boolean;
+  assignedAsCoordinator?: boolean;
+  onAssignCoordinator?: (selection: TeammateInteractionSelection) => void;
+  onKick?: (selection: TeammateInteractionSelection) => void;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const [isOwnerMenuOpen, setIsOwnerMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!selection) return;
@@ -1837,9 +1846,11 @@ function TeammateInteractionCard({
     };
   }, [onClose, selection]);
 
+  useEffect(() => setIsOwnerMenuOpen(false), [selection?.id]);
+
   if (!selection) return null;
 
-  const cardWidth = 170;
+  const cardWidth = canAssignCoordinator ? 196 : 170;
   const cardHeight = 138;
   const minLeft = 24;
   const minTop = 90;
@@ -1862,14 +1873,20 @@ function TeammateInteractionCard({
   return (
     <div
       ref={cardRef}
-      className="absolute z-40 w-[170px] rounded-[22px] bg-white/95 px-[19px] pb-[18px] pt-[20px] shadow-[0_10px_28px_rgba(84,86,106,0.2)] ring-1 ring-[#E8E5F5]/80 backdrop-blur"
+      className={`absolute z-40 ${canAssignCoordinator ? 'w-[196px]' : 'w-[170px]'} rounded-[22px] bg-white/95 px-[19px] pb-[18px] pt-[20px] shadow-[0_10px_28px_rgba(84,86,106,0.2)] ring-1 ring-[#E8E5F5]/80 backdrop-blur`}
       style={{ left, top }}
       role="dialog"
       aria-label={`${selection.name} actions`}
     >
-      <p className="truncate text-[16px] font-bold leading-tight text-black">{selection.name}</p>
-      <p className="mt-[5px] truncate text-[11px] font-normal leading-tight text-[#A5A4A4]">{selection.role}</p>
+      <div className="flex items-start justify-between gap-2"><p className="min-w-0 flex-1 truncate text-[16px] font-bold leading-tight text-black">{selection.name}</p>{canAssignCoordinator ? <button type="button" onClick={() => setIsOwnerMenuOpen((open) => !open)} className="-mr-1 -mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full text-[#9b96b8] hover:bg-[#f2efff] hover:text-[#685eeb]" aria-label="Coworker options"><MoreVertical className="h-4 w-4" /></button> : null}</div>
+      <p className="mt-[5px] truncate text-[11px] font-normal leading-tight text-[#A5A4A4]">{assignedAsCoordinator ? 'Coordinator' : selection.role}</p>
 
+      {canAssignCoordinator && isOwnerMenuOpen ? (
+        <div className="mt-[9px] rounded-[10px] border border-[#e2e0f0] bg-[#fbfaff] p-[5px] shadow-[0_8px_18px_rgba(84,86,106,0.12)]">
+          <button type="button" disabled={assignedAsCoordinator} onClick={() => { onAssignCoordinator?.(selection); setIsOwnerMenuOpen(false); }} className="flex h-[30px] w-full items-center justify-center rounded-[8px] px-2 text-[10px] font-bold text-[#685eeb] hover:bg-[#eeeaff] disabled:cursor-default disabled:text-[#1e9b7a] disabled:hover:bg-transparent">{assignedAsCoordinator ? 'Assigned as Coordinator' : 'Assign as Coordinator'}</button>
+          <button type="button" onClick={() => onKick?.(selection)} className="mt-[3px] flex h-[30px] w-full items-center justify-center rounded-[8px] px-2 text-[10px] font-bold text-[#c84d5e] transition hover:bg-[#fff0f2]">Kick from office</button>
+        </div>
+      ) : null}
       <div className="mt-[15px] space-y-[7px]">
         <button
           type="button"
@@ -1885,6 +1902,37 @@ function TeammateInteractionCard({
         >
           Message
         </button>
+      </div>
+    </div>
+  );
+}
+
+function MainOfficeLiveScreenCard({
+  screenX,
+  screenY,
+  onJoin,
+}: {
+  screenX: number;
+  screenY: number;
+  onJoin: () => void;
+}) {
+  const avatars = [
+    '/assets/avatar/profile/Frame%203866.png',
+    '/assets/avatar/profile/Frame%203865.png',
+    '/assets/avatar/profile/Frame%203867.png',
+  ];
+  return (
+    <div className="pointer-events-auto absolute z-30 w-[236px] -translate-x-1/2 rounded-[18px] border border-[#d8d5ea] bg-white p-[8px] shadow-[0_16px_38px_rgba(48,42,91,0.24)]" style={{ left: screenX, top: Math.max(76, screenY - 390) }}>
+      <div className="relative h-[118px] overflow-hidden rounded-[12px] bg-[#ecebfa]">
+        <img src="/assets/figma-export/live/thumbnails/Group%201310%201.png" alt="Coworker A screen preview" className="h-full w-full object-cover object-left-top" />
+        <span className="absolute left-[9px] top-[9px] rounded-full bg-[#ff7675] px-[8px] py-[4px] text-[9px] font-bold uppercase tracking-[0.08em] text-white">Live</span>
+      </div>
+      <div className="flex items-center gap-[9px] px-[4px] pb-[3px] pt-[9px]">
+        <div className="flex -space-x-[7px]">
+          {avatars.map((avatar) => <span key={avatar} className="relative h-[26px] w-[26px] overflow-hidden rounded-full border-2 border-white bg-[#f0eff8]"><img src={avatar} alt="" className="h-full w-full object-cover" /></span>)}
+        </div>
+        <div className="min-w-0 flex-1"><p className="truncate text-[10px] font-bold text-[#252233]">Coworker A&apos;s Screen</p><p className="mt-[2px] text-[8px] text-[#9b96b8]">Character design review · 3 watching</p></div>
+        <button type="button" onClick={onJoin} className="h-[29px] rounded-[9px] bg-[#685eeb] px-[11px] text-[10px] font-bold text-white hover:bg-[#5d53df]">Join</button>
       </div>
     </div>
   );
@@ -2493,7 +2541,7 @@ function MemberSectionPage({
             <h1 className="warp-font-header text-[24px] font-bold leading-none text-black">Artist Room</h1>
             <p className="mt-[7px] text-[14px] leading-none text-[#838383]">working hour</p>
           </div>
-          <TopRightHud balance={200} />
+          <TopRightHud />
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto">
           <WorkspaceSettingsPage role={user.role} onBack={onWorkspaceHome} workspaceMode />
@@ -2523,6 +2571,193 @@ function MemberSectionPage({
   );
 }
 
+type MemberNotice = {
+  id: string;
+  title: string;
+  message: string;
+  taskId?: string;
+  profile?: boolean;
+  owner?: boolean;
+  announcement?: boolean;
+};
+
+type MemberRewardModal = 'fire' | 'task' | null;
+
+function MemberFlowNotice({ notice, onOpen }: { notice: MemberNotice; onOpen: () => void }) {
+  const interactive = Boolean(notice.taskId);
+  const content = (
+    <div className="flex items-start gap-[11px]">
+      <span className="relative mt-[1px] h-[34px] w-[34px] shrink-0 overflow-hidden rounded-full bg-[#eeeaff] shadow-[0_5px_12px_rgba(104,94,235,0.18)]">
+        {notice.profile ? <img src="/assets/avatar/profile/Frame%203866.png" alt="Sarah" className="h-full w-full object-cover" /> : notice.owner ? <span className="grid h-full w-full place-items-center bg-[#685eeb]"><img src={VIRTUAL_ROOM_LOCAL_ASSETS.ownerIndicator} alt="" className="h-[18px] w-[18px] object-contain" /></span> : notice.announcement ? <span className="grid h-full w-full place-items-center bg-[#eeeaff] text-[#685eeb]"><Megaphone className="h-[18px] w-[18px]" strokeWidth={2.1} /></span> : <span className="grid h-full w-full place-items-center text-[16px] font-extrabold text-[#685eeb]">i</span>}
+      </span>
+      <div className="min-w-0 text-left">
+        <p className="text-[12px] font-extrabold leading-[1.3] text-[#29253b]">{notice.title}</p>
+        <p className={`mt-[4px] text-[11px] font-semibold leading-[1.35] ${interactive ? 'text-[#685eeb]' : 'text-[#77728d]'}`}>{notice.message}</p>
+      </div>
+    </div>
+  );
+  return interactive ? (
+    <button type="button" onClick={onOpen} className="warp-member-notice pointer-events-auto w-full rounded-[16px] border border-[#e5e0ff] bg-white/95 px-[16px] py-[13px] shadow-[0_14px_36px_rgba(70,59,145,0.18)] backdrop-blur-sm">{content}</button>
+  ) : (
+    <div className="warp-member-notice rounded-[16px] border border-[#e5e0ff] bg-white/95 px-[16px] py-[13px] shadow-[0_14px_36px_rgba(70,59,145,0.18)] backdrop-blur-sm">{content}</div>
+  );
+}
+
+function MemberRewardOverlay({ kind, onClose }: { kind: Exclude<MemberRewardModal, null>; onClose: () => void }) {
+  const taskReward = kind === 'task';
+  return (
+    <div className="warp-reward-backdrop absolute inset-0 z-[86] grid place-items-center bg-[#302b50]/35 px-6 backdrop-blur-[5px]" role="dialog" aria-modal="true">
+      <button type="button" aria-label="Close reward" onClick={onClose} className="absolute inset-0" />
+      <div className="warp-reward-card relative z-10 flex w-[390px] max-w-full flex-col items-center text-center">
+        <img src={taskReward ? '/assets/figma-export/achievement/badge-mission-cleared.png' : '/assets/figma-export/achievement/badge-fire.png'} alt="" className="warp-reward-badge relative z-20 mb-[-58px] h-[150px] w-[150px] shrink-0 object-contain drop-shadow-[0_16px_24px_rgba(45,37,100,0.26)]" />
+        <div className="w-full rounded-[24px] bg-white px-[32px] pb-[30px] pt-[76px] shadow-[0_24px_70px_rgba(38,31,82,0.3)]">
+          <h2 className="warp-font-header text-[23px] font-extrabold text-[#242033]">{taskReward ? 'Task Completed!' : 'Badge Unlocked: ON FIRE'}</h2>
+          {taskReward ? (
+            <div className="mt-[13px] flex items-center justify-center gap-[7px] text-[15px] font-semibold text-[#5c5780]">Total earning: <img src="/assets/figma-export/avatar-customization/icons/warp-coin.svg" alt="WARP coin" className="h-6 w-6" /> <strong>50</strong></div>
+          ) : (
+            <><p className="mt-[12px] text-[14px] font-semibold text-[#5c5780]">Three consecutive Pomodoro sessions completed!</p><p className="mt-[10px] text-[11px] text-[#9993ad]">Collect your rewards in Stats</p></>
+          )}
+          <button type="button" onClick={onClose} className="mt-[20px] rounded-full bg-[#685eeb] px-[24px] py-[9px] text-[12px] font-bold text-white">Continue</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type BroadcastRoomOption = { id: string; name: string };
+
+function OwnerBroadcastModal({
+  rooms,
+  onClose,
+  onSend,
+}: {
+  rooms: BroadcastRoomOption[];
+  onClose: () => void;
+  onSend: (message: string, target: BroadcastRoomOption | null) => void;
+}) {
+  const [selectedRoomId, setSelectedRoomId] = useState('everyone');
+  const [message, setMessage] = useState('');
+  const trimmedMessage = message.trim();
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  const options: Array<BroadcastRoomOption & { all?: boolean }> = [
+    { id: 'everyone', name: 'Everyone', all: true },
+    ...rooms,
+  ];
+
+  return (
+    <div className="absolute inset-0 z-[90] grid place-items-center bg-[#302b50]/35 px-5 backdrop-blur-[5px]" role="dialog" aria-modal="true" aria-labelledby="broadcast-title">
+      <button type="button" aria-label="Close broadcast modal" onClick={onClose} className="absolute inset-0" />
+      <section className="relative z-10 w-full max-w-[560px] rounded-[28px] border border-[#e2e0f0] bg-white px-[34px] pb-[30px] pt-[28px] shadow-[0_26px_75px_rgba(38,31,82,0.3)]">
+        <button type="button" onClick={onClose} aria-label="Close" className="absolute right-[22px] top-[21px] grid h-9 w-9 place-items-center rounded-full text-[#9b96b8] transition hover:bg-[#f0eff8] hover:text-[#5c5780]">
+          <X className="h-5 w-5" />
+        </button>
+        <h2 id="broadcast-title" className="warp-font-header text-center text-[25px] font-extrabold text-[#252233]">Broadcast Message</h2>
+
+        <fieldset className="mt-[25px]">
+          <legend className="mb-[10px] text-[10px] font-extrabold uppercase tracking-[0.13em] text-[#9b96b8]">Send To</legend>
+          <div className="space-y-[8px]">
+            {options.map((option) => {
+              const selected = selectedRoomId === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => setSelectedRoomId(option.id)}
+                  className={`flex h-[46px] w-full items-center justify-between rounded-[13px] border px-[15px] text-left transition ${
+                    selected ? 'border-[#cfc8ff] bg-[#f0eff8] text-[#4d459e]' : 'border-transparent bg-[#f8f7fc] text-[#5c5780] hover:border-[#e2e0f0]'
+                  }`}
+                >
+                  <span className="text-[12px] font-bold">{option.name}</span>
+                  <span className={`grid h-[20px] w-[20px] place-items-center rounded-[6px] border ${selected ? 'border-[#685eeb] bg-[#685eeb]' : 'border-[#c9c5d8] bg-white'}`}>
+                    {selected ? <span className="h-[7px] w-[7px] rounded-[2px] bg-white" /> : null}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+
+        <label className="mt-[22px] block">
+          <span className="text-[10px] font-extrabold uppercase tracking-[0.13em] text-[#9b96b8]">Message</span>
+          <textarea
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            rows={4}
+            placeholder="Write a message to your team..."
+            className="mt-[10px] w-full resize-none rounded-[14px] border border-[#e2e0f0] bg-[#fbfaff] px-[15px] py-[13px] text-[13px] leading-[1.5] text-[#252233] outline-none transition placeholder:text-[#aaa6ba] focus:border-[#8d84f1] focus:ring-2 focus:ring-[#685eeb]/10"
+          />
+        </label>
+
+        <button
+          type="button"
+          disabled={!trimmedMessage}
+          onClick={() => {
+            const selectedRoom = selectedRoomId === 'everyone' ? null : rooms.find((room) => room.id === selectedRoomId) ?? null;
+            onSend(trimmedMessage, selectedRoom);
+          }}
+          className="mt-[20px] h-[44px] w-full rounded-[13px] bg-[#685eeb] text-[12px] font-bold text-white shadow-[0_10px_22px_rgba(104,94,235,0.22)] transition hover:bg-[#5d54df] disabled:cursor-not-allowed disabled:bg-[#cbc7dc] disabled:shadow-none"
+        >
+          Send Broadcast
+        </button>
+      </section>
+    </div>
+  );
+}
+
+const OWNER_COORDINATOR_CHOICES = [
+  'Sarah', 'Kevin', 'Bastian Putra', 'Sekar Putri', 'Dimas Pratama', 'Nabila Sari', 'Arka Wijaya',
+] as const;
+
+const OWNER_ASSIGNMENT_ROOMS = [
+  { id: 'artist-room', name: 'Artist Room', capacity: 6 },
+  { id: 'programmer-room', name: 'Programmer Room', capacity: 6 },
+  { id: 'design-room', name: 'Design Room', capacity: 6 },
+] as const;
+
+function OwnerBeforeStartModal({ onClose, onContinue }: { onClose: () => void; onContinue: (assignments: CoordinatorAssignment[]) => void }) {
+  const [selections, setSelections] = useState<Record<string, string>>({});
+  const assignments = OWNER_ASSIGNMENT_ROOMS.flatMap((room) => {
+    const coordinatorName = selections[room.id];
+    return coordinatorName ? [{ roomId: room.id, roomName: room.name, coordinatorId: coordinatorName.toLowerCase().replace(/\s+/g, '-'), coordinatorName }] : [];
+  });
+
+  return (
+    <div className="absolute inset-0 z-[88] grid place-items-center bg-[#2d2945]/35 px-5 backdrop-blur-[4px]" role="dialog" aria-modal="true" aria-labelledby="owner-before-start-title">
+      <section className="w-full max-w-[570px] rounded-[24px] border border-[#e2e0f0] bg-white px-[30px] py-[28px] shadow-[0_24px_70px_rgba(38,31,82,0.3)]">
+        <div className="text-center">
+          <span className="mx-auto grid h-[46px] w-[46px] place-items-center rounded-full bg-[#eeeaff] shadow-[0_8px_18px_rgba(104,94,235,0.14)]"><img src={VIRTUAL_ROOM_LOCAL_ASSETS.ownerIndicator} alt="" className="h-[24px] w-[24px]" /></span>
+          <h2 id="owner-before-start-title" className="warp-font-header mt-[14px] text-[24px] font-extrabold text-[#252233]">Before You Start</h2>
+          <p className="mx-auto mt-[9px] max-w-[475px] text-[12px] leading-[1.55] text-[#5c5780]">Every room needs a Coordinator to break its phase into tasks and validate members&apos; work. Assign one per room now, or set them up later in My Team &amp; Project.</p>
+        </div>
+        <div className="mt-[22px] space-y-[10px]">
+          {OWNER_ASSIGNMENT_ROOMS.map((room) => (
+            <label key={room.id} className="grid grid-cols-[minmax(0,1fr)_210px] items-center gap-[16px] rounded-[14px] border border-[#e2e0f0] bg-[#fbfaff] px-[15px] py-[12px]">
+              <span><strong className="block text-[13px] text-[#252233]">{room.name}</strong><span className="mt-[3px] block text-[10px] text-[#9b96b8]">Capacity {room.capacity}</span></span>
+              <select value={selections[room.id] ?? ''} onChange={(event) => setSelections((current) => ({ ...current, [room.id]: event.target.value }))} className="h-[36px] rounded-[10px] border border-[#d9d5e9] bg-white px-[11px] text-[11px] font-medium text-[#5c5780] outline-none focus:border-[#685eeb]">
+                <option value="">Choose coordinator…</option>
+                {OWNER_COORDINATOR_CHOICES.map((name) => <option key={name} value={name}>{name}</option>)}
+              </select>
+            </label>
+          ))}
+        </div>
+        <div className="mt-[22px] grid grid-cols-2 gap-[12px]">
+          <button type="button" onClick={onClose} className="h-[42px] rounded-[12px] border border-[#d8d3f2] bg-white text-[12px] font-bold text-[#5c5780] hover:bg-[#f7f5ff]">Later</button>
+          <button type="button" onClick={() => onContinue(assignments)} className="h-[42px] rounded-[12px] bg-[#685eeb] text-[12px] font-bold text-white shadow-[0_10px_22px_rgba(104,94,235,0.2)] hover:bg-[#5d54df]">Continue</button>
+        </div>
+      </section>
+    </div>
+  );
+}
 export function VirtualRoomLayout({
   user,
   onBackToDashboard,
@@ -2531,10 +2766,30 @@ export function VirtualRoomLayout({
 }: {
   user: User;
   onBackToDashboard?: () => void;
-  onOpenWorkspacePanel?: (section: Exclude<MemberSection, 'dashboard'>) => void;
+  onOpenWorkspacePanel?: (section: Exclude<MemberSection, 'dashboard'>, taskId?: string, reviewTaskId?: string) => void;
   initialRoomId?: 'main' | 'lounge';
 }) {
   const avatarSelection = useAvatarStore(s => s.selection);
+  const memberTasks = useTaskStore(s => s.tasks);
+  const startMemberTask = useTaskStore(s => s.startTask);
+  const memberDemoEvents = useTaskStore(s => s.memberDemoEvents);
+  const dismissMemberDemoEvent = useTaskStore(s => s.dismissMemberDemoEvent);
+  const memberCoinBalance = useUserStore(s => s.coinBalance);
+  const coordinatorAssignments = useRoomStore(s => s.coordinatorAssignments);
+  const kickedCoworkerIdsByRoom = useRoomStore(s => s.kickedCoworkerIdsByRoom);
+  const kickCoworkerFromRoom = useRoomStore(s => s.kickCoworkerFromRoom);
+  const ownerRoomConfig = useRoomStore(s => s.roomConfig);
+  const saveCoordinatorAssignments = useRoomStore(s => s.saveCoordinatorAssignments);
+  const assignCoordinator = useRoomStore(s => s.assignCoordinator);
+  const isOwnerRole = user.role === 'owner' || user.role === 'employer';
+  const runtimeAvatarSelection = isOwnerRole
+    ? {
+        ...avatarSelection,
+        selectedOutfitId: 'outfit-4',
+        selectedOutfitSrc: '/assets/avatar/outfit/outfit4_idle.png',
+        selectedOutfitType: 'suit',
+      }
+    : avatarSelection;
   const [activeSection, setActiveSection] = useState<MemberSection>('dashboard');
   const [selectedTaskId, setSelectedTaskId] = useState<string>();
   const [showChangeRooms, setShowChangeRooms] = useState(false);
@@ -2548,15 +2803,41 @@ export function VirtualRoomLayout({
   const [isSharingScreen, setIsSharingScreen] = useState(false);
   const [isWatchingScreen, setIsWatchingScreen] = useState(false);
   const [selectedTeammateAction, setSelectedTeammateAction] = useState<TeammateInteractionSelection | null>(null);
-  const [loungeCoworkerReady, setLoungeCoworkerReady] = useState(false);
   const [coordinatorNotices, setCoordinatorNotices] = useState<Array<{ id: string; title: string; message: string }>>([]);
-  const [loungeCoworkerScreenPosition, setLoungeCoworkerScreenPosition] = useState<{ x: number; y: number } | null>(null);
+  const [coordinatorReviewNotice, setCoordinatorReviewNotice] = useState<MemberNotice | null>(null);
+  const [memberNoticeQueue, setMemberNoticeQueue] = useState<MemberNotice[]>([]);
+  const memberNotice = memberNoticeQueue[0] ?? null;
+  const [ownerNotice, setOwnerNotice] = useState<MemberNotice | null>(null);
+  const [showOwnerBeforeStart, setShowOwnerBeforeStart] = useState(isOwnerRole);
+  const [showOwnerBroadcast, setShowOwnerBroadcast] = useState(false);
+  const [memberRoomVisible, setMemberRoomVisible] = useState(true);
+  const [assignedMemberTaskId, setAssignedMemberTaskId] = useState<string | null>(null);
+  const [memberRewardQueue, setMemberRewardQueue] = useState<Array<Exclude<MemberRewardModal, null>>>([]);
+  const memberRewardModal = memberRewardQueue[0] ?? null;
+  const [completedMemberRewards, setCompletedMemberRewards] = useState({ fire: false, task: false });
+  const [memberLoungeEntryVersion, setMemberLoungeEntryVersion] = useState(0);
+  const [memberLiveReviewReady, setMemberLiveReviewReady] = useState(false);
+  const [mainCoworkerScreenPosition, setMainCoworkerScreenPosition] = useState<{ x: number; y: number } | null>(null);
   const [activeRoom, setActiveRoom] = useState<RoomDisplayState>(
     () => VIRTUAL_ROOM_OPTIONS.find((room) => room.id === initialRoomId) ?? VIRTUAL_ROOM_OPTIONS[0]
   );
   const viewportRef = useRef<HTMLDivElement>(null);
   const hasAppliedInitialRoomRef = useRef(false);
   const activeRoomIdRef = useRef(initialRoomId);
+  const memberRoomVisibleRef = useRef(true);
+  const memberDanielDeliveredRef = useRef(false);
+  const lastDanielLoungeEntryRef = useRef(-1);
+  const memberNoticeQueueRef = useRef(memberNoticeQueue);
+  const memberTask = memberTasks.find((task) => task.status !== 'approved') ?? memberTasks[0];
+  const memberTaskRef = useRef(memberTask);
+  memberTaskRef.current = memberTask;
+  memberNoticeQueueRef.current = memberNoticeQueue;
+  const enqueueMemberNotice = (notice: MemberNotice) => {
+    setMemberNoticeQueue((queue) => queue.some((item) => item.id === notice.id) ? queue : [...queue, notice]);
+  };
+  const ownerBroadcastRooms: BroadcastRoomOption[] = ownerRoomConfig?.rooms.length
+    ? ownerRoomConfig.rooms.map((room) => ({ id: room.id, name: room.name }))
+    : OWNER_ASSIGNMENT_ROOMS.map((room) => ({ id: room.id, name: room.name }));
 
   useEffect(() => {
     const handleRoomChanged = (event: Event) => {
@@ -2564,8 +2845,6 @@ export function VirtualRoomLayout({
       const roomId = customEvent.detail?.roomId;
       if (!roomId) return;
 
-      setLoungeCoworkerReady(false);
-      setLoungeCoworkerScreenPosition(null);
       const matchedRoom = VIRTUAL_ROOM_OPTIONS.find((room) => room.id === roomId);
       if (matchedRoom) {
         activeRoomIdRef.current = matchedRoom.id;
@@ -2601,11 +2880,33 @@ export function VirtualRoomLayout({
       } else if (user.role !== 'coordinator') {
         setCoordinatorNotices([]);
       }
+
+      if (isOwnerRole && roomId === 'lounge' && shouldAnnounceRoomEntry) {
+        setOwnerNotice({ id: `owner-welcome-${Date.now()}`, title: 'WELCOME TO YOUR WORKSPACE', message: "Enter your team's room and sit down to begin your work session.", owner: true });
+      } else if (!isOwnerRole) {
+        setOwnerNotice(null);
+      }
+      if ((user.role === 'member' || user.role === 'employee') && shouldAnnounceRoomEntry) {
+        enqueueMemberNotice(roomId === 'lounge'
+          ? { id: `member-lounge-${Date.now()}`, title: 'START WARPING', message: "Enter your team's room and sit down to begin your work session." }
+          : { id: `member-office-${Date.now()}`, title: 'START WARPING', message: 'Sit down to begin your work session.' });
+        if (roomId === 'lounge') setMemberLoungeEntryVersion((version) => version + 1);
+        if (roomId === 'main') setMemberLiveReviewReady(false);
+      } else if (user.role !== 'member' && user.role !== 'employee') {
+        setMemberNoticeQueue([]);
+      }
     };
 
     window.addEventListener('warp:room-changed', handleRoomChanged as EventListener);
     return () => window.removeEventListener('warp:room-changed', handleRoomChanged as EventListener);
-  }, [initialRoomId, user.role]);
+  }, [initialRoomId, isOwnerRole, user.role]);
+
+  useEffect(() => {
+    const kickedIds = kickedCoworkerIdsByRoom[activeRoom.id] ?? [];
+    kickedIds.forEach((coworkerId) => {
+      window.dispatchEvent(new CustomEvent('warp:coworker-kicked', { detail: { roomId: activeRoom.id, coworkerId } }));
+    });
+  }, [activeRoom.id, kickedCoworkerIdsByRoom]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -2621,32 +2922,147 @@ export function VirtualRoomLayout({
   }, [coordinatorNotices]);
 
   useEffect(() => {
-    const handleLoungeCoworkerReady = (event: Event) => {
-      const customEvent = event as CustomEvent<{
-        coworkerId?: string;
-        roomId?: string;
-        screenX?: number;
-        screenY?: number;
-      }>;
-      if (
-        customEvent.detail?.roomId !== 'lounge'
-        || customEvent.detail?.coworkerId !== 'coworker-a'
-        || activeRoomIdRef.current !== 'lounge'
-        || typeof customEvent.detail?.screenX !== 'number'
-        || typeof customEvent.detail?.screenY !== 'number'
-      ) {
-        return;
-      }
-
-      setLoungeCoworkerScreenPosition({
-        x: customEvent.detail.screenX,
-        y: customEvent.detail.screenY,
+    if (user.role !== 'coordinator') return;
+    const handleCoordinatorSatDown = () => {
+      setCoordinatorReviewNotice({
+        id: `coordinator-review-${Date.now()}`,
+        title: 'Sarah submitted the task.',
+        message: 'go to-do page >',
+        taskId: 'review-task-1',
+        profile: true,
       });
-      setLoungeCoworkerReady(true);
     };
+    window.addEventListener('warp:coordinator-sat-down', handleCoordinatorSatDown);
+    return () => window.removeEventListener('warp:coordinator-sat-down', handleCoordinatorSatDown);
+  }, [user.role]);
 
-    window.addEventListener('warp:lounge-coworker-ready', handleLoungeCoworkerReady as EventListener);
-    return () => window.removeEventListener('warp:lounge-coworker-ready', handleLoungeCoworkerReady as EventListener);
+  useEffect(() => {
+    if (!coordinatorReviewNotice) return;
+    const noticeId = coordinatorReviewNotice.id;
+    const timeout = window.setTimeout(() => setCoordinatorReviewNotice((current) => current?.id === noticeId ? null : current), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [coordinatorReviewNotice]);
+
+  useEffect(() => {
+    if (!ownerNotice || showOwnerBeforeStart) return;
+    const noticeId = ownerNotice.id;
+    const timeout = window.setTimeout(() => setOwnerNotice((current) => current?.id === noticeId ? null : current), 6000);
+    return () => window.clearTimeout(timeout);
+  }, [ownerNotice, showOwnerBeforeStart]);
+
+  useEffect(() => {
+    if (!memberNotice || !memberRoomVisible) return;
+    const noticeId = memberNotice.id;
+      const timeout = window.setTimeout(() => setMemberNoticeQueue((queue) => queue[0]?.id === noticeId ? queue.slice(1) : queue), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [memberNotice, memberRoomVisible]);
+
+  const dismissMemberReward = () => {
+    const completedReward = memberRewardQueue[0];
+    if (completedReward) {
+      setCompletedMemberRewards((current) => ({ ...current, [completedReward]: true }));
+    }
+    setMemberRewardQueue((queue) => queue.slice(1));
+  };
+  const enqueueMemberReward = (reward: Exclude<MemberRewardModal, null>) => {
+    setMemberRewardQueue((queue) => queue.includes(reward) ? queue : [...queue, reward]);
+  };
+
+  useEffect(() => {
+    if (memberRewardModal === null || !memberRoomVisible) return;
+    const timeout = window.setTimeout(dismissMemberReward, 7500);
+    return () => window.clearTimeout(timeout);
+  }, [memberRewardModal, memberRoomVisible]);
+
+  useEffect(() => {
+    const isMember = user.role === 'member' || user.role === 'employee';
+    const rewardsComplete = completedMemberRewards.fire && completedMemberRewards.task;
+    if (!isMember || !rewardsComplete || activeRoom.id !== 'lounge' || memberLoungeEntryVersion <= 0 || lastDanielLoungeEntryRef.current === memberLoungeEntryVersion) return;
+    lastDanielLoungeEntryRef.current = memberLoungeEntryVersion;
+    const danielAlreadyQueued = memberNoticeQueueRef.current.some((notice) => notice.announcement);
+    if (!danielAlreadyQueued) {
+      enqueueMemberNotice({
+        id: `member-meeting-${memberLoungeEntryVersion}-${Date.now()}`,
+        title: 'Meeting will start in 10 minutes, please get ready.',
+        message: 'Daniel (CEO)',
+        announcement: true,
+      });
+    }
+    memberDanielDeliveredRef.current = true;
+  }, [activeRoom.id, completedMemberRewards.fire, completedMemberRewards.task, memberLoungeEntryVersion, user.role]);
+
+  useEffect(() => {
+    if (user.role !== 'member' && user.role !== 'employee') return;
+    const event = memberDemoEvents[0];
+    if (!event) return;
+
+    const notice: MemberNotice = event.kind === 'revision_requested'
+      ? {
+          id: event.id,
+          title: 'Sarah requested revision.',
+          message: 'go to-do page >',
+          taskId: event.taskId,
+          profile: true,
+        }
+      : {
+          id: event.id,
+          title: 'Sarah approved your task.',
+          message: 'You earned 50 coins!',
+          taskId: event.taskId,
+          profile: true,
+        };
+
+    enqueueMemberNotice(notice);
+    dismissMemberDemoEvent(event.id);
+  }, [dismissMemberDemoEvent, memberDemoEvents, user.role]);
+
+  const scheduledTaskRewardNoticesRef = useRef(new Set<string>());
+  useEffect(() => {
+    if (!memberNotice || !memberRoomVisible || memberNotice.title !== 'Sarah approved your task.' || scheduledTaskRewardNoticesRef.current.has(memberNotice.id)) return;
+    scheduledTaskRewardNoticesRef.current.add(memberNotice.id);
+    window.setTimeout(() => enqueueMemberReward('task'), 1700);
+  }, [memberNotice, memberRoomVisible]);
+
+  useEffect(() => {
+    if (user.role !== 'member' && user.role !== 'employee') return;
+
+    const handleSatDown = () => {
+      const task = memberTaskRef.current;
+      if (!task) return;
+      if (task.status === 'todo' || task.status === 'revision_requested') startMemberTask(task.id, user.id);
+      setAssignedMemberTaskId(task.id);
+      enqueueMemberNotice({ id: `member-assigned-${Date.now()}`, title: 'Sarah assigned you 1 task.', message: 'go to-do page >', taskId: task.id, profile: true });
+      window.dispatchEvent(new CustomEvent('warp:member-reveal-task', { detail: { taskId: task.id } }));
+      if (activeRoomIdRef.current === 'main' && memberDanielDeliveredRef.current) setMemberLiveReviewReady(true);
+    };
+    const handlePomodoroComplete = () => enqueueMemberReward('fire');
+    const handleRoomVisible = () => {
+      memberRoomVisibleRef.current = true;
+      setMemberRoomVisible(true);
+    };
+    const handleRoomHidden = () => {
+      memberRoomVisibleRef.current = false;
+      setMemberRoomVisible(false);
+    };
+    window.addEventListener('warp:member-sat-down', handleSatDown);
+    window.addEventListener('warp:member-pomodoro-complete', handlePomodoroComplete);
+    window.addEventListener('warp:member-room-visible', handleRoomVisible);
+    window.addEventListener('warp:member-room-hidden', handleRoomHidden);
+    return () => {
+      window.removeEventListener('warp:member-sat-down', handleSatDown);
+      window.removeEventListener('warp:member-pomodoro-complete', handlePomodoroComplete);
+      window.removeEventListener('warp:member-room-visible', handleRoomVisible);
+      window.removeEventListener('warp:member-room-hidden', handleRoomHidden);
+    };
+  }, [startMemberTask, user.id, user.role]);
+  useEffect(() => {
+    const handleMainCoworkerReady = (event: Event) => {
+      const detail = (event as CustomEvent<{ coworkerId?: string; roomId?: string; screenX?: number; screenY?: number }>).detail;
+      if (detail?.roomId !== 'main' || detail.coworkerId !== 'static-seated-coworker-a' || typeof detail.screenX !== 'number' || typeof detail.screenY !== 'number') return;
+      setMainCoworkerScreenPosition({ x: detail.screenX, y: detail.screenY });
+    };
+    window.addEventListener('warp:main-coworker-ready', handleMainCoworkerReady as EventListener);
+    return () => window.removeEventListener('warp:main-coworker-ready', handleMainCoworkerReady as EventListener);
   }, []);
 
   useEffect(() => {
@@ -2659,6 +3075,8 @@ export function VirtualRoomLayout({
         clientX?: number;
         clientY?: number;
       }>;
+      const coworkerId = customEvent.detail?.id || '';
+      if (coworkerId && (kickedCoworkerIdsByRoom[activeRoomIdRef.current] ?? []).includes(coworkerId)) return;
       const name = customEvent.detail?.name || 'Coworker A';
       const viewportBounds = viewportRef.current?.getBoundingClientRect();
       const x = viewportBounds && typeof customEvent.detail?.clientX === 'number'
@@ -2692,7 +3110,7 @@ export function VirtualRoomLayout({
       window.removeEventListener('warp:teammate-selected', handleTeammateSelected as EventListener);
       window.removeEventListener('warp:teammate-cleared', handleTeammateCleared);
     };
-  }, []);
+  }, [kickedCoworkerIdsByRoom]);
 
   useEffect(() => {
     const handleOpenWorkspaceSection = (event: Event) => {
@@ -2723,8 +3141,6 @@ export function VirtualRoomLayout({
   const handleRoomSelection = (roomId: string) => {
     setSelectedTeammateAction(null);
     setCoordinatorNotices([]);
-    setLoungeCoworkerReady(false);
-    setLoungeCoworkerScreenPosition(null);
     window.dispatchEvent(new CustomEvent('warp:switch-room', { detail: { roomId } }));
     setShowChangeRooms(false);
   };
@@ -2736,7 +3152,6 @@ export function VirtualRoomLayout({
   const openScreenOverlay = (mode: ScreenOverlayMode) => {
     setSelectedTeammateAction(null);
     setCoordinatorNotices([]);
-    setLoungeCoworkerReady(false);
     setScreenOverlayMode(mode);
     setIsScreenOverlayOpen(true);
     if (mode === 'share') {
@@ -2753,9 +3168,6 @@ export function VirtualRoomLayout({
 
   const closeScreenOverlay = () => {
     setIsScreenOverlayOpen(false);
-    if (activeRoomIdRef.current === 'lounge' && loungeCoworkerScreenPosition) {
-      setLoungeCoworkerReady(true);
-    }
   };
 
   const toggleFullscreen = async () => {
@@ -2799,7 +3211,7 @@ export function VirtualRoomLayout({
   };
   const openTaskDetail = (taskId: string) => {
     setSelectedTaskId(taskId);
-    onOpenWorkspacePanel?.('todo');
+    onOpenWorkspacePanel?.('todo', taskId);
   };
 
   return (
@@ -2812,8 +3224,39 @@ export function VirtualRoomLayout({
         .warp-coordinator-notice {
           animation: warpCoordinatorNoticeIn 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
         }
+        @keyframes warpMemberNoticeFlow {
+          0% { opacity: 0; transform: translateY(-14px); }
+          10%, 78% { opacity: 1; transform: translateY(0); }
+          100% { opacity: 0; transform: translateY(12px); }
+        }
+        .warp-member-notice {
+          animation: warpMemberNoticeFlow 5s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        @keyframes warpRewardBackdropIn {
+          from { opacity: 0; backdrop-filter: blur(0); }
+          to { opacity: 1; backdrop-filter: blur(5px); }
+        }
+        @keyframes warpRewardCardIn {
+          from { opacity: 0; transform: translateY(14px) scale(0.98); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes warpRewardBadgeIn {
+          0% { opacity: 0; transform: scale(0.85); }
+          70% { opacity: 1; transform: scale(1.04); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes warpRewardBadgeBob {
+          0%, 100% { margin-top: 0; filter: drop-shadow(0 16px 24px rgba(45,37,100,.26)); }
+          50% { margin-top: -5px; filter: drop-shadow(0 20px 30px rgba(104,94,235,.38)); }
+        }
+        .warp-reward-backdrop { animation: warpRewardBackdropIn 280ms ease-out both; }
+        .warp-reward-card { animation: warpRewardCardIn 420ms cubic-bezier(0.22,1,0.36,1) both; }
+        .warp-reward-badge {
+          animation: warpRewardBadgeIn 480ms cubic-bezier(0.22,1,0.36,1) both,
+            warpRewardBadgeBob 2.4s ease-in-out 520ms infinite;
+        }
         @media (prefers-reduced-motion: reduce) {
-          .warp-coordinator-notice { animation: none !important; }
+          .warp-coordinator-notice, .warp-member-notice, .warp-reward-backdrop, .warp-reward-card, .warp-reward-badge { animation: none !important; }
         }
       `}</style>
 
@@ -2827,7 +3270,7 @@ export function VirtualRoomLayout({
             <div ref={viewportRef} className="relative min-h-0 flex-1 overflow-hidden">
               {/* Phaser Game */}
               <div className="absolute inset-0">
-                <PhaserGame avatarSelection={avatarSelection} />
+                <PhaserGame avatarSelection={runtimeAvatarSelection} />
               </div>
 
               {/* Overlays */}
@@ -2838,7 +3281,7 @@ export function VirtualRoomLayout({
                 roomSubtitle={activeRoom.subtitle}
                 onSwitchRooms={() => setShowChangeRooms(true)}
               />
-              <TopRightHud />
+              <TopRightHud balance={user.role === 'member' || user.role === 'employee' ? memberCoinBalance : undefined} />
               {user.role === 'coordinator' && coordinatorNotices.length > 0 ? (
                 <div className="pointer-events-none absolute right-[24px] top-[92px] z-[72] flex w-[380px] max-w-[calc(100%-48px)] flex-col gap-[10px]" aria-live="polite">
                   {coordinatorNotices.map((notice, index) => (
@@ -2860,11 +3303,66 @@ export function VirtualRoomLayout({
                   ))}
                 </div>
               ) : null}
+              {user.role === 'coordinator' && coordinatorReviewNotice ? (
+                <div className={`absolute right-[24px] z-[74] w-[360px] max-w-[calc(100%-48px)] ${coordinatorNotices.length > 0 ? 'top-[222px]' : 'top-[92px]'}`} aria-live="polite">
+                  <MemberFlowNotice
+                    key={coordinatorReviewNotice.id}
+                    notice={coordinatorReviewNotice}
+                    onOpen={() => {
+                      const reviewTaskId = coordinatorReviewNotice.taskId;
+                      setCoordinatorReviewNotice(null);
+                      onOpenWorkspacePanel?.('todo', undefined, reviewTaskId);
+                    }}
+                  />
+                </div>
+              ) : null}
+              {isOwnerRole && ownerNotice && !showOwnerBeforeStart ? (
+                <div className="pointer-events-none absolute right-[24px] top-[92px] z-[72] w-[360px] max-w-[calc(100%-48px)]" aria-live="polite">
+                  <MemberFlowNotice notice={ownerNotice} onOpen={() => undefined} />
+                </div>
+              ) : null}
+              {(user.role === 'member' || user.role === 'employee') && memberNotice ? (
+                <div className="absolute right-[24px] top-[92px] z-[72] w-[360px] max-w-[calc(100%-48px)]" aria-live="polite">
+                  <MemberFlowNotice key={memberNotice.id} notice={memberNotice} onOpen={() => {
+                    if (!memberNotice.taskId) return;
+                    setMemberNoticeQueue((queue) => queue.slice(1));
+                    openTaskDetail(memberNotice.taskId);
+                    window.dispatchEvent(new CustomEvent('warp:member-reveal-task', { detail: { taskId: memberNotice.taskId } }));
+                  }} />
+                </div>
+              ) : null}
+              {memberRewardModal ? <MemberRewardOverlay kind={memberRewardModal} onClose={dismissMemberReward} /> : null}
+              {isOwnerRole && showOwnerBroadcast ? (
+                <OwnerBroadcastModal
+                  rooms={ownerBroadcastRooms}
+                  onClose={() => setShowOwnerBroadcast(false)}
+                  onSend={(message, target) => {
+                    if (!isOwnerRole) return;
+                    window.dispatchEvent(new CustomEvent('warp:owner-broadcast', {
+                      detail: {
+                        message,
+                        targetId: target?.id ?? 'everyone',
+                        targetName: target?.name ?? 'Everyone',
+                      },
+                    }));
+                    setShowOwnerBroadcast(false);
+                  }}
+                />
+              ) : null}
+              {showOwnerBeforeStart && activeRoom.id === 'lounge' && isOwnerRole ? (
+                <OwnerBeforeStartModal
+                  onClose={() => setShowOwnerBeforeStart(false)}
+                  onContinue={(assignments) => {
+                    saveCoordinatorAssignments(assignments);
+                    setShowOwnerBeforeStart(false);
+                  }}
+                />
+              ) : null}
               {selectedTeammateAction ? <RoomActiveTaskCard member={activeTaskMember} /> : null}
-              {activeRoom.id === 'lounge' && loungeCoworkerReady && loungeCoworkerScreenPosition ? (
-                <LoungeScreenShareInvite
-                  screenX={loungeCoworkerScreenPosition.x}
-                  screenY={loungeCoworkerScreenPosition.y}
+              {(user.role === 'member' || user.role === 'employee') && activeRoom.id === 'main' && memberLiveReviewReady && mainCoworkerScreenPosition ? (
+                <MainOfficeLiveScreenCard
+                  screenX={mainCoworkerScreenPosition.x}
+                  screenY={mainCoworkerScreenPosition.y}
                   onJoin={() => openScreenOverlay('watch')}
                 />
               ) : null}
@@ -2881,6 +3379,19 @@ export function VirtualRoomLayout({
                 onMessage={() => {
                   setSelectedTeammateAction(null);
                   onOpenWorkspacePanel?.('chat');
+                }}
+                canAssignCoordinator={isOwnerRole}
+                assignedAsCoordinator={Boolean(selectedTeammateAction && coordinatorAssignments[activeRoom.id]?.coordinatorId === selectedTeammateAction.id)}
+                onAssignCoordinator={(selection) => {
+                  assignCoordinator({ roomId: activeRoom.id, roomName: activeRoom.name, coordinatorId: selection.id, coordinatorName: selection.name });
+                  window.dispatchEvent(new CustomEvent('warp:coworker-coordinator-assigned', { detail: { coworkerId: selection.id } }));
+                }}
+                onKick={(selection) => {
+                  if (!isOwnerRole || selection.id === user.id) return;
+                  kickCoworkerFromRoom(activeRoom.id, selection.id);
+                  window.dispatchEvent(new CustomEvent('warp:coworker-kicked', { detail: { roomId: activeRoom.id, coworkerId: selection.id } }));
+                  setSelectedTeammateAction(null);
+                  setOwnerNotice({ id: `owner-kicked-${Date.now()}`, title: 'OFFICE UPDATED', message: `${selection.name} was kicked from office.`, owner: true });
                 }}
               />
               <TomatoWidget key={activeRoom.id} />
@@ -2906,7 +3417,20 @@ export function VirtualRoomLayout({
           </div>
 
           {/* Right Panel */}
-          <RightPanel onCreateTask={() => setShowCreateTask(true)} onOpenTask={openTaskDetail} onWatchScreen={() => openScreenOverlay('watch')} />
+          <RightPanel
+            onCreateTask={() => setShowCreateTask(true)}
+            onOpenTask={openTaskDetail}
+            onWatchScreen={() => openScreenOverlay('watch')}
+            onOpenBroadcast={() => {
+              if (isOwnerRole) setShowOwnerBroadcast(true);
+            }}
+            canBroadcast={isOwnerRole}
+            isMemberDemo={user.role === 'member' || user.role === 'employee'}
+            showLiveReview={activeRoom.id === 'main' && ((user.role !== 'member' && user.role !== 'employee') || memberLiveReviewReady)}
+            activeRoomId={activeRoom.id}
+            activeRoomName={activeRoom.name}
+            visibleTaskId={user.role === 'member' || user.role === 'employee' ? assignedMemberTaskId : undefined}
+          />
         </>
       ) : (
         <MemberSectionPage

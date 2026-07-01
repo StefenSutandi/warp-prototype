@@ -16,6 +16,13 @@ export interface RoomConfig {
   rooms: WorkspaceRoom[];
 }
 
+export interface CoordinatorAssignment {
+  roomId: string;
+  roomName: string;
+  coordinatorId: string;
+  coordinatorName: string;
+}
+
 export interface RoomInvite {
   id: string;
   name: string;
@@ -44,10 +51,15 @@ interface RoomState {
   roomConfig: RoomConfig | null;
   roomInvites: RoomInvite[];
   activeRoom: RoomInvite | null;
+  coordinatorAssignments: Record<string, CoordinatorAssignment>;
+  kickedCoworkerIdsByRoom: Record<string, string[]>;
   saveRoomSetup: (config: RoomConfig) => void;
   saveRoomAdministration: (rooms: WorkspaceRoom[], createdByRole: RoomInvite['createdByRole']) => RoomInvite[];
   createRoomInvite: (room: Pick<RoomInvite, 'id' | 'name' | 'createdByRole'>) => RoomInvite;
   joinRoomByCode: (code: string) => RoomInvite;
+  assignCoordinator: (assignment: CoordinatorAssignment) => void;
+  saveCoordinatorAssignments: (assignments: CoordinatorAssignment[]) => void;
+  kickCoworkerFromRoom: (roomId: string, coworkerId: string) => void;
   resetRoom: () => void;
 }
 
@@ -55,6 +67,8 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   roomConfig: null,
   roomInvites: [],
   activeRoom: null,
+  coordinatorAssignments: {},
+  kickedCoworkerIdsByRoom: {},
   saveRoomSetup: (config) => set({ roomConfig: config }),
   saveRoomAdministration: (rooms, createdByRole) => {
     const currentState = get();
@@ -90,7 +104,9 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     return roomInvites;
   },
   createRoomInvite: (room) => {
-    const code = createRoomCode(room.id, room.name);
+    const code = room.createdByRole === 'owner' || room.createdByRole === 'employer'
+      ? 'ygm6ye5k'
+      : createRoomCode(room.id, room.name);
     const invite: RoomInvite = {
       ...room,
       code,
@@ -117,5 +133,30 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     set({ activeRoom: joinedRoom });
     return joinedRoom;
   },
-  resetRoom: () => set({ roomConfig: null, roomInvites: [], activeRoom: null }),
+  assignCoordinator: (assignment) => set((state) => ({
+    coordinatorAssignments: {
+      ...state.coordinatorAssignments,
+      [assignment.roomId]: assignment,
+    },
+  })),
+  saveCoordinatorAssignments: (assignments) => set((state) => ({
+    coordinatorAssignments: assignments.reduce<Record<string, CoordinatorAssignment>>(
+      (result, assignment) => ({ ...result, [assignment.roomId]: assignment }),
+      { ...state.coordinatorAssignments },
+    ),
+  })),
+  kickCoworkerFromRoom: (roomId, coworkerId) => set((state) => {
+    const currentIds = state.kickedCoworkerIdsByRoom[roomId] ?? [];
+    const coordinatorAssignment = state.coordinatorAssignments[roomId];
+    const coordinatorAssignments = { ...state.coordinatorAssignments };
+    if (coordinatorAssignment?.coordinatorId === coworkerId) delete coordinatorAssignments[roomId];
+    return {
+      kickedCoworkerIdsByRoom: {
+        ...state.kickedCoworkerIdsByRoom,
+        [roomId]: currentIds.includes(coworkerId) ? currentIds : [...currentIds, coworkerId],
+      },
+      coordinatorAssignments,
+    };
+  }),
+  resetRoom: () => set({ roomConfig: null, roomInvites: [], activeRoom: null, coordinatorAssignments: {}, kickedCoworkerIdsByRoom: {} }),
 }));

@@ -249,9 +249,9 @@ const attachmentFiles = [
 
 const reviewTask = {
   id: 'review-task-1',
-  submittedBy: 'Kevin',
+  submittedBy: 'Sarah',
   submittedAgo: '2h ago',
-  assignee: 'Kevin',
+  assignee: 'Sarah',
   due: '25/05/2026 10:00',
   status: 'IN REVIEW',
   title: 'Icon Set Exploration',
@@ -328,6 +328,12 @@ function toTaskCardData(task: Task): TaskCardData {
       : status === 'APPROVED' ? 'This task has been approved.' : 'This task is overdue.',
     currentActionSubtitle: task.status === 'revision_requested'
       ? task.revisionNote || 'Open the task, continue the work, and resubmit it for review.'
+      : task.status === 'in_review'
+        ? task.demoReviewRound === 2
+          ? 'Your final revision is with Sarah for approval.'
+          : 'Sarah is reviewing your first submission.'
+        : task.status === 'approved'
+          ? 'Sarah approved this submission. The task is complete.'
       : template?.currentActionSubtitle ?? 'Current shared status: ' + status.toLowerCase() + '.',
     revisionNote: task.revisionNote,
     activity: template?.activity?.length ? template.activity : buildTaskActivity(task, status, progress),
@@ -1416,6 +1422,7 @@ function DetailView({
   const currentUser = useUserStore((state) => state.currentUser);
   const startTask = useTaskStore((state) => state.startTask);
   const submitForReview = useTaskStore((state) => state.submitForReview);
+  const submitMemberDemoTask = useTaskStore((state) => state.submitMemberDemoTask);
   const [isActionPending, setIsActionPending] = useState(false);
   const isFinalState = task.canonicalStatus === 'in_review' || task.canonicalStatus === 'approved';
   const submitState: SubmitState = isActionPending ? 'submitting' : isFinalState ? 'submitted' : 'idle';
@@ -1437,10 +1444,12 @@ function DetailView({
       if (task.canonicalStatus === 'todo') {
         startTask(task.id, currentUser?.id);
       } else {
-        submitForReview(task.id, currentUser?.id);
+        const isMemberDemo = currentUser?.role === 'member' || currentUser?.role === 'employee';
+        if (isMemberDemo) submitMemberDemoTask(task.id, currentUser?.id);
+        else submitForReview(task.id, currentUser?.id);
       }
       setIsActionPending(false);
-    }, 450);
+    }, 100);
   };
 
   return (
@@ -1752,10 +1761,12 @@ function RestrictedReviewView({
 
 export function EmployerTaskManagementPage({
   initialTaskId,
+  initialReviewTaskId,
   onTitleChange,
   onOpenLiveScreen,
 }: {
   initialTaskId?: string;
+  initialReviewTaskId?: string;
   onTitleChange?: (title: string) => void;
   onOpenLiveScreen?: () => void;
 } = {}) {
@@ -1789,6 +1800,15 @@ export function EmployerTaskManagementPage({
     setActiveTab('my');
     setView('detail');
   }, [initialTaskId, tasks]);
+
+  useEffect(() => {
+    if (!initialReviewTaskId || !canReview) return;
+    const matchedReviewTask = reviewTasks.find((task) => task.id === initialReviewTaskId);
+    if (!matchedReviewTask) return;
+    setSelectedReviewTaskId(matchedReviewTask.id);
+    setActiveTab('review');
+    setView('review-detail');
+  }, [canReview, initialReviewTaskId, tasks]);
 
   useEffect(() => {
     onTitleChange?.(view === 'detail' || view === 'review-detail' ? 'Task Detail' : 'To-Do');

@@ -42,6 +42,7 @@ export interface Task {
   reviewedAt?: string;
   reviewedBy?: string;
   approvalXpAwarded?: boolean;
+  demoReviewRound?: 0 | 1 | 2;
 }
 
 export interface Teammate {

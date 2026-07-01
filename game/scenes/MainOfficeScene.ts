@@ -261,6 +261,7 @@ type RoomCoworkerLayers = {
   hitArea?: Phaser.GameObjects.Arc;
   nameBadge?: Phaser.GameObjects.Container;
   pomodoroIndicator?: Phaser.GameObjects.Container;
+  coordinatorIndicator?: Phaser.GameObjects.Image;
 };
 type CoworkerPomodoroVisual = {
   container: Phaser.GameObjects.Container;
@@ -797,6 +798,7 @@ export default class MainOfficeScene extends Phaser.Scene {
   private desks: DeskData[] = [];
   private seats: SeatData[] = [];
   private roomCoworkers: RoomCoworkerLayers[] = [];
+  private staticSeatedCoworkerObjects: Phaser.GameObjects.GameObject[] = [];
   private staticSeatedCoworkerBlinkEvent?: Phaser.Time.TimerEvent;
   private coworkerPomodoroProgress = 0.8;
   private coworkerPomodoroTick = 0;
@@ -823,7 +825,8 @@ export default class MainOfficeScene extends Phaser.Scene {
   private debugWalkZoneGraphics?: Phaser.GameObjects.Graphics;
   private isSceneReady = false;
   private isSceneShuttingDown = false;
-  private playerWorkspaceRole: 'coordinator' | 'default' = 'default';
+  private playerWorkspaceRole: 'owner' | 'coordinator' | 'member' | 'default' = 'default';
+  private playerPomodoroVisual?: CoworkerPomodoroVisual;
   private handleExternalRoomSwitch = (event: Event) => {
     const customEvent = event as CustomEvent<{ roomId?: string }>;
     const nextRoomId = customEvent.detail?.roomId;
@@ -840,13 +843,106 @@ export default class MainOfficeScene extends Phaser.Scene {
   };
   private handlePlayerRoleChanged = (event: Event) => {
     const customEvent = event as CustomEvent<{ role?: string }>;
-    const nextRole = customEvent.detail?.role === 'coordinator' ? 'coordinator' : 'default';
+    const nextRole = customEvent.detail?.role === 'owner' || customEvent.detail?.role === 'employer'
+      ? 'owner'
+      : customEvent.detail?.role === 'coordinator'
+        ? 'coordinator'
+        : customEvent.detail?.role === 'member' || customEvent.detail?.role === 'employee'
+          ? 'member'
+          : 'default';
     if (this.playerWorkspaceRole === nextRole) return;
 
     this.playerWorkspaceRole = nextRole;
+    if (nextRole !== 'member') this.stopPlayerPomodoro();
     if (this.playerLabel?.active) this.playerLabel.destroy();
     this.playerLabel = this.createPlayerIdentityBadge(this.player.x, this.player.y - 184);
   };
+  private handleMemberPomodoroProgress = (event: Event) => {
+    if (this.playerWorkspaceRole !== 'member' || !this.isPlayerSitting || this.currentRoomId !== 'main') {
+      this.stopPlayerPomodoro();
+      return;
+    }
+    const progress = Phaser.Math.Clamp(
+      (event as CustomEvent<{ progress?: number }>).detail?.progress ?? 0,
+      0,
+      1,
+    );
+    if (!this.playerPomodoroVisual) {
+      this.playerPomodoroVisual = this.createPomodoroIndicator(
+        this.player.x,
+        this.player.y - 224,
+        10020,
+        progress,
+        false,
+      );
+    }
+    this.playerPomodoroVisual.container.setPosition(Math.round(this.player.x), Math.round(this.player.y - 224));
+    this.drawCoworkerPomodoroVisual(this.playerPomodoroVisual, progress);
+  };
+  private handleMemberPomodoroStop = () => this.stopPlayerPomodoro();
+  private handleCoworkerCoordinatorAssigned = (event: Event) => {
+    const coworkerId = (event as CustomEvent<{ coworkerId?: string }>).detail?.coworkerId;
+    if (!coworkerId) return;
+    for (const coworker of this.roomCoworkers) {
+      coworker.coordinatorIndicator?.destroy();
+      coworker.coordinatorIndicator = undefined;
+      if (coworker.id !== coworkerId || !coworker.nameBadge?.active) continue;
+      const indicator = this.add.image(
+        Math.round(coworker.nameBadge.x - 48),
+        Math.round(coworker.nameBadge.y),
+        'indicator-coordinator',
+      ).setDisplaySize(16, 16).setDepth(coworker.nameBadge.depth + 1);
+      coworker.coordinatorIndicator = indicator;
+      this.roomObjects.push(indicator);
+    }
+  };
+  private handleCoworkerKicked = (event: Event) => {
+    const detail = (event as CustomEvent<{ roomId?: string; coworkerId?: string }>).detail;
+    if (!detail?.coworkerId || detail.roomId !== this.currentRoomId) return;
+    this.removeCoworkerFromCurrentRoom(detail.coworkerId);
+    this.dispatchTeammateCleared();
+  };
+  private removeCoworkerFromCurrentRoom(coworkerId: string) {
+    const objectsToDestroy = new Set<Phaser.GameObjects.GameObject>();
+    const coworker = this.roomCoworkers.find((entry) => entry.id === coworkerId);
+    if (coworker) {
+      coworker.blinkEvent?.remove(false);
+      [
+        coworker.shadow,
+        coworker.body,
+        coworker.outfit,
+        coworker.hair,
+        coworker.face,
+        coworker.hitArea,
+        coworker.nameBadge,
+        coworker.pomodoroIndicator,
+        coworker.coordinatorIndicator,
+      ].forEach((object) => {
+        if (object) objectsToDestroy.add(object);
+      });
+      this.roomCoworkers = this.roomCoworkers.filter((entry) => entry.id !== coworkerId);
+    }
+
+    const matchingTeammates = this.teammates.filter((entry) => entry.coworkerLayers?.id === coworkerId);
+    matchingTeammates.forEach((entry) => {
+      [entry.circle, entry.sprite, entry.callLabel, entry.callRing, entry.callDomain, entry.joinLabel].forEach((object) => {
+        if (object) objectsToDestroy.add(object);
+      });
+    });
+    this.teammates = this.teammates.filter((entry) => entry.coworkerLayers?.id !== coworkerId);
+
+    if (coworkerId === STATIC_SEATED_COWORKER.id) {
+      this.staticSeatedCoworkerBlinkEvent?.remove(false);
+      this.staticSeatedCoworkerBlinkEvent = undefined;
+      this.staticSeatedCoworkerObjects.forEach((object) => objectsToDestroy.add(object));
+      this.staticSeatedCoworkerObjects = [];
+    }
+
+    objectsToDestroy.forEach((object) => {
+      if (object.active) object.destroy();
+    });
+    this.roomObjects = this.roomObjects.filter((object) => !objectsToDestroy.has(object));
+  }
   private handleDocumentFocusChange = () => {
     if (typeof window === 'undefined') {
       return;
@@ -929,7 +1025,7 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.load.image('coworker-pomodoro-tomato', VIRTUAL_ROOM_ASSETS.tomato);
     this.load.svg('indicator-pomodoro', `${INDICATOR_ASSET_BASE_PATH}/pomodoro.svg`, { width: 92, height: 68 });
     this.load.svg('indicator-mic', `${INDICATOR_ASSET_BASE_PATH}/mic.svg`);
-    this.load.svg('indicator-crown', `${INDICATOR_ASSET_BASE_PATH}/crown.svg`);
+    this.load.svg('indicator-crown', `${INDICATOR_ASSET_BASE_PATH}/crown.svg`, { width: 64, height: 64 });
     this.load.svg('indicator-coordinator', `${INDICATOR_ASSET_BASE_PATH}/coordinator.svg`, { width: 64, height: 64 });
     this.load.svg('indicator-member', `${INDICATOR_ASSET_BASE_PATH}/member.svg`);
     this.load.image(SITTING_LAPTOP_CONFIG_BY_POSE.front.textureKey, SITTING_LAPTOP_CONFIG_BY_POSE.front.assetPath);
@@ -1197,6 +1293,10 @@ export default class MainOfficeScene extends Phaser.Scene {
       window.addEventListener('warp:viewport-control', this.handleViewportControl as EventListener);
       window.addEventListener('warp:avatar-selection-changed', this.handleAvatarSelectionChanged as EventListener);
       window.addEventListener('warp:player-role-changed', this.handlePlayerRoleChanged as EventListener);
+      window.addEventListener('warp:member-pomodoro-progress', this.handleMemberPomodoroProgress as EventListener);
+      window.addEventListener('warp:member-pomodoro-stop', this.handleMemberPomodoroStop);
+      window.addEventListener('warp:coworker-coordinator-assigned', this.handleCoworkerCoordinatorAssigned as EventListener);
+      window.addEventListener('warp:coworker-kicked', this.handleCoworkerKicked as EventListener);
       window.addEventListener('warp:player-emote', this.handlePlayerEmote as EventListener);
       window.addEventListener('blur', this.handleWindowBlur);
       window.addEventListener('focus', this.handleWindowFocus);
@@ -1209,6 +1309,10 @@ export default class MainOfficeScene extends Phaser.Scene {
         window.removeEventListener('warp:viewport-control', this.handleViewportControl as EventListener);
         window.removeEventListener('warp:avatar-selection-changed', this.handleAvatarSelectionChanged as EventListener);
         window.removeEventListener('warp:player-role-changed', this.handlePlayerRoleChanged as EventListener);
+        window.removeEventListener('warp:member-pomodoro-progress', this.handleMemberPomodoroProgress as EventListener);
+        window.removeEventListener('warp:member-pomodoro-stop', this.handleMemberPomodoroStop);
+        window.removeEventListener('warp:coworker-coordinator-assigned', this.handleCoworkerCoordinatorAssigned as EventListener);
+        window.removeEventListener('warp:coworker-kicked', this.handleCoworkerKicked as EventListener);
         window.removeEventListener('warp:player-emote', this.handlePlayerEmote as EventListener);
         window.removeEventListener('blur', this.handleWindowBlur);
         window.removeEventListener('focus', this.handleWindowFocus);
@@ -1223,6 +1327,7 @@ export default class MainOfficeScene extends Phaser.Scene {
         this.coworkerPomodoroTimer?.remove(false);
         this.coworkerPomodoroTimer = undefined;
         this.coworkerPomodoroVisuals.clear();
+        this.stopPlayerPomodoro();
       });
     }
     this.scale.on(Phaser.Scale.Events.RESIZE, this.handleScaleResize, this);
@@ -1724,6 +1829,11 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.updatePlayerDepth();
     this.syncAvatarLayers();
     this.selectSeat(seat);
+    if (this.playerWorkspaceRole === 'member') {
+      window.dispatchEvent(new CustomEvent('warp:member-sat-down'));
+    } else if (this.playerWorkspaceRole === 'coordinator') {
+      window.dispatchEvent(new CustomEvent('warp:coordinator-sat-down'));
+    }
   }
 
   private standPlayerFromSeat() {
@@ -1739,6 +1849,8 @@ export default class MainOfficeScene extends Phaser.Scene {
     this.playerSittingOutfit = undefined;
     this.playerSittingLaptop = undefined;
     this.isPlayerSitting = false;
+    this.stopPlayerPomodoro();
+    if (this.playerWorkspaceRole === 'member') window.dispatchEvent(new CustomEvent('warp:member-stood-up'));
     this.activeSittingPose = null;
     this.activeSittingSeat = null;
 
@@ -1757,6 +1869,11 @@ export default class MainOfficeScene extends Phaser.Scene {
     if (previousSeat && this.selectedSeat !== previousSeat) {
       this.setSeatState(previousSeat, 'idle');
     }
+  }
+
+  private stopPlayerPomodoro() {
+    this.playerPomodoroVisual?.container.destroy();
+    this.playerPomodoroVisual = undefined;
   }
 
   private applyPlayerSittingVisuals() {
@@ -2722,6 +2839,7 @@ export default class MainOfficeScene extends Phaser.Scene {
   }
 
   private clearRoom() {
+    this.stopPlayerPomodoro();
     this.input.setDefaultCursor('default');
 
     for (const coworker of this.roomCoworkers) {
@@ -2737,6 +2855,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       obj.destroy();
     }
     this.roomObjects = [];
+    this.staticSeatedCoworkerObjects = [];
     this.coworkerPomodoroVisuals.clear();
     this.seats = [];
     this.roomCoworkers = [];
@@ -3066,7 +3185,21 @@ export default class MainOfficeScene extends Phaser.Scene {
       );
     });
 
-    this.roomObjects.push(shadow, body, outfit, laptop, hair, face, nameBadge, pomodoroIndicator, interactionZone);
+    const staticObjects: Phaser.GameObjects.GameObject[] = [shadow, body, outfit, laptop, hair, face, nameBadge, pomodoroIndicator, interactionZone];
+    this.staticSeatedCoworkerObjects = staticObjects;
+    this.roomObjects.push(...staticObjects);
+    this.time.delayedCall(0, () => {
+      if (this.currentRoomId !== 'main' || typeof window === 'undefined') return;
+      const camera = this.cameras.main;
+      window.dispatchEvent(new CustomEvent('warp:main-coworker-ready', {
+        detail: {
+          coworkerId: config.id,
+          roomId: 'main',
+          screenX: (base.x - camera.worldView.x) * camera.zoom,
+          screenY: (base.y - camera.worldView.y) * camera.zoom,
+        },
+      }));
+    });
   }
 
   private createStaticCoworkerPomodoroIndicator(
@@ -3074,6 +3207,22 @@ export default class MainOfficeScene extends Phaser.Scene {
     y: number,
     depth: number,
   ): Phaser.GameObjects.Container {
+    return this.createPomodoroIndicator(
+      x,
+      y,
+      depth,
+      this.getVisibleCoworkerPomodoroProgress(),
+      true,
+    ).container;
+  }
+
+  private createPomodoroIndicator(
+    x: number,
+    y: number,
+    depth: number,
+    progress: number,
+    trackAsCoworker: boolean,
+  ): CoworkerPomodoroVisual {
     const graphics = this.add.graphics();
     const tomato = this.add.image(-55, 0, 'indicator-pomodoro')
       .setDisplaySize(28, 21);
@@ -3082,11 +3231,13 @@ export default class MainOfficeScene extends Phaser.Scene {
       .setSize(140, 32);
     const visual: CoworkerPomodoroVisual = { container, graphics };
 
-    this.coworkerPomodoroVisuals.add(visual);
-    this.drawCoworkerPomodoroVisual(visual, this.getVisibleCoworkerPomodoroProgress());
-    this.ensureCoworkerPomodoroTimer();
+    if (trackAsCoworker) {
+      this.coworkerPomodoroVisuals.add(visual);
+      this.ensureCoworkerPomodoroTimer();
+    }
+    this.drawCoworkerPomodoroVisual(visual, progress);
 
-    return container;
+    return visual;
   }
 
   private getVisibleCoworkerPomodoroProgress(): number {
@@ -3218,19 +3369,22 @@ export default class MainOfficeScene extends Phaser.Scene {
   // =============================================
 
   private createPlayerIdentityBadge(x: number, y: number): Phaser.GameObjects.Container {
+    const isOwner = this.playerWorkspaceRole === 'owner';
     const isCoordinator = this.playerWorkspaceRole === 'coordinator';
-    const width = isCoordinator ? 132 : 58;
+    const width = isOwner ? 112 : isCoordinator ? 132 : 58;
     const height = 24;
     const background = this.add.graphics();
     background.fillStyle(0x27213f, 0.94);
-    background.lineStyle(1, isCoordinator ? 0xa29bfc : 0xffffff, isCoordinator ? 0.5 : 0.16);
+    background.lineStyle(1, isOwner || isCoordinator ? 0xa29bfc : 0xffffff, isOwner || isCoordinator ? 0.5 : 0.16);
     background.fillRoundedRect(-width / 2, -height / 2, width, height, 12);
     background.strokeRoundedRect(-width / 2, -height / 2, width, height, 12);
 
-    const icon = this.add.image(isCoordinator ? -52 : -15, 0, isCoordinator ? 'indicator-coordinator' : 'indicator-crown')
-      .setDisplaySize(isCoordinator ? 15 : 12, isCoordinator ? 15 : 12);
+    const roleIndicator: Phaser.GameObjects.GameObject = isOwner || isCoordinator
+      ? this.add.image(isOwner ? -39 : -52, 0, isCoordinator ? 'indicator-coordinator' : 'indicator-crown')
+          .setDisplaySize(isCoordinator ? 15 : 13, isCoordinator ? 15 : 13)
+      : this.add.circle(-17, 0, 3.5, 0x56efc4, 1);
 
-    const text = this.add.text(isCoordinator ? 9 : -1, 0, isCoordinator ? 'Coordinator (You)' : 'You', {
+    const text = this.add.text(isOwner ? 8 : isCoordinator ? 9 : 5, 0, isOwner ? 'Owner (You)' : isCoordinator ? 'Coordinator (You)' : 'You', {
       fontFamily: 'Funnel Sans, Arial, sans-serif',
       fontSize: '11px',
       color: '#ffffff',
@@ -3238,7 +3392,7 @@ export default class MainOfficeScene extends Phaser.Scene {
       resolution: this.getIndicatorTextResolution(),
     }).setOrigin(0.5);
 
-    return this.add.container(x, y, [background, icon, text])
+    return this.add.container(x, y, [background, roleIndicator, text])
       .setDepth(5)
       .setSize(width, height);
   }
