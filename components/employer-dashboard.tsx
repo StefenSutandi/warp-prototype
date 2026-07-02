@@ -3765,7 +3765,7 @@ export function EmployerDashboard({
             displayName={displayName}
             roleLabel={roleLabel}
             interests={avatarProfile.interests}
-            onEditProfile={() => router.push('/avatar')}
+            onEditProfile={() => router.push('/avatar?mode=edit')}
           />
         ) : null}
       </div>

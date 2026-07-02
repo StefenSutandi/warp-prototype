@@ -6,7 +6,9 @@ interface UserState {
   currentUser: User | null;
   isInitialized: boolean;
   coinBalance: number;
+  memberHasEnteredWorkspace: boolean;
   initialize: (user: User) => void;
+  markMemberHasEnteredWorkspace: () => void;
   addXp: (amount: number) => void;
   addCoins: (amount: number) => void;
   resetDemoCoins: () => void;
@@ -18,8 +20,10 @@ export const useUserStore = create<UserState>((set) => ({
   currentUser: mockCurrentMemberUser,
   isInitialized: false,
   coinBalance: 200,
+  memberHasEnteredWorkspace: false,
   
   initialize: (user) => set({ currentUser: user, isInitialized: true }),
+  markMemberHasEnteredWorkspace: () => set({ memberHasEnteredWorkspace: true }),
 
   addCoins: (amount) => set((state) => ({ coinBalance: state.coinBalance + amount })),
   resetDemoCoins: () => set({ coinBalance: 200 }),

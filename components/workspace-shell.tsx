@@ -21,6 +21,7 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
   const initTasks = useTaskStore(state => state.initialize);
   const resetMemberTasks = useTaskStore(state => state.resetDemoSession);
   const resetMemberCoins = useUserStore(state => state.resetDemoCoins);
+  const markMemberHasEnteredWorkspace = useUserStore(state => state.markMemberHasEnteredWorkspace);
   const workspaceLevel = useRoomStore(state => state.workspaceLevel);
   const activeRoomKey = useRoomStore(state => state.activeRoomKey);
   const hasUnlockedLevel2Lobby = useRoomStore(state => state.hasUnlockedLevel2Lobby);
@@ -107,6 +108,7 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
         }}
         onEnterWorkspace={() => {
           if (isMemberRole) {
+            markMemberHasEnteredWorkspace();
             resetMemberTasks(tasks, teammates);
             resetMemberCoins();
             setSelectedWorkspaceTaskId(undefined);

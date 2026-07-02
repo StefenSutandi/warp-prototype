@@ -310,6 +310,7 @@ function AvatarOptionCard({
   onSelect,
   locked = false,
   roleLocked = false,
+  roleLockLabel = 'Coordinator / Owner only',
   compact = false,
   price = 200,
 }: {
@@ -318,6 +319,7 @@ function AvatarOptionCard({
   onSelect?: () => void;
   locked?: boolean;
   roleLocked?: boolean;
+  roleLockLabel?: string;
   compact?: boolean;
   price?: number;
 }) {
@@ -357,7 +359,7 @@ function AvatarOptionCard({
           {price}
         </span>
       ) : null}
-      {roleLocked ? <span className="absolute left-1/2 top-[7px] w-[calc(100%-12px)] -translate-x-1/2 text-center text-[9px] font-bold uppercase leading-[1.2] text-[#5c5780]">Coordinator / Owner only</span> : null}
+      {roleLocked ? <span className="absolute left-1/2 top-[7px] w-[calc(100%-12px)] -translate-x-1/2 text-center text-[9px] font-bold uppercase leading-[1.2] text-[#5c5780]">{roleLockLabel}</span> : null}
     </button>
   );
 }
@@ -470,6 +472,7 @@ function AvatarOptionsPanel({
   unlockedOptionIds,
   onPurchaseRequest,
   currentRole,
+  memberCanUseBossSuit,
 }: {
   activeTab: AvatarTab;
   setActiveTab: (tab: AvatarTab) => void;
@@ -486,6 +489,7 @@ function AvatarOptionsPanel({
   unlockedOptionIds: Set<string>;
   onPurchaseRequest: (purchase: PendingAvatarPurchase) => void;
   currentRole: AppRole;
+  memberCanUseBossSuit: boolean;
 }) {
   const visibleOptions = useMemo(() => {
     if (activeTab === 'face') return faceOptions;
@@ -549,7 +553,9 @@ function AvatarOptionsPanel({
                   (activeTab === 'outfit' && option.id === 'outfit-4')
                 )
               );
-              const roleLocked = Boolean(option?.allowedRoles && !option.allowedRoles.includes(currentRole));
+              const isBossSuit = activeTab === 'outfit' && option?.id === 'outfit-4';
+              const memberBossSuitException = Boolean(isBossSuit && currentRole === 'member' && memberCanUseBossSuit);
+              const roleLocked = Boolean(option?.allowedRoles && !option.allowedRoles.includes(currentRole) && !memberBossSuitException);
               const locked = Boolean(option && (roleLocked || (requiresPurchase && !unlockedOptionIds.has(option.id))));
               const price =
                 activeTab === 'face' || (activeTab === 'outfit' && option?.id === 'outfit-4')
@@ -579,6 +585,7 @@ function AvatarOptionsPanel({
                   onSelect={handleSelect}
                   locked={locked}
                   roleLocked={roleLocked}
+                  roleLockLabel={isBossSuit && currentRole === 'member' ? 'Unlock after entering workspace' : undefined}
                   price={price}
                   compact={activeTab === 'face' || activeTab === 'hair'}
                 />
@@ -760,10 +767,12 @@ function ProfileInfoCard({
 export function AvatarCreationPage() {
   const router = useRouter();
   const currentUserRole = useUserStore((state) => state.isInitialized ? state.currentUser?.role : null);
+  const memberHasEnteredWorkspace = useUserStore((state) => state.memberHasEnteredWorkspace);
   const avatarProfile = useAvatarStore((state) => state.profile);
   const avatarSelection = useAvatarStore((state) => state.selection);
   const updateAvatarProfile = useAvatarStore((state) => state.updateProfile);
   const updateAvatarSelection = useAvatarStore((state) => state.updateAvatarSelection);
+  const [isEditMode, setIsEditMode] = useState(false);
   const resolvedInitialRole = normalizeAppRole(currentUserRole) ?? 'member';
   const [avatarRole, setAvatarRole] = useState<AppRole>(resolvedInitialRole);
   const initialHairColorId = isHairColorId(avatarSelection.selectedHairColorId)
@@ -785,7 +794,7 @@ export function AvatarCreationPage() {
     )
   );
   const [selectedOutfit, setSelectedOutfit] = useState(() =>
-    resolvedInitialRole === 'member' && avatarSelection.selectedOutfitId === 'outfit-4'
+    resolvedInitialRole === 'member' && (!memberHasEnteredWorkspace || !isEditMode) && avatarSelection.selectedOutfitId === 'outfit-4'
       ? outfitOptions[2]
       : findAvatarOption(outfitOptions, avatarSelection.selectedOutfitId, outfitOptions[2])
   );
@@ -800,10 +809,19 @@ export function AvatarCreationPage() {
   const [position, setPosition] = useState(() => avatarProfile.position);
   const [interests, setInterests] = useState<string[]>(() => avatarProfile.interests.length > 0 ? avatarProfile.interests : defaultInterests);
   const [bio, setBio] = useState(() => avatarProfile.bio);
+  const memberCanUseBossSuit = avatarRole === 'member' && memberHasEnteredWorkspace && isEditMode;
+  const canUseAvatarOption = (option: AvatarOption) => {
+    if (!option.allowedRoles || option.allowedRoles.includes(avatarRole)) return true;
+    return option.id === 'outfit-4' && memberCanUseBossSuit;
+  };
 
   useEffect(() => {
-    const nextRole = normalizeAppRole(currentUserRole)
-      ?? normalizeAppRole(localStorage.getItem(ROLE_STORAGE_KEY))
+    setIsEditMode(new URLSearchParams(window.location.search).get('mode') === 'edit');
+  }, []);
+
+  useEffect(() => {
+    const nextRole = normalizeAppRole(localStorage.getItem(ROLE_STORAGE_KEY))
+      ?? normalizeAppRole(currentUserRole)
       ?? 'member';
     setAvatarRole(nextRole);
     if (nextRole !== 'member' && avatarSelection.selectedOutfitId === 'outfit-4') {
@@ -812,7 +830,11 @@ export function AvatarCreationPage() {
   }, [avatarSelection.selectedOutfitId, currentUserRole]);
 
   useEffect(() => {
-    if (avatarRole !== 'member' || (selectedOutfit.id !== 'outfit-4' && avatarSelection.selectedOutfitId !== 'outfit-4')) return;
+    if (memberCanUseBossSuit && avatarSelection.selectedOutfitId === 'outfit-4') {
+      setSelectedOutfit(outfitOptions[3]);
+      return;
+    }
+    if (avatarRole !== 'member' || memberCanUseBossSuit || (selectedOutfit.id !== 'outfit-4' && avatarSelection.selectedOutfitId !== 'outfit-4')) return;
     const fallbackOutfit = outfitOptions[2];
     setSelectedOutfit(fallbackOutfit);
     setPendingPurchase((purchase) => purchase?.option.id === 'outfit-4' ? null : purchase);
@@ -821,7 +843,7 @@ export function AvatarCreationPage() {
       selectedOutfitSrc: fallbackOutfit.src,
       selectedOutfitType: outfitTypesById[fallbackOutfit.id],
     });
-  }, [avatarRole, avatarSelection.selectedOutfitId, selectedOutfit.id, updateAvatarSelection]);
+  }, [avatarRole, avatarSelection.selectedOutfitId, memberCanUseBossSuit, selectedOutfit.id, updateAvatarSelection]);
 
   const currentSelectionSnapshot = (): AvatarSelectionSnapshot => ({
     face: selectedFace,
@@ -834,7 +856,7 @@ export function AvatarCreationPage() {
   const restoreSelectionSnapshot = (snapshot: AvatarSelectionSnapshot) => {
     setSelectedFace(snapshot.face);
     setSelectedHair(snapshot.hair);
-    setSelectedOutfit(avatarRole === 'member' && snapshot.outfit.id === 'outfit-4' ? outfitOptions[2] : snapshot.outfit);
+    setSelectedOutfit(avatarRole === 'member' && !memberCanUseBossSuit && snapshot.outfit.id === 'outfit-4' ? outfitOptions[2] : snapshot.outfit);
     setSelectedHairColorId(snapshot.hairColorId);
     setSelectedBodyTone(snapshot.bodyTone);
   };
@@ -875,7 +897,7 @@ export function AvatarCreationPage() {
   };
 
   const handleOutfitSelect = (option: AvatarOption) => {
-    if (option.allowedRoles && !option.allowedRoles.includes(avatarRole)) return;
+    if (!canUseAvatarOption(option)) return;
     if (option.id === selectedOutfit.id) return;
     recordSelectionChange();
     setSelectedOutfit(option);
@@ -888,8 +910,10 @@ export function AvatarCreationPage() {
 
   const handlePurchase = () => {
     if (!pendingPurchase) return;
-    if (pendingPurchase.option.allowedRoles && !pendingPurchase.option.allowedRoles.includes(avatarRole)) {
-      setPurchaseMessage('Boss Suit is available to Coordinators and Owners only.');
+    if (!canUseAvatarOption(pendingPurchase.option)) {
+      setPurchaseMessage(avatarRole === 'member'
+        ? 'Enter the workspace once, then return to Edit Profile to unlock Boss Suit.'
+        : 'Boss Suit is available to Coordinators and Owners only.');
       return;
     }
     if (coinBalance < pendingPurchase.price) {
@@ -932,7 +956,7 @@ export function AvatarCreationPage() {
   };
 
   const handleContinue = () => {
-    const safeSelectedOutfit = avatarRole === 'member' && selectedOutfit.id === 'outfit-4' ? outfitOptions[2] : selectedOutfit;
+    const safeSelectedOutfit = avatarRole === 'member' && !memberCanUseBossSuit && selectedOutfit.id === 'outfit-4' ? outfitOptions[2] : selectedOutfit;
     updateAvatarSelection({
       selectedFaceId: selectedFace.id,
       selectedFaceSrc: selectedFace.src,
@@ -951,7 +975,7 @@ export function AvatarCreationPage() {
       bio: bio.trim(),
     });
     const storedRole = normalizeAppRole(localStorage.getItem(ROLE_STORAGE_KEY));
-    const canonicalRole = normalizeAppRole(currentUserRole) ?? storedRole ?? 'member';
+    const canonicalRole = storedRole ?? normalizeAppRole(currentUserRole) ?? 'member';
     localStorage.setItem(ROLE_STORAGE_KEY, canonicalRole);
     router.push(getRoleDestination(canonicalRole));
   };
@@ -1011,8 +1035,9 @@ export function AvatarCreationPage() {
             setSelectedBodyTone={handleBodyToneSelect}
             unlockedOptionIds={unlockedOptionIds}
             currentRole={avatarRole}
+            memberCanUseBossSuit={memberCanUseBossSuit}
             onPurchaseRequest={(purchase) => {
-              if (purchase.option.allowedRoles && !purchase.option.allowedRoles.includes(avatarRole)) return;
+              if (!canUseAvatarOption(purchase.option)) return;
               setPurchaseMessage('');
               setPendingPurchase(purchase);
             }}

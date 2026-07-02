@@ -593,7 +593,7 @@ function LevelPhaseBadge({ level }: { level: 1 | 2 }) {
       </span>
       <span className="h-[34px] w-px shrink-0 bg-[#d8d3f2]" />
       <span className="warp-font-ui min-w-0 truncate text-[15px] font-bold leading-none text-[#5C5780]">
-        {level === 2 ? 'Level 2 social hub' : 'Phase: Research & Concepting'}
+        {level === 2 ? 'Social Hub' : 'Phase: Research & Concepting'}
       </span>
     </div>
   );
@@ -2851,14 +2851,16 @@ function Level2LobbyRoom({
         alt="Level 2 Lobby Room"
         className="absolute inset-0 h-full w-full object-contain object-center"
       />
-      <div className={`absolute z-10 h-[190px] w-[190px] -translate-x-1/2 -translate-y-[96%] will-change-transform ${isMoving ? 'animate-[warpReactAvatarStep_.32s_ease-in-out_infinite]' : 'animate-[warpReactAvatarIdle_2.6s_ease-in-out_infinite]'}`} style={{ left: playerPosition.x, top: playerPosition.y }}>
-        <div className="absolute bottom-[2%] left-1/2 h-5 w-16 -translate-x-1/2 rounded-full bg-[#413958]/20 blur-[3px]" />
-        <img src={bodySrc} alt="" draggable={false} className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain" />
-        <img src={suitSrc} alt="" draggable={false} className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain" />
-        <img src={hairSrc} alt="" draggable={false} className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain" style={{ transform: isLeftFacing ? 'scaleX(-1)' : undefined }} />
-        {!isBackFacing ? <img src={faceSrc} alt="" draggable={false} className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain" style={{ transform: isLeftFacing ? 'scaleX(-1)' : undefined }} /> : null}
-        <span className="sr-only">Owner full-body avatar</span>
-        <div className="absolute left-1/2 top-[98%] flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-extrabold text-[#5c5780] shadow-[0_8px_20px_rgba(52,43,110,.2)]">
+      <div className="absolute z-10 h-0 w-0" style={{ left: playerPosition.x, top: playerPosition.y }}>
+        <div className="absolute left-1/2 top-[-5px] h-3 w-14 -translate-x-1/2 rounded-full bg-[#413958]/20 blur-[3px]" />
+        <div className={`absolute bottom-[-10px] left-1/2 h-[190px] w-[190px] -translate-x-1/2 will-change-transform ${isMoving ? 'animate-[warpReactAvatarStep_.32s_ease-in-out_infinite]' : 'animate-[warpReactAvatarIdle_2.6s_ease-in-out_infinite]'}`}>
+          <img src={bodySrc} alt="" draggable={false} className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain" />
+          <img src={suitSrc} alt="" draggable={false} className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain" />
+          <img src={hairSrc} alt="" draggable={false} className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain" style={{ transform: isLeftFacing ? 'scaleX(-1)' : undefined }} />
+          {!isBackFacing ? <img src={faceSrc} alt="" draggable={false} className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain" style={{ transform: isLeftFacing ? 'scaleX(-1)' : undefined }} /> : null}
+          <span className="sr-only">Owner full-body avatar</span>
+        </div>
+        <div className="absolute bottom-[160px] left-1/2 flex min-w-[144px] -translate-x-1/2 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-white/95 px-5 py-1.5 text-[11px] font-extrabold text-[#5c5780] shadow-[0_8px_20px_rgba(52,43,110,.2)]">
           <img src={VIRTUAL_ROOM_LOCAL_ASSETS.ownerIndicator} alt="" className="h-4 w-4" />
           Owner (You)
         </div>
@@ -3154,6 +3156,8 @@ export function VirtualRoomLayout({
   const memberDanielDeliveredRef = useRef(false);
   const lastDanielLoungeEntryRef = useRef(-1);
   const ownerUpgradeNoticeTimerRef = useRef<number | null>(null);
+  const ownerHasVisitedMainOfficeThisCycleRef = useRef(false);
+  const previousOwnerActiveRoomKeyRef = useRef<string>(activeRoomKey);
   const memberNoticeQueueRef = useRef(memberNoticeQueue);
   const memberTask = memberTasks.find((task) => task.status !== 'approved') ?? memberTasks[0];
   const memberTaskRef = useRef(memberTask);
@@ -3229,19 +3233,6 @@ export function VirtualRoomLayout({
 
       if (isOwnerRole && roomId === 'lounge' && shouldAnnounceRoomEntry) {
         setOwnerNotice({ id: `owner-welcome-${Date.now()}`, title: 'WELCOME TO YOUR WORKSPACE', message: "Enter your team's room and sit down to begin your work session.", owner: true });
-        ownerUpgradeNoticeTimerRef.current = window.setTimeout(() => {
-          if (activeRoomIdRef.current !== 'lounge') return;
-          setOwnerNotice((current) => current?.title === 'WORKSPACE READY TO UPGRADE'
-            ? current
-            : {
-                id: `owner-upgrade-ready-${Date.now()}`,
-                title: 'WORKSPACE READY TO UPGRADE',
-                message: 'Your workspace is ready to upgrade.',
-                actionLabel: 'go to My Team & Project >',
-                owner: true,
-              });
-          ownerUpgradeNoticeTimerRef.current = null;
-        }, 700);
       } else if (!isOwnerRole || roomId !== 'lounge') {
         setOwnerNotice(null);
       }
@@ -3265,6 +3256,50 @@ export function VirtualRoomLayout({
       }
     };
   }, [initialRoomId, isOwnerRole, setActiveRoomKey, user.role]);
+
+  useEffect(() => {
+    const normalizeRoomKey = (roomKey: string) => roomKey === 'team-lounge' ? 'lounge' : roomKey;
+    const previousRoomKey = normalizeRoomKey(previousOwnerActiveRoomKeyRef.current);
+    const currentRoomKey = normalizeRoomKey(activeRoomKey);
+    if (ownerUpgradeNoticeTimerRef.current !== null) {
+      window.clearTimeout(ownerUpgradeNoticeTimerRef.current);
+      ownerUpgradeNoticeTimerRef.current = null;
+    }
+
+    if (!isOwnerRole || workspaceLevel !== 1 || hasUnlockedLevel2Lobby || currentRoomKey === 'level-2-lobby') {
+      if (workspaceLevel === 2 || hasUnlockedLevel2Lobby) ownerHasVisitedMainOfficeThisCycleRef.current = false;
+      previousOwnerActiveRoomKeyRef.current = activeRoomKey;
+      return;
+    }
+
+    if (currentRoomKey === 'main-office') {
+      ownerHasVisitedMainOfficeThisCycleRef.current = true;
+      setOwnerNotice(null);
+    }
+
+    const upgradeNotificationEligible = currentRoomKey === 'lounge'
+      && previousRoomKey === 'main-office'
+      && ownerHasVisitedMainOfficeThisCycleRef.current;
+    if (upgradeNotificationEligible) {
+      setOwnerNotice(null);
+      ownerUpgradeNoticeTimerRef.current = window.setTimeout(() => {
+        ownerUpgradeNoticeTimerRef.current = null;
+        const state = useRoomStore.getState();
+        if (state.activeRoomKey !== 'lounge' || state.workspaceLevel !== 1 || state.hasUnlockedLevel2Lobby) return;
+        setOwnerNotice((current) => current?.title === 'WORKSPACE READY TO UPGRADE'
+          ? current
+          : {
+              id: `owner-upgrade-ready-${Date.now()}`,
+              title: 'WORKSPACE READY TO UPGRADE',
+              message: 'Your workspace is ready to upgrade.',
+              actionLabel: 'go to My Team & Project >',
+              owner: true,
+            });
+      }, 650);
+    }
+
+    previousOwnerActiveRoomKeyRef.current = activeRoomKey;
+  }, [activeRoomKey, hasUnlockedLevel2Lobby, isOwnerRole, workspaceLevel]);
 
   useEffect(() => {
     if (!isOwnerRole || workspaceLevel !== 2 || activeRoom.id !== 'level-2-lobby' || activeRoomKey !== 'level-2-lobby' || !pendingLevelUpModal) return;
@@ -3620,12 +3655,12 @@ export function VirtualRoomLayout({
           to { opacity: 1; transform: scale(1) translateY(0); }
         }
         @keyframes warpReactAvatarIdle {
-          0%, 100% { margin-top: 0; }
-          50% { margin-top: -3px; }
+          0%, 100% { margin-bottom: 0; }
+          50% { margin-bottom: 1px; }
         }
         @keyframes warpReactAvatarStep {
-          0%, 100% { margin-top: 0; }
-          50% { margin-top: -2px; }
+          0%, 100% { margin-bottom: 0; }
+          50% { margin-bottom: 1.5px; }
         }
         .warp-level-up-card {
           animation: warpLevelUpCard 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
