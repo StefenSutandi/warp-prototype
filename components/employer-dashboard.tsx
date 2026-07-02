@@ -1204,161 +1204,76 @@ function ModeratorOverviewSection({
   );
 }
 
-function ProjectTimelineWarpSection({ canAddPhase }: { canAddPhase: boolean }) {
-  const [selectedPhaseId, setSelectedPhaseId] = useState<ProjectTimelineWarpPhase['id']>('production');
-  const selectedPhase = projectTimelineWarpPhases.find((phase) => phase.id === selectedPhaseId) ?? projectTimelineWarpPhases[0];
-  const barToneClass = {
-    purple: 'bg-[#685eeb]',
-    mint: 'bg-[linear-gradient(90deg,#56c596_0%,#46d2d2_100%)]',
-    pink: 'bg-[#ef8eb8]',
-  } as const;
-  const statusToneClass = {
-    Completed: 'bg-[#eafff4] text-[#229b63]',
-    Active: 'bg-[#f0ecff] text-[#685eeb]',
-    'Not started': 'bg-[#f0f0f4] text-[#85859a]',
-  } as const;
+function ProjectTimelineWarpSection({ canAddPhase, onOpenWorkspace }: { canAddPhase: boolean; onOpenWorkspace?: () => void }) {
+  type PhaseId = 'pre-production' | 'production' | 'review-launch';
+  type Tab = 'todo' | 'progress' | 'done';
+  type DragMode = 'move' | 'start' | 'end';
+  const phaseMeta: Record<PhaseId, { title: string; range: string; color: string; soft: string; tasks: string[] }> = {
+    'pre-production': { title: 'Pre-production', range: '1 January ? 31 March 2026', color: '#8b7fe8', soft: '#c5bff5', tasks: ['Core game concept', 'Art direction', 'Technical prototype'] },
+    production: { title: 'Production', range: '1 March ? 31 July 2026', color: '#45b990', soft: '#9fe1cb', tasks: ['Gameplay systems', 'Environment art'] },
+    'review-launch': { title: 'Review & launch', range: '1 July ? 30 September 2026', color: '#e687aa', soft: '#eb9eb9', tasks: ['Release candidate', 'Launch checklist'] },
+  };
+  const [bars, setBars] = useState<Record<PhaseId, { start: number; span: number }>>({ 'pre-production': { start: 2, span: 2 }, production: { start: 4, span: 3 }, 'review-launch': { start: 6, span: 2 } });
+  const [selectedPhaseId, setSelectedPhaseId] = useState<PhaseId>('production');
+  const [detailPhaseId, setDetailPhaseId] = useState<PhaseId | null>(null);
+  const [detailTab, setDetailTab] = useState<Tab>('done');
+  const [validated, setValidated] = useState<Record<PhaseId, boolean>>({ 'pre-production': true, production: false, 'review-launch': false });
+  const [rejected, setRejected] = useState<Record<PhaseId, boolean>>({ 'pre-production': false, production: false, 'review-launch': false });
+  const [editMode, setEditMode] = useState(false);
+  const [activeDrag, setActiveDrag] = useState<{ id: PhaseId; mode: DragMode; originX: number; start: number; span: number } | null>(null);
+  const [milestoneModal, setMilestoneModal] = useState<'invalid' | 'confirm' | 'success' | null>(null);
+  const [milestoneCompleted, setMilestoneCompleted] = useState(false);
+  const completeWorkspaceUpgradeAndEnterLobby = useRoomStore((state) => state.completeWorkspaceUpgradeAndEnterLobby);
+  const allValidated = Object.values(validated).every(Boolean);
+  const remainingValidation = Object.values(validated).filter((value) => !value).length;
+  const selected = phaseMeta[detailPhaseId ?? selectedPhaseId];
+  const phaseProgress = (id: PhaseId) => validated[id] ? 100 : rejected[id] ? 38 : id === 'production' ? 68 : 54;
+  const dateTooltip = (bar: { start: number; span: number }) => `${projectTimelineWarpMonths[bar.start]} ? ${projectTimelineWarpMonths[Math.min(8, bar.start + bar.span - 1)]}`;
 
-  return (
-    <section className="mt-[28px] rounded-[20px] border border-[#e2e0f0] bg-white px-[20px] py-[18px] shadow-[0_10px_24px_rgba(104,94,235,0.07)]">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="warp-font-display text-[21px] font-extrabold tracking-[-0.03em] text-[#111111]">Project Timeline WARP</h2>
-          <p className="mt-[6px] text-[12px] font-semibold text-[#858585]">
-            3 phases &middot; 16 total tasks &middot; Project deadline: September 30, 2026
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-[10px]">
-          <button
-            type="button"
-            className={cn(
-              'inline-flex h-[34px] items-center justify-center rounded-[11px] border border-[#d8d3f2] bg-white px-[13px] text-[12px] font-extrabold text-[#685eeb] hover:bg-[#f7f5ff]',
-              purplePressClass
-            )}
-          >
-            Summary
-          </button>
-          {canAddPhase ? (
-            <button
-              type="button"
-              className={cn(
-                'inline-flex h-[34px] items-center gap-[7px] rounded-[11px] bg-[#685eeb] px-[13px] text-[12px] font-extrabold text-white shadow-[0_10px_20px_rgba(104,94,235,0.16)] hover:bg-[#5d54df]',
-                purplePressClass
-              )}
-            >
-              <Plus className="h-[14px] w-[14px]" strokeWidth={2.4} />
-              Add phase
-            </button>
-          ) : null}
-        </div>
-      </div>
+  useEffect(() => {
+    if (!activeDrag) return;
+    const move = (event: PointerEvent) => {
+      const delta = Math.round((event.clientX - activeDrag.originX) / 70);
+      setBars((current) => {
+        const next = { ...current };
+        if (activeDrag.mode === 'move') next[activeDrag.id] = { start: Math.max(0, Math.min(9 - activeDrag.span, activeDrag.start + delta)), span: activeDrag.span };
+        if (activeDrag.mode === 'start') { const start = Math.max(0, Math.min(activeDrag.start + activeDrag.span - 1, activeDrag.start + delta)); next[activeDrag.id] = { start, span: activeDrag.span + activeDrag.start - start }; }
+        if (activeDrag.mode === 'end') next[activeDrag.id] = { start: activeDrag.start, span: Math.max(1, Math.min(9 - activeDrag.start, activeDrag.span + delta)) };
+        return next;
+      });
+    };
+    const up = () => setActiveDrag(null);
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up, { once: true });
+    return () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+  }, [activeDrag]);
 
-      <div className="mt-[16px] rounded-[16px] bg-[#fbfaff] px-[15px] py-[12px]">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-[13px] font-extrabold text-[#111111]">{selectedPhase.name}</p>
-            <p className="mt-[4px] text-[11px] font-semibold text-[#858585]">
-              {selectedPhase.dateRange} - {selectedPhase.progress}% complete
-            </p>
-          </div>
-          <span className={cn('rounded-full px-[10px] py-[6px] text-[11px] font-extrabold', statusToneClass[selectedPhase.status])}>
-            {selectedPhase.status}
-          </span>
+  const openDetail = (id: PhaseId) => { setSelectedPhaseId(id); setDetailPhaseId(id); setDetailTab('done'); };
+
+  if (detailPhaseId) {
+    const id = detailPhaseId;
+    const taskState = validated[id] ? 'Validated' : rejected[id] ? 'Returned to In progress' : 'Awaiting validation';
+    return <section className="mt-[24px] overflow-hidden rounded-[20px] border border-[#e2e0f0] bg-white shadow-[0_14px_34px_rgba(104,94,235,.08)]">
+      <div className="border-b border-[#e8e5f2] px-[22px] py-[18px]"><button type="button" onClick={() => setDetailPhaseId(null)} className="text-[12px] font-bold text-[#685eeb]">? Back to Timeline</button><div className="mt-4 flex flex-wrap items-end justify-between gap-3"><div><h2 className="warp-font-display text-[25px] font-extrabold text-[#17151f]">{selected.title}</h2><p className="mt-1 text-[12px] text-[#858199]">{selected.range}</p></div><div className="text-right"><p className="text-[24px] font-extrabold text-[#685eeb]">{phaseProgress(id)}%</p><p className="text-[10px] font-bold uppercase tracking-[.08em] text-[#9b96b8]">Phase progress</p></div></div></div>
+      <div className="grid min-h-[430px] lg:grid-cols-[245px_minmax(0,1fr)]">
+        <aside className="border-r border-[#e8e5f2] bg-[#fbfaff] p-[18px]"><p className="text-[10px] font-extrabold tracking-[.1em] text-[#9b96b8]">TEAMS IN THIS PHASE</p><div className="mt-3 space-y-2">{['Game Design','Art','Programming','Audio'].map((team,index)=><button key={team} className={`flex w-full items-center gap-3 rounded-[11px] px-3 py-2 text-left text-[11px] font-bold ${index===0?'bg-[#eeeaff] text-[#685eeb]':'bg-white text-[#5c5780]'}`}><span className="h-2 w-2 rounded-full bg-[#8b7fe8]"/>{team}</button>)}</div><p className="mt-6 text-[10px] font-extrabold tracking-[.1em] text-[#9b96b8]">TEAM COORDINATOR</p><div className="mt-3 rounded-[14px] bg-white p-3"><div className="flex items-center gap-3"><img src="/assets/avatar/profile/Frame%203866.png" alt="Sarah" className="h-10 w-10 rounded-full object-cover"/><div className="min-w-0 flex-1"><p className="truncate text-[11px] font-extrabold">Sarah Anderson</p><p className="text-[9px] text-[#858199]">Project Coordinator</p></div><button className="text-[9px] font-bold text-[#685eeb]">Change</button></div><div className="mt-3 flex -space-x-2">{[3867,3868,3869].map((avatar)=><img key={avatar} src={`/assets/avatar/profile/Frame%20${avatar}.png`} alt="" className="h-7 w-7 rounded-full border-2 border-white object-cover"/>)}</div></div></aside>
+        <div className="p-[20px]"><div className="flex items-center justify-between"><div className="flex gap-1 rounded-[12px] bg-[#f4f2fa] p-1">{(['todo','progress','done'] as Tab[]).map((tab)=><button key={tab} onClick={()=>setDetailTab(tab)} className={`rounded-[9px] px-4 py-2 text-[11px] font-bold ${detailTab===tab?'bg-white text-[#685eeb] shadow-sm':'text-[#77728d]'}`}>{tab==='todo'?'To-do':tab==='progress'?'In progress':`Done ${validated[id]?1:0}`}</button>)}</div><button className="rounded-[10px] bg-[#685eeb] px-4 py-2 text-[11px] font-bold text-white">+ Add task</button></div>
+          <div className="mt-5">{detailTab==='todo'?<div className="rounded-[14px] border border-dashed border-[#d8d3f2] py-14 text-center text-[12px] text-[#858199]">No tasks waiting to start.</div>:detailTab==='progress'?<article className="rounded-[14px] border border-[#e2e0f0] p-4"><p className="text-[13px] font-extrabold">{rejected[id] ? `Revise ${selected.tasks[0]}` : selected.tasks[1] ?? selected.tasks[0]}</p><p className="mt-1 text-[11px] text-[#858199]">Work is currently in progress.</p></article>:<article className="rounded-[14px] border border-[#e2e0f0] bg-white p-4 shadow-[0_8px_20px_rgba(104,94,235,.06)]"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-[13px] font-extrabold text-[#252233]">Approve {selected.tasks[0]}</p><span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[9px] font-bold ${validated[id]?'bg-[#e5fff4] text-[#16845f]':rejected[id]?'bg-[#fff0f2] text-[#c84d5e]':'bg-[#fff4dc] text-[#a66c16]'}`}>{taskState}</span></div>{!validated[id]?<div className="flex gap-2"><button onClick={()=>{setRejected((v)=>({...v,[id]:true}));setValidated((v)=>({...v,[id]:false}));setDetailTab('progress');}} className="rounded-[10px] border border-[#efcbd1] px-4 py-2 text-[10px] font-bold text-[#c84d5e]">Reject</button><button onClick={()=>{setRejected((v)=>({...v,[id]:false}));setValidated((v)=>({...v,[id]:true}));}} className="rounded-[10px] bg-[#685eeb] px-4 py-2 text-[10px] font-bold text-white">Validate</button></div>:null}</div></article>}</div>
         </div>
       </div>
+    </section>;
+  }
 
-      <div className="mt-[17px] grid gap-[16px] xl:grid-cols-[280px_minmax(0,1fr)]">
-        <div className="space-y-[8px]">
-          {projectTimelineWarpPhases.map((phase) => {
-            const isSelected = selectedPhaseId === phase.id;
-
-            return (
-              <button
-                key={phase.id}
-                type="button"
-                onClick={() => setSelectedPhaseId(phase.id)}
-                className={cn(
-                  'w-full rounded-[14px] border px-[13px] py-[11px] text-left transition-all duration-150',
-                  isSelected
-                    ? 'border-[#c8c1ff] bg-[#f2efff] shadow-[0_8px_18px_rgba(104,94,235,0.10)]'
-                    : 'border-[#e2e0f0] bg-white hover:bg-[#f7f5ff]'
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-[14px] font-extrabold text-black">{phase.name}</p>
-                    <p className="mt-[4px] text-[11px] font-semibold text-[#858585]">{phase.dateRange}</p>
-                  </div>
-                  <span className={cn('shrink-0 rounded-full px-[9px] py-[5px] text-[10px] font-extrabold', statusToneClass[phase.status])}>
-                    {phase.status}
-                  </span>
-                </div>
-                <div className="mt-[11px]">
-                  <div className="flex items-center justify-between text-[10px] font-semibold text-[#9b96b8]">
-                    <span>Progress</span>
-                    <span>{phase.progress}%</span>
-                  </div>
-                  <div className="mt-[6px] h-[5px] overflow-hidden rounded-full bg-[#eceaf6]">
-                    <div className={cn('h-full rounded-full', barToneClass[phase.tone])} style={{ width: `${phase.progress}%` }} />
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="overflow-x-auto rounded-[16px] border border-[#e2e0f0] bg-white px-[16px] py-[14px]">
-          <div className="min-w-[760px]">
-            <div className="grid grid-cols-9 border-b border-[#eceaf6] pb-[11px] text-center text-[12px] font-extrabold text-[#5c5780]">
-              {projectTimelineWarpMonths.map((month) => (
-                <span key={month}>{month}</span>
-              ))}
-            </div>
-
-            <div className="relative mt-[14px] space-y-[14px]">
-              <div className="pointer-events-none absolute inset-y-0 left-0 right-0 grid grid-cols-9">
-                {projectTimelineWarpMonths.map((month) => (
-                  <span key={month} className="border-r border-[#f0eef8] last:border-r-0" />
-                ))}
-              </div>
-              <div className="pointer-events-none absolute inset-y-[-7px] left-[52.5%] z-20 w-px bg-[#ff5f68] shadow-[0_0_0_1px_rgba(255,95,104,0.08)]">
-                <span className="absolute -left-[4px] -top-[3px] h-[9px] w-[9px] rounded-full bg-[#ff5f68] ring-2 ring-white" />
-                <span className="absolute left-[7px] top-[-8px] whitespace-nowrap rounded-full bg-[#fff0f1] px-[6px] py-[3px] text-[9px] font-extrabold text-[#d94852]">
-                  TODAY
-                </span>
-              </div>
-
-              {projectTimelineWarpPhases.map((phase) => {
-                const isSelected = selectedPhaseId === phase.id;
-
-                return (
-                  <button
-                    key={phase.id}
-                    type="button"
-                    onClick={() => setSelectedPhaseId(phase.id)}
-                    className="relative grid h-[36px] w-full grid-cols-9 items-center text-left"
-                    aria-label={`Select ${phase.name}`}
-                  >
-                    <span
-                      className={cn(
-                        'relative z-10 flex h-[18px] items-center rounded-full px-[10px] text-[10px] font-extrabold text-white shadow-[0_7px_14px_rgba(104,94,235,0.12)] transition-all',
-                        barToneClass[phase.tone],
-                        isSelected && 'ring-4 ring-[#dcd8ff]'
-                      )}
-                      style={{
-                        gridColumn: `${phase.startColumn} / span ${phase.spanColumns}`,
-                      }}
-                    >
-                      <span className="truncate">{phase.progress}%</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+  return <>
+    <div className="mt-[24px] flex items-center justify-between"><h2 className="warp-font-display text-[20px] font-extrabold text-[#17151f]">Project Timeline</h2></div>
+    {milestoneCompleted && !milestoneModal ? <section className="mt-4 grid min-h-[390px] place-items-center rounded-[18px] border border-[#e2e0f0] bg-white p-8 text-center"><div><div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#eeeaff] text-[28px] text-[#685eeb]">+</div><h3 className="mt-4 text-[20px] font-extrabold">No timeline created yet</h3><p className="mx-auto mt-2 max-w-[430px] text-[12px] leading-5 text-[#77728d]">Create a new timeline to organize tasks and start working on your next milestone.</p><button className="mt-5 rounded-[10px] bg-[#685eeb] px-5 py-2.5 text-[12px] font-bold text-white">+ Add New</button></div></section> : <section className="mt-4 rounded-[18px] border border-[#e2e0f0] bg-white p-[18px] shadow-[0_12px_28px_rgba(104,94,235,.06)]">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#eceaf4] pb-4"><div><h3 className="text-[15px] font-extrabold text-[#17151f]">Nebula Drift ? 2D Roguelike Shooter</h3><p className="mt-1 text-[10px] text-[#a5a4a4]">1 Januari 2026 ? 30 September 2026 ? Studio: Lumen Pixel</p></div>{canAddPhase?<div className="flex gap-2"><button onClick={()=>setEditMode((value)=>!value)} className="rounded-[10px] bg-[#dfdfff] px-5 py-2.5 text-[11px] font-bold text-[#685eeb]">{editMode?'Save':'Edit timeline'}</button><button onClick={()=>setMilestoneModal(allValidated?'confirm':'invalid')} className="rounded-[10px] bg-[#685eeb] px-5 py-2.5 text-[11px] font-bold text-white">Complete project</button></div>:null}</div>
+      {editMode?<div className="mt-3 rounded-[10px] border border-[#f0d78a] bg-[#fff9dc] px-4 py-3 text-[10px] font-semibold text-[#776326]">Edit mode active ? drag the middle of a bar to move it, or drag either end to change its duration. Click &quot;Save&quot; when done.</div>:null}
+      <div className="mt-4 overflow-x-auto"><div className="relative min-w-[760px] pb-2"><div className="grid grid-cols-[135px_repeat(9,minmax(55px,1fr))] items-center text-center text-[10px] font-extrabold text-[#17151f]"><span/>{projectTimelineWarpMonths.map((month)=><span key={month}>{month==='MAY'?'MEI':month==='AUG'?'AGS':month}</span>)}</div><div className="pointer-events-none absolute bottom-4 left-[52%] top-7 z-20 w-px bg-[#ff626b]"><span className="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-[#ff626b]"/></div>
+        <div className="mt-3 space-y-4">{(Object.keys(phaseMeta) as PhaseId[]).map((id)=>{const meta=phaseMeta[id];const bar=bars[id];return <div key={id}><button onClick={()=>openDetail(id)} className="text-[10px] font-extrabold text-[#17151f]">{meta.title.toUpperCase()}</button><div className="mt-2 space-y-1.5">{meta.tasks.slice(0,id==='pre-production'?3:2).map((task,index)=><div key={task} className="grid grid-cols-[135px_minmax(0,1fr)] items-center"><div className="flex items-center gap-2 text-[10px] text-[#2d2938]"><span className="h-2 w-2 rounded-full" style={{backgroundColor:index===0?meta.color:meta.soft}}/><span className="truncate">{task}</span></div><div className="relative h-5"><button type="button" onClick={()=>openDetail(id)} onPointerDown={(event)=>{if(!editMode)return;event.preventDefault();const rect=event.currentTarget.getBoundingClientRect();const mode:DragMode=event.clientX-rect.left<12?'start':rect.right-event.clientX<12?'end':'move';setSelectedPhaseId(id);setActiveDrag({id,mode,originX:event.clientX,...bar});}} className={`absolute top-0 h-[13px] overflow-visible rounded-full ${editMode&&selectedPhaseId===id?'outline outline-2 outline-dashed outline-offset-2 outline-[#685eeb]':''}`} style={{left:`${Math.min(8,bar.start+index*.55)/9*100}%`,width:`${Math.max(1,bar.span-index*.35)/9*100}%`,backgroundColor:meta.soft}}><span className="absolute inset-y-0 left-0 rounded-full" style={{width:`${phaseProgress(id)}%`,backgroundColor:meta.color}}/>{editMode?<><span className="absolute -left-1 -top-1 h-5 w-2 rounded bg-white shadow"/><span className="absolute -right-1 -top-1 h-5 w-2 rounded bg-white shadow"/></>:null}{activeDrag?.id===id?<span className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-[#29253b] px-2 py-1 text-[8px] text-white">{dateTooltip(bar)}</span>:null}</button></div></div>)}</div></div>})}</div>
+      </div></div><p className="mt-3 text-[9px] font-semibold text-[#8e89a2]">Click a phase bar to open the teams &amp; tasks inside it. The darker portion of a bar = validated progress.</p>
+    </section>}
+    {milestoneModal?<div className="fixed inset-0 z-[110] grid place-items-center bg-black/50 px-5 backdrop-blur-[3px] animate-[fadeIn_.22s_ease-out]" role="dialog" aria-modal="true"><section className="w-full max-w-[494px] rounded-[30px] border border-[#e2e0f0] bg-white px-[36px] py-[32px] text-center shadow-[0_30px_90px_rgba(24,20,48,.38)] animate-[warpMilestonePop_.35s_cubic-bezier(.22,1,.36,1)]"><h2 className="text-[20px] font-extrabold text-[#17151f]">{milestoneModal==='invalid'?"Milestone can't be completed yet":milestoneModal==='confirm'?'Finish this milestone?':'Milestone Completed!'}</h2><p className="mx-auto mt-5 max-w-[420px] text-[12px] leading-[1.45] text-[#5c5780]">{milestoneModal==='invalid'?<>Complete and validate all tasks before finishing this milestone. Your workspace will level up <strong>once all tasks are completed and validated.</strong></>:`All tasks have been completed and validated. Finishing this milestone will unlock new workspace rewards and move your project to the next milestone.`}</p>{milestoneModal==='invalid'?<div className="mt-5 rounded-[10px] border border-[#e2e0f0] bg-[#fbfaff] px-5 py-4 text-left text-[11px] text-[#5c5780]"><p className="font-extrabold">REMAINING PROGRESS:</p><ul className="mt-1 list-disc pl-5 font-bold text-[#685eeb]"><li>{Math.max(remainingValidation,3)} task(s) awaiting validation</li><li>15 task(s) not completed</li></ul></div>:null}<div className="mt-7 grid grid-cols-2 gap-4"><button onClick={()=>setMilestoneModal(null)} className="h-12 rounded-[10px] border border-[#9b96b8] text-[13px] font-bold text-[#5c5780]">{milestoneModal==='success'?'back':'Cancel'}</button>{milestoneModal==='invalid'?<button onClick={()=>{setMilestoneModal(null);openDetail(Object.keys(validated).find((key)=>!validated[key as PhaseId]) as PhaseId ?? 'production');}} className="h-12 rounded-[10px] bg-[#685eeb] text-[13px] font-bold text-white">View Tasks</button>:milestoneModal==='confirm'?<button onClick={()=>{setMilestoneCompleted(true);setMilestoneModal('success');}} className="h-12 rounded-[10px] bg-[#685eeb] text-[13px] font-bold text-white">Continue</button>:<button onClick={()=>{setMilestoneModal(null);completeWorkspaceUpgradeAndEnterLobby();onOpenWorkspace?.();}} className="h-12 rounded-[10px] bg-[#685eeb] text-[13px] font-bold text-white">open workspace</button>}</div></section><style jsx global>{`@keyframes warpMilestonePop{from{opacity:0;transform:scale(.9) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style></div>:null}
+  </>;
 }
 
 function ActivityItem({
@@ -2088,9 +2003,11 @@ export function WorkspaceStatsPage() {
 
 export function WorkspaceTeamPage({
   onMessageTeammate,
+  onOpenWorkspace,
   role = 'member',
 }: {
   onMessageTeammate?: (teammate: TeamMemberProfile) => void;
+  onOpenWorkspace?: () => void;
   role?: Role;
 }) {
   const [selectedStudioId, setSelectedStudioId] = useState<(typeof studioTabs)[number]['id']>('papers-studio');
@@ -2264,7 +2181,7 @@ export function WorkspaceTeamPage({
         ) : null}
       </section>
 
-      <ProjectTimelineWarpSection canAddPhase={role === 'owner' || role === 'employer'} />
+      <ProjectTimelineWarpSection canAddPhase={role === 'owner' || role === 'employer'} onOpenWorkspace={onOpenWorkspace} />
 
       {selectedTeammate ? (
         <ProfileModal
@@ -3804,6 +3721,7 @@ export function EmployerDashboard({
                 ) : isTeamPage ? (
                   <WorkspaceTeamPage
                     role={user.role}
+                    onOpenWorkspace={onEnterWorkspace}
                     onMessageTeammate={(teammate) => {
                       setSelectedChatTeammate(teammate);
                       setActiveItem('chat');

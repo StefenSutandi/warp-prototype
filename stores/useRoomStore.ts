@@ -53,6 +53,12 @@ interface RoomState {
   activeRoom: RoomInvite | null;
   coordinatorAssignments: Record<string, CoordinatorAssignment>;
   kickedCoworkerIdsByRoom: Record<string, string[]>;
+  workspaceLevel: 1 | 2;
+  roomTheme: 'default' | 'level-2';
+  hasUnlockedLevel2Lobby: boolean;
+  activeRoomKey: 'lounge' | 'main-office' | 'level-2-lobby';
+  lastActiveRoomKey: 'lounge' | 'main-office' | 'level-2-lobby';
+  pendingLevelUpModal: boolean;
   saveRoomSetup: (config: RoomConfig) => void;
   saveRoomAdministration: (rooms: WorkspaceRoom[], createdByRole: RoomInvite['createdByRole']) => RoomInvite[];
   createRoomInvite: (room: Pick<RoomInvite, 'id' | 'name' | 'createdByRole'>) => RoomInvite;
@@ -60,6 +66,9 @@ interface RoomState {
   assignCoordinator: (assignment: CoordinatorAssignment) => void;
   saveCoordinatorAssignments: (assignments: CoordinatorAssignment[]) => void;
   kickCoworkerFromRoom: (roomId: string, coworkerId: string) => void;
+  completeWorkspaceUpgradeAndEnterLobby: () => void;
+  setActiveRoomKey: (roomKey: RoomState['activeRoomKey']) => void;
+  clearPendingLevelUpModal: () => void;
   resetRoom: () => void;
 }
 
@@ -69,6 +78,12 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   activeRoom: null,
   coordinatorAssignments: {},
   kickedCoworkerIdsByRoom: {},
+  workspaceLevel: 1,
+  roomTheme: 'default',
+  hasUnlockedLevel2Lobby: false,
+  activeRoomKey: 'lounge',
+  lastActiveRoomKey: 'lounge',
+  pendingLevelUpModal: false,
   saveRoomSetup: (config) => set({ roomConfig: config }),
   saveRoomAdministration: (rooms, createdByRole) => {
     const currentState = get();
@@ -158,5 +173,27 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       coordinatorAssignments,
     };
   }),
-  resetRoom: () => set({ roomConfig: null, roomInvites: [], activeRoom: null, coordinatorAssignments: {}, kickedCoworkerIdsByRoom: {} }),
+  completeWorkspaceUpgradeAndEnterLobby: () => set({
+    workspaceLevel: 2,
+    roomTheme: 'level-2',
+    hasUnlockedLevel2Lobby: true,
+    activeRoomKey: 'level-2-lobby',
+    lastActiveRoomKey: 'level-2-lobby',
+    pendingLevelUpModal: true,
+  }),
+  setActiveRoomKey: (activeRoomKey) => set({ activeRoomKey, lastActiveRoomKey: activeRoomKey }),
+  clearPendingLevelUpModal: () => set({ pendingLevelUpModal: false }),
+  resetRoom: () => set({
+    roomConfig: null,
+    roomInvites: [],
+    activeRoom: null,
+    coordinatorAssignments: {},
+    kickedCoworkerIdsByRoom: {},
+    workspaceLevel: 1,
+    roomTheme: 'default',
+    hasUnlockedLevel2Lobby: false,
+    activeRoomKey: 'lounge',
+    lastActiveRoomKey: 'lounge',
+    pendingLevelUpModal: false,
+  }),
 }));

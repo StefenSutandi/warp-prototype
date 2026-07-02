@@ -3,6 +3,7 @@
 import { type Task, type Teammate, type User } from '@/lib/types';
 import { useTaskStore } from '@/stores/useTaskStore';
 import { useUserStore } from '@/stores/useUserStore';
+import { useRoomStore } from '@/stores/useRoomStore';
 import { useEffect, useState } from 'react';
 import { EmployerDashboard } from './employer-dashboard';
 import { LevelUpModal } from './level-up-modal';
@@ -20,6 +21,9 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
   const initTasks = useTaskStore(state => state.initialize);
   const resetMemberTasks = useTaskStore(state => state.resetDemoSession);
   const resetMemberCoins = useUserStore(state => state.resetDemoCoins);
+  const workspaceLevel = useRoomStore(state => state.workspaceLevel);
+  const activeRoomKey = useRoomStore(state => state.activeRoomKey);
+  const hasUnlockedLevel2Lobby = useRoomStore(state => state.hasUnlockedLevel2Lobby);
   const isMemberRole = user.role === 'member' || user.role === 'employee';
   const isOwnerRole = user.role === 'owner' || user.role === 'employer';
   const isLoungeFirstRole = isMemberRole || isOwnerRole || user.role === 'coordinator';
@@ -50,6 +54,12 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
     window.setTimeout(() => window.dispatchEvent(new CustomEvent('warp:member-room-visible')), 0);
   };
 
+  const initialVirtualRoomId = workspaceLevel === 2 && hasUnlockedLevel2Lobby && activeRoomKey === 'level-2-lobby'
+    ? 'level-2-lobby'
+    : isOwnerRole && activeRoomKey === 'main-office'
+      ? 'main'
+      : isLoungeFirstRole ? 'lounge' : 'main';
+
   const openWorkspacePanel = (
     section: 'stats' | 'todo' | 'chat' | 'team' | 'settings',
     taskId?: string,
@@ -68,7 +78,8 @@ export function WorkspaceShell({ user, tasks, teammates }: WorkspaceShellProps) 
         <div className={activeView === 'room' ? 'block' : 'hidden'}>
         <VirtualRoomLayout
           user={user}
-          initialRoomId={isLoungeFirstRole ? 'lounge' : 'main'}
+          initialRoomId={initialVirtualRoomId}
+          roomVisible={activeView === 'room'}
           onBackToDashboard={() => {
             setDashboardSection('dashboard');
             setActiveView('dashboard');

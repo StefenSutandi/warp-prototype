@@ -28,7 +28,7 @@ export function LevelUpModal() {
       <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={dismissModal}></div>
       
       <div className={`relative w-full max-w-md bg-slate-900 border border-purple-500/50 rounded-2xl p-8 shadow-[0_0_50px_-12px_rgba(168,85,247,0.5)] transform transition-transform duration-300 ${showModal ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
-        <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10 pointer-events-none rounded-2xl bg-repeat"></div>
+        <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_center,rgba(124,58,237,0.12),transparent_65%)]"></div>
         
         <div className="relative z-10 flex flex-col items-center text-center">
           <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-cyan-500 rounded-2xl rotate-12 flex items-center justify-center mb-6 shadow-xl border border-white/20">

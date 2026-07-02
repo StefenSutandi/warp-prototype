@@ -12,7 +12,7 @@ import {
 } from '@/components/employer-dashboard';
 import { useTaskStore } from '@/stores/useTaskStore';
 import { useUserStore } from '@/stores/useUserStore';
-import { useAvatarStore } from '@/stores/useAvatarStore';
+import { useAvatarStore, type AvatarSelection } from '@/stores/useAvatarStore';
 import { useRoomStore, type CoordinatorAssignment } from '@/stores/useRoomStore';
 import { type Task, type User } from '@/lib/types';
 import { CalendarClock, ChevronRight, Eye, ListTodo, Megaphone, MessageCircle, MoreVertical, Mic, Pause, PhoneOff, Plus, ScreenShare, SkipForward, Smile, VideoOff, X } from 'lucide-react';
@@ -83,7 +83,8 @@ const VIRTUAL_ROOM_SHELL_STYLE: CSSProperties = {
 
 const VIRTUAL_ROOM_OPTIONS = [
   { id: 'main', name: 'Main Office', subtitle: 'Primary workspace', members: 3, accent: 'from-[#7c3aed] to-[#a78bfa]' },
-  { id: 'lounge', name: 'Team Lounge', subtitle: 'Break & social area', members: 2, accent: 'from-[#06b6d4] to-[#818cf8]' },
+  { id: 'lounge', name: 'Lounge Room', subtitle: 'Social Room', members: 2, accent: 'from-[#06b6d4] to-[#818cf8]' },
+  { id: 'level-2-lobby', name: 'Lobby Room', subtitle: 'Social Hub', members: 2, accent: 'from-[#685eeb] to-[#a29bfc]' },
 ] as const;
 
 const VIRTUAL_ROOM_LOCAL_ASSETS = {
@@ -99,6 +100,11 @@ const VIRTUAL_ROOM_LOCAL_ASSETS = {
   startBadge: '/assets/virtual-room/overlays/start_badge.png',
   coordinatorIndicator: '/assets/figma-export/virtual-room/indicators/coordinator.svg',
   ownerIndicator: '/assets/figma-export/virtual-room/indicators/crown.svg',
+  levelUpBadge: '/assets/figma-export/room-upgrade/badge-level-up.svg',
+  levelUpStar: '/assets/figma-export/room-upgrade/star.svg',
+  pingpongGameBackground: '/assets/figma-export/room-upgrade/pingpong%20game%20BG%201.png',
+  pingpongGameTable: '/assets/figma-export/room-upgrade/pingpong-minigame-table.png',
+  pingpongTrophy: '/assets/figma-export/room-upgrade/material-symbols_trophy-rounded.svg',
 } as const;
 
 type VirtualRoomOption = (typeof VIRTUAL_ROOM_OPTIONS)[number];
@@ -579,15 +585,15 @@ function TopBarBackdrop() {
   );
 }
 
-function LevelPhaseBadge() {
+function LevelPhaseBadge({ level }: { level: 1 | 2 }) {
   return (
     <div className="absolute left-[22px] top-[15px] z-30 flex h-[56px] max-w-[450px] items-center gap-[16px] rounded-full border border-[#d8d3f2] bg-white px-[10px] pr-[24px] shadow-[0_8px_22px_rgba(104,94,235,0.12)] pointer-events-none">
       <span className="warp-font-ui inline-flex h-[38px] shrink-0 items-center rounded-full bg-[#dfdfff] px-[24px] text-[15px] font-extrabold leading-none text-[#685EEB]">
-        Level 1
+        Level {level}
       </span>
       <span className="h-[34px] w-px shrink-0 bg-[#d8d3f2]" />
       <span className="warp-font-ui min-w-0 truncate text-[15px] font-bold leading-none text-[#5C5780]">
-        Phase: Research &amp; Concepting
+        {level === 2 ? 'Level 2 social hub' : 'Phase: Research & Concepting'}
       </span>
     </div>
   );
@@ -1052,6 +1058,21 @@ function ClapHint() {
             F
           </span>
           <span>Press F to Sit / Stand</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Level2MovementHint() {
+  return (
+    <div className="pointer-events-none absolute bottom-[98px] left-1/2 z-30 -translate-x-1/2">
+      <div className="flex items-center gap-2">
+        <div className="rounded-full border border-white/70 bg-white/85 px-4 py-2 text-[12px] font-semibold text-[#5c5780] shadow-[0_5px_18px_rgba(84,86,106,.15)] backdrop-blur">
+          <strong className="text-[#685eeb]">WASD / Arrow Keys</strong> to Move
+        </div>
+        <div className="rounded-full border border-white/70 bg-white/85 px-4 py-2 text-[12px] font-semibold text-[#5c5780] shadow-[0_5px_18px_rgba(84,86,106,.15)] backdrop-blur">
+          Click Pingpong Table to Play
         </div>
       </div>
     </div>
@@ -2439,11 +2460,13 @@ export function ChangeRoomsModal({
   onClose,
   onSelectRoom,
   activeRoomId,
+  hasUnlockedLevel2Lobby,
 }: {
   open: boolean;
   onClose: () => void;
   onSelectRoom: (roomId: string) => void;
   activeRoomId: string;
+  hasUnlockedLevel2Lobby: boolean;
 }) {
   if (!open) return null;
 
@@ -2460,7 +2483,7 @@ export function ChangeRoomsModal({
         </div>
 
         <div className="space-y-3">
-          {VIRTUAL_ROOM_OPTIONS.map(room => (
+          {VIRTUAL_ROOM_OPTIONS.filter((room) => room.id !== 'level-2-lobby' || hasUnlockedLevel2Lobby).map(room => (
             <div key={room.id} className={`flex items-center gap-4 rounded-3xl border p-4 transition-all ${room.id === activeRoomId ? 'border-purple-200 bg-purple-50/70 shadow-sm' : 'border-gray-100 bg-white'}`}>
               <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${room.accent} text-white shadow-sm`}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -2575,6 +2598,7 @@ type MemberNotice = {
   id: string;
   title: string;
   message: string;
+  actionLabel?: string;
   taskId?: string;
   profile?: boolean;
   owner?: boolean;
@@ -2584,7 +2608,7 @@ type MemberNotice = {
 type MemberRewardModal = 'fire' | 'task' | null;
 
 function MemberFlowNotice({ notice, onOpen }: { notice: MemberNotice; onOpen: () => void }) {
-  const interactive = Boolean(notice.taskId);
+  const interactive = Boolean(notice.taskId || notice.actionLabel);
   const content = (
     <div className="flex items-start gap-[11px]">
       <span className="relative mt-[1px] h-[34px] w-[34px] shrink-0 overflow-hidden rounded-full bg-[#eeeaff] shadow-[0_5px_12px_rgba(104,94,235,0.18)]">
@@ -2592,7 +2616,8 @@ function MemberFlowNotice({ notice, onOpen }: { notice: MemberNotice; onOpen: ()
       </span>
       <div className="min-w-0 text-left">
         <p className="text-[12px] font-extrabold leading-[1.3] text-[#29253b]">{notice.title}</p>
-        <p className={`mt-[4px] text-[11px] font-semibold leading-[1.35] ${interactive ? 'text-[#685eeb]' : 'text-[#77728d]'}`}>{notice.message}</p>
+        <p className={`mt-[4px] text-[11px] font-semibold leading-[1.35] ${notice.taskId ? 'text-[#685eeb]' : 'text-[#77728d]'}`}>{notice.message}</p>
+        {notice.actionLabel ? <p className="mt-[5px] text-[11px] font-extrabold text-[#685eeb]">{notice.actionLabel}</p> : null}
       </div>
     </div>
   );
@@ -2600,6 +2625,296 @@ function MemberFlowNotice({ notice, onOpen }: { notice: MemberNotice; onOpen: ()
     <button type="button" onClick={onOpen} className="warp-member-notice pointer-events-auto w-full rounded-[16px] border border-[#e5e0ff] bg-white/95 px-[16px] py-[13px] shadow-[0_14px_36px_rgba(70,59,145,0.18)] backdrop-blur-sm">{content}</button>
   ) : (
     <div className="warp-member-notice rounded-[16px] border border-[#e5e0ff] bg-white/95 px-[16px] py-[13px] shadow-[0_14px_36px_rgba(70,59,145,0.18)] backdrop-blur-sm">{content}</div>
+  );
+}
+
+function WorkspaceLevelUpModal({ onContinue }: { onContinue: () => void }) {
+  return (
+    <div className="absolute inset-0 z-[130] grid place-items-center bg-[#302b50]/45 px-6 backdrop-blur-[5px]" role="dialog" aria-modal="true">
+      <section className="warp-level-up-card w-[430px] max-w-full rounded-[28px] border border-white/80 bg-white px-8 py-7 text-center shadow-[0_28px_80px_rgba(38,31,82,.38)]">
+        <img src={VIRTUAL_ROOM_LOCAL_ASSETS.levelUpBadge} alt="" className="mx-auto h-20 w-20 object-contain" />
+        <h2 className="mt-3 text-[23px] font-extrabold text-[#685eeb]">Workspace Level Up!</h2>
+        <p className="mt-2 text-[13px] font-semibold text-[#5c5780]">New room theme has been unlocked</p>
+        <div className="mt-6 flex items-center justify-center gap-5">
+          {[1, 2].map((level, index) => (
+            <div key={level} className="flex items-center gap-5">
+              {index === 1 ? (
+                <svg className="h-8 w-8 animate-[warpArrowIn_.45s_ease-out_both] text-[#685eeb]" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                  <path d="M6 16h18m-7-7 7 7-7 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              ) : null}
+              <div className={level === 2 ? 'relative animate-[warpLevelStar_1.1s_ease-in-out_infinite]' : 'relative'}>
+                <img src={VIRTUAL_ROOM_LOCAL_ASSETS.levelUpStar} alt="" className="h-16 w-16 object-contain drop-shadow-[0_8px_14px_rgba(255,214,62,.45)]" />
+                <span className="absolute inset-0 grid place-items-center text-lg font-black text-[#685eeb]">{level}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button type="button" onClick={onContinue} className="mt-6 rounded-full bg-[#685eeb] px-7 py-2.5 text-[12px] font-bold text-white">Continue</button>
+      </section>
+    </div>
+  );
+}
+
+function Level2LobbyRoom({
+  onPlay,
+  movementEnabled,
+  avatarSelection,
+}: {
+  onPlay: () => void;
+  movementEnabled: boolean;
+  avatarSelection: AvatarSelection;
+}) {
+  type ReactAvatarDirection = 'FR' | 'FL' | 'BR' | 'BL';
+  const [showPlay, setShowPlay] = useState(false);
+  const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0 });
+  const [facingDirection, setFacingDirection] = useState<ReactAvatarDirection>('FR');
+  const [isMoving, setIsMoving] = useState(false);
+  const [walkFrame, setWalkFrame] = useState(1);
+  const [isBlinking, setIsBlinking] = useState(false);
+  const roomRef = useRef<HTMLDivElement>(null);
+  const roomSizeRef = useRef({ width: 0, height: 0 });
+  const pressedKeysRef = useRef(new Set<string>());
+  const initializedPositionRef = useRef(false);
+  const facingDirectionRef = useRef<ReactAvatarDirection>('FR');
+  const isMovingRef = useRef(false);
+  const bodyTone = ['light', 'medium', 'dark'].includes(avatarSelection.selectedBodyTone)
+    ? avatarSelection.selectedBodyTone
+    : 'light';
+  const hairColor = ['brown', 'dark', 'blonde'].includes(avatarSelection.selectedHairColorId)
+    ? avatarSelection.selectedHairColorId
+    : 'brown';
+  const hairStyleMatch = avatarSelection.selectedHairId.match(/-(\d+)(?:-|$)/);
+  const hairStyle = Math.min(4, Math.max(1, Number(hairStyleMatch?.[1] ?? 1)));
+  const faceMatch = avatarSelection.selectedFaceId.match(/face-(\d+)/);
+  const faceStyle = Math.min(4, Math.max(1, Number(faceMatch?.[1] ?? 1)));
+  const hairColorSuffix = { brown: '1', dark: '2', blonde: '3' }[hairColor] ?? '1';
+  const isBackFacing = facingDirection === 'BR' || facingDirection === 'BL';
+  const isLeftFacing = facingDirection === 'FL' || facingDirection === 'BL';
+  const frameNumber = String(walkFrame).padStart(4, '0');
+  const bodyFile = isMoving
+    ? isBackFacing ? `walkcycle_back_${frameNumber} 1.png` : `base_walk${frameNumber} 1.png`
+    : `base_${bodyTone}_idle_${facingDirection}.png`;
+  const suitIdleFiles: Record<ReactAvatarDirection, string> = {
+    FR: 'outfit4_idle.png',
+    FL: 'outfit4_idle_front left.png',
+    BR: 'outfit4_idle_back right.png',
+    BL: 'outfit4_idle_back.png',
+  };
+  const suitFile = isMoving
+    ? `${isBackFacing ? 'OUTFIT_4_back_' : 'outfit_4_front_'}${frameNumber} 1.png`
+    : suitIdleFiles[facingDirection];
+  const bodySrc = `/assets/avatar/walk/body/${bodyTone}/${facingDirection}/${encodeURIComponent(bodyFile)}`;
+  const suitSrc = isMoving
+    ? `/assets/avatar/walk/outfit/suit/${facingDirection}/${encodeURIComponent(suitFile)}`
+    : `/assets/avatar/walk/outfit/suit/${encodeURIComponent(suitFile)}`;
+  const hairSrc = `/assets/avatar/walk/hair/${encodeURIComponent(`hair_${hairStyle}${isBackFacing ? '_back' : ''} ${hairColorSuffix}.png`)}`;
+  const faceSrc = `/assets/avatar/walk/face/source/face_${faceStyle}_${isBlinking ? 'blink' : 'default'}.png`;
+
+  useEffect(() => {
+    const room = roomRef.current;
+    if (!room) return;
+    const updateRoomSize = () => {
+      const bounds = room.getBoundingClientRect();
+      roomSizeRef.current = { width: bounds.width, height: bounds.height };
+      if (!initializedPositionRef.current && bounds.width > 0 && bounds.height > 0) {
+        initializedPositionRef.current = true;
+        setPlayerPosition({ x: bounds.width * 0.25, y: bounds.height * 0.55 });
+        return;
+      }
+      setPlayerPosition((current) => ({
+        x: Math.min(bounds.width * 0.86, Math.max(bounds.width * 0.08, current.x)),
+        y: Math.min(bounds.height * 0.82, Math.max(bounds.height * 0.18, current.y)),
+      }));
+    };
+    updateRoomSize();
+    const observer = new ResizeObserver(updateRoomSize);
+    observer.observe(room);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!isMoving) {
+      setWalkFrame(1);
+      return;
+    }
+    const interval = window.setInterval(() => setWalkFrame((frame) => frame >= 13 ? 1 : frame + 1), 100);
+    return () => window.clearInterval(interval);
+  }, [isMoving]);
+
+  useEffect(() => {
+    let blinkTimeout = 0;
+    let resetTimeout = 0;
+    const scheduleBlink = () => {
+      blinkTimeout = window.setTimeout(() => {
+        if (!isBackFacing) {
+          setIsBlinking(true);
+          resetTimeout = window.setTimeout(() => {
+            setIsBlinking(false);
+            scheduleBlink();
+          }, 140);
+        } else {
+          scheduleBlink();
+        }
+      }, 2000 + Math.random() * 2000);
+    };
+    scheduleBlink();
+    return () => {
+      window.clearTimeout(blinkTimeout);
+      window.clearTimeout(resetTimeout);
+    };
+  }, [isBackFacing]);
+
+  useEffect(() => {
+    const movementKeys = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright']);
+    const isEditableTarget = (target: EventTarget | null) => {
+      const element = target instanceof HTMLElement ? target : null;
+      return Boolean(element && (element.isContentEditable || element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT'));
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      if (!movementEnabled || !movementKeys.has(key) || isEditableTarget(event.target)) return;
+      event.preventDefault();
+      pressedKeysRef.current.add(key);
+    };
+    const handleKeyUp = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      if (!movementKeys.has(key)) return;
+      pressedKeysRef.current.delete(key);
+    };
+    const clearKeys = () => pressedKeysRef.current.clear();
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', clearKeys);
+
+    let frameId = 0;
+    let previousTime = performance.now();
+    const speed = 210;
+    const animate = (time: number) => {
+      const deltaSeconds = Math.min((time - previousTime) / 1000, 0.05);
+      previousTime = time;
+      let movingThisFrame = false;
+      if (movementEnabled && pressedKeysRef.current.size > 0) {
+        const keys = pressedKeysRef.current;
+        let directionX = (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0);
+        let directionY = (keys.has('s') || keys.has('arrowdown') ? 1 : 0) - (keys.has('w') || keys.has('arrowup') ? 1 : 0);
+        const magnitude = Math.hypot(directionX, directionY);
+        if (magnitude > 0) {
+          movingThisFrame = true;
+          const previousFacing = facingDirectionRef.current;
+          const nextFacing: ReactAvatarDirection = Math.abs(directionY) > Math.abs(directionX)
+            ? directionY < 0
+              ? previousFacing.endsWith('L') ? 'BL' : 'BR'
+              : previousFacing.endsWith('L') ? 'FL' : 'FR'
+            : directionX < 0 ? 'FL' : 'FR';
+          if (nextFacing !== previousFacing) {
+            facingDirectionRef.current = nextFacing;
+            setFacingDirection(nextFacing);
+          }
+          directionX /= magnitude;
+          directionY /= magnitude;
+          const { width, height } = roomSizeRef.current;
+          setPlayerPosition((current) => ({
+            x: Math.min(width * 0.86, Math.max(width * 0.08, current.x + directionX * speed * deltaSeconds)),
+            y: Math.min(height * 0.82, Math.max(height * 0.18, current.y + directionY * speed * deltaSeconds)),
+          }));
+        }
+      }
+      if (movingThisFrame !== isMovingRef.current) {
+        isMovingRef.current = movingThisFrame;
+        setIsMoving(movingThisFrame);
+      }
+      frameId = window.requestAnimationFrame(animate);
+    };
+    frameId = window.requestAnimationFrame(animate);
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', clearKeys);
+      clearKeys();
+    };
+  }, [movementEnabled]);
+
+  useEffect(() => {
+    if (!movementEnabled) {
+      pressedKeysRef.current.clear();
+      isMovingRef.current = false;
+      setIsMoving(false);
+    }
+  }, [movementEnabled]);
+
+  return (
+    <div ref={roomRef} className="absolute inset-0 overflow-hidden bg-[linear-gradient(140deg,#d9fff4_0%,#f2f8fe_48%,#d5d2ff_100%)]">
+      <img
+        src="/assets/figma-export/room-upgrade/level-2-lobby-room.png"
+        alt="Level 2 Lobby Room"
+        className="absolute inset-0 h-full w-full object-contain object-center"
+      />
+      <div className={`absolute z-10 h-[190px] w-[190px] -translate-x-1/2 -translate-y-[96%] will-change-transform ${isMoving ? 'animate-[warpReactAvatarStep_.32s_ease-in-out_infinite]' : 'animate-[warpReactAvatarIdle_2.6s_ease-in-out_infinite]'}`} style={{ left: playerPosition.x, top: playerPosition.y }}>
+        <div className="absolute bottom-[2%] left-1/2 h-5 w-16 -translate-x-1/2 rounded-full bg-[#413958]/20 blur-[3px]" />
+        <img src={bodySrc} alt="" draggable={false} className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain" />
+        <img src={suitSrc} alt="" draggable={false} className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain" />
+        <img src={hairSrc} alt="" draggable={false} className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain" style={{ transform: isLeftFacing ? 'scaleX(-1)' : undefined }} />
+        {!isBackFacing ? <img src={faceSrc} alt="" draggable={false} className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain" style={{ transform: isLeftFacing ? 'scaleX(-1)' : undefined }} /> : null}
+        <span className="sr-only">Owner full-body avatar</span>
+        <div className="absolute left-1/2 top-[98%] flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-extrabold text-[#5c5780] shadow-[0_8px_20px_rgba(52,43,110,.2)]">
+          <img src={VIRTUAL_ROOM_LOCAL_ASSETS.ownerIndicator} alt="" className="h-4 w-4" />
+          Owner (You)
+        </div>
+      </div>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label="Inspect pingpong table"
+        onMouseEnter={() => setShowPlay(true)}
+        onMouseLeave={() => setShowPlay(false)}
+        onClick={() => setShowPlay(true)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') setShowPlay(true);
+        }}
+        className="absolute left-[48%] top-[57%] z-20 h-[24%] w-[32%] cursor-pointer"
+      >
+        {showPlay ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onPlay();
+            }}
+            className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#685eeb] px-6 py-2 text-[12px] font-bold text-white shadow-[0_10px_24px_rgba(104,94,235,.38)]"
+          >
+            Play
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function PingpongMiniGame({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[140] grid place-items-center bg-black/55 px-[4vw] py-[6vh] backdrop-blur-[4px]">
+      <section className="relative aspect-[1261/751] w-full max-w-[1261px] overflow-hidden rounded-[42px] border border-white/80 bg-[#423c81] shadow-[0_30px_100px_rgba(10,8,35,.65)]">
+        <img src={VIRTUAL_ROOM_LOCAL_ASSETS.pingpongGameBackground} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute left-[5%] top-[7%] z-30 flex items-center gap-3 text-white">
+          <img src={VIRTUAL_ROOM_LOCAL_ASSETS.pingpongTrophy} alt="Trophy" className="h-12 w-12 brightness-0 invert" />
+          <strong className="text-[42px]">5</strong>
+        </div>
+        <div className="absolute left-1/2 top-[7%] z-30 flex -translate-x-1/2 items-center gap-4 text-white">
+          <strong className="text-[48px]">8</strong>
+          <img src="/assets/avatar/profile/Frame%203865.png" alt="You" className="h-14 w-14 rounded-full border-2 border-white object-cover" />
+          <span className="font-bold">You</span><strong>VS</strong><span className="font-bold">Bagas</span>
+          <img src="/assets/avatar/profile/Frame%203870.png" alt="Bagas" className="h-14 w-14 rounded-full border-2 border-white object-cover" />
+          <strong className="text-[48px]">5</strong>
+        </div>
+        <img src={VIRTUAL_ROOM_LOCAL_ASSETS.pingpongGameTable} alt="Pingpong table" className="absolute bottom-[-1%] left-1/2 z-10 w-[76%] -translate-x-1/2 object-contain" />
+        <div className="absolute bottom-[8%] right-[4.5%] z-30 flex items-center gap-2">
+          <div className="flex rounded-[15px] bg-white px-2"><button aria-label="Microphone" className="grid h-11 w-11 place-items-center text-[#685eeb]"><Mic className="h-5 w-5" /></button><button aria-label="Chat" className="grid h-11 w-11 place-items-center text-[#685eeb]"><MessageCircle className="h-5 w-5" /></button></div>
+          <button type="button" onClick={onClose} aria-label="Exit mini game" className="grid h-11 w-11 place-items-center rounded-[15px] bg-[#ff696d] text-white"><PhoneOff className="h-5 w-5" /></button>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -2763,11 +3078,13 @@ export function VirtualRoomLayout({
   onBackToDashboard,
   onOpenWorkspacePanel,
   initialRoomId = 'main',
+  roomVisible = true,
 }: {
   user: User;
   onBackToDashboard?: () => void;
   onOpenWorkspacePanel?: (section: Exclude<MemberSection, 'dashboard'>, taskId?: string, reviewTaskId?: string) => void;
-  initialRoomId?: 'main' | 'lounge';
+  initialRoomId?: 'main' | 'lounge' | 'level-2-lobby';
+  roomVisible?: boolean;
 }) {
   const avatarSelection = useAvatarStore(s => s.selection);
   const memberTasks = useTaskStore(s => s.tasks);
@@ -2781,6 +3098,12 @@ export function VirtualRoomLayout({
   const ownerRoomConfig = useRoomStore(s => s.roomConfig);
   const saveCoordinatorAssignments = useRoomStore(s => s.saveCoordinatorAssignments);
   const assignCoordinator = useRoomStore(s => s.assignCoordinator);
+  const workspaceLevel = useRoomStore(s => s.workspaceLevel);
+  const activeRoomKey = useRoomStore(s => s.activeRoomKey);
+  const hasUnlockedLevel2Lobby = useRoomStore(s => s.hasUnlockedLevel2Lobby);
+  const pendingLevelUpModal = useRoomStore(s => s.pendingLevelUpModal);
+  const setActiveRoomKey = useRoomStore(s => s.setActiveRoomKey);
+  const clearPendingLevelUpModal = useRoomStore(s => s.clearPendingLevelUpModal);
   const isOwnerRole = user.role === 'owner' || user.role === 'employer';
   const runtimeAvatarSelection = isOwnerRole
     ? {
@@ -2810,6 +3133,8 @@ export function VirtualRoomLayout({
   const [ownerNotice, setOwnerNotice] = useState<MemberNotice | null>(null);
   const [showOwnerBeforeStart, setShowOwnerBeforeStart] = useState(isOwnerRole);
   const [showOwnerBroadcast, setShowOwnerBroadcast] = useState(false);
+  const [showWorkspaceLevelUp, setShowWorkspaceLevelUp] = useState(false);
+  const [showPingpongGame, setShowPingpongGame] = useState(false);
   const [memberRoomVisible, setMemberRoomVisible] = useState(true);
   const [assignedMemberTaskId, setAssignedMemberTaskId] = useState<string | null>(null);
   const [memberRewardQueue, setMemberRewardQueue] = useState<Array<Exclude<MemberRewardModal, null>>>([]);
@@ -2821,12 +3146,14 @@ export function VirtualRoomLayout({
   const [activeRoom, setActiveRoom] = useState<RoomDisplayState>(
     () => VIRTUAL_ROOM_OPTIONS.find((room) => room.id === initialRoomId) ?? VIRTUAL_ROOM_OPTIONS[0]
   );
+  const isReactLevel2Lobby = isOwnerRole && activeRoomKey === 'level-2-lobby';
   const viewportRef = useRef<HTMLDivElement>(null);
   const hasAppliedInitialRoomRef = useRef(false);
   const activeRoomIdRef = useRef(initialRoomId);
   const memberRoomVisibleRef = useRef(true);
   const memberDanielDeliveredRef = useRef(false);
   const lastDanielLoungeEntryRef = useRef(-1);
+  const ownerUpgradeNoticeTimerRef = useRef<number | null>(null);
   const memberNoticeQueueRef = useRef(memberNoticeQueue);
   const memberTask = memberTasks.find((task) => task.status !== 'approved') ?? memberTasks[0];
   const memberTaskRef = useRef(memberTask);
@@ -2840,10 +3167,26 @@ export function VirtualRoomLayout({
     : OWNER_ASSIGNMENT_ROOMS.map((room) => ({ id: room.id, name: room.name }));
 
   useEffect(() => {
+    if (!isReactLevel2Lobby) return;
+    const lobbyRoom = VIRTUAL_ROOM_OPTIONS.find((room) => room.id === 'level-2-lobby');
+    if (!lobbyRoom) return;
+    activeRoomIdRef.current = lobbyRoom.id;
+    hasAppliedInitialRoomRef.current = false;
+    setActiveRoom(lobbyRoom);
+    setCoordinatorNotices([]);
+    setOwnerNotice(null);
+  }, [isReactLevel2Lobby]);
+
+  useEffect(() => {
     const handleRoomChanged = (event: Event) => {
       const customEvent = event as CustomEvent<{ roomId?: string; title?: string; subtitle?: string }>;
       const roomId = customEvent.detail?.roomId;
       if (!roomId) return;
+      const shouldRestoreInitialRoom = !hasAppliedInitialRoomRef.current && roomId !== initialRoomId;
+      if (ownerUpgradeNoticeTimerRef.current !== null) {
+        window.clearTimeout(ownerUpgradeNoticeTimerRef.current);
+        ownerUpgradeNoticeTimerRef.current = null;
+      }
 
       const matchedRoom = VIRTUAL_ROOM_OPTIONS.find((room) => room.id === roomId);
       if (matchedRoom) {
@@ -2853,12 +3196,15 @@ export function VirtualRoomLayout({
           name: customEvent.detail?.title || matchedRoom.name,
           subtitle: customEvent.detail?.subtitle || matchedRoom.subtitle,
         });
+        if (isOwnerRole && !shouldRestoreInitialRoom) {
+          setActiveRoomKey(matchedRoom.id === 'main' ? 'main-office' : matchedRoom.id);
+        }
       }
 
       let shouldAnnounceRoomEntry = true;
       if (!hasAppliedInitialRoomRef.current) {
         hasAppliedInitialRoomRef.current = true;
-        if (roomId !== initialRoomId) {
+        if (shouldRestoreInitialRoom) {
           shouldAnnounceRoomEntry = false;
           window.setTimeout(() => {
             window.dispatchEvent(new CustomEvent('warp:switch-room', { detail: { roomId: initialRoomId } }));
@@ -2883,7 +3229,20 @@ export function VirtualRoomLayout({
 
       if (isOwnerRole && roomId === 'lounge' && shouldAnnounceRoomEntry) {
         setOwnerNotice({ id: `owner-welcome-${Date.now()}`, title: 'WELCOME TO YOUR WORKSPACE', message: "Enter your team's room and sit down to begin your work session.", owner: true });
-      } else if (!isOwnerRole) {
+        ownerUpgradeNoticeTimerRef.current = window.setTimeout(() => {
+          if (activeRoomIdRef.current !== 'lounge') return;
+          setOwnerNotice((current) => current?.title === 'WORKSPACE READY TO UPGRADE'
+            ? current
+            : {
+                id: `owner-upgrade-ready-${Date.now()}`,
+                title: 'WORKSPACE READY TO UPGRADE',
+                message: 'Your workspace is ready to upgrade.',
+                actionLabel: 'go to My Team & Project >',
+                owner: true,
+              });
+          ownerUpgradeNoticeTimerRef.current = null;
+        }, 700);
+      } else if (!isOwnerRole || roomId !== 'lounge') {
         setOwnerNotice(null);
       }
       if ((user.role === 'member' || user.role === 'employee') && shouldAnnounceRoomEntry) {
@@ -2898,8 +3257,20 @@ export function VirtualRoomLayout({
     };
 
     window.addEventListener('warp:room-changed', handleRoomChanged as EventListener);
-    return () => window.removeEventListener('warp:room-changed', handleRoomChanged as EventListener);
-  }, [initialRoomId, isOwnerRole, user.role]);
+    return () => {
+      window.removeEventListener('warp:room-changed', handleRoomChanged as EventListener);
+      if (ownerUpgradeNoticeTimerRef.current !== null) {
+        window.clearTimeout(ownerUpgradeNoticeTimerRef.current);
+        ownerUpgradeNoticeTimerRef.current = null;
+      }
+    };
+  }, [initialRoomId, isOwnerRole, setActiveRoomKey, user.role]);
+
+  useEffect(() => {
+    if (!isOwnerRole || workspaceLevel !== 2 || activeRoom.id !== 'level-2-lobby' || activeRoomKey !== 'level-2-lobby' || !pendingLevelUpModal) return;
+    const timeout = window.setTimeout(() => setShowWorkspaceLevelUp(true), 350);
+    return () => window.clearTimeout(timeout);
+  }, [activeRoom.id, activeRoomKey, isOwnerRole, pendingLevelUpModal, workspaceLevel]);
 
   useEffect(() => {
     const kickedIds = kickedCoworkerIdsByRoom[activeRoom.id] ?? [];
@@ -3141,7 +3512,11 @@ export function VirtualRoomLayout({
   const handleRoomSelection = (roomId: string) => {
     setSelectedTeammateAction(null);
     setCoordinatorNotices([]);
-    window.dispatchEvent(new CustomEvent('warp:switch-room', { detail: { roomId } }));
+    const leavingReactLobby = activeRoomKey === 'level-2-lobby' && roomId !== 'level-2-lobby';
+    if (isOwnerRole) setActiveRoomKey(roomId === 'main' ? 'main-office' : roomId as 'lounge' | 'level-2-lobby');
+    if (roomId !== 'level-2-lobby' && !leavingReactLobby) {
+      window.dispatchEvent(new CustomEvent('warp:switch-room', { detail: { roomId } }));
+    }
     setShowChangeRooms(false);
   };
 
@@ -3232,6 +3607,29 @@ export function VirtualRoomLayout({
         .warp-member-notice {
           animation: warpMemberNoticeFlow 5s cubic-bezier(0.22, 1, 0.36, 1) both;
         }
+        @keyframes warpLevelStar {
+          0%, 100% { transform: scale(1); filter: drop-shadow(0 8px 14px rgba(255,214,62,.35)); }
+          50% { transform: scale(1.1); filter: drop-shadow(0 10px 20px rgba(255,214,62,.7)); }
+        }
+        @keyframes warpArrowIn {
+          from { opacity: 0; transform: scale(.7) translateX(-8px); }
+          to { opacity: 1; transform: scale(1) translateX(0); }
+        }
+        @keyframes warpLevelUpCard {
+          from { opacity: 0; transform: scale(.92) translateY(10px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes warpReactAvatarIdle {
+          0%, 100% { margin-top: 0; }
+          50% { margin-top: -3px; }
+        }
+        @keyframes warpReactAvatarStep {
+          0%, 100% { margin-top: 0; }
+          50% { margin-top: -2px; }
+        }
+        .warp-level-up-card {
+          animation: warpLevelUpCard 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
         @keyframes warpRewardBackdropIn {
           from { opacity: 0; backdrop-filter: blur(0); }
           to { opacity: 1; backdrop-filter: blur(5px); }
@@ -3270,12 +3668,18 @@ export function VirtualRoomLayout({
             <div ref={viewportRef} className="relative min-h-0 flex-1 overflow-hidden">
               {/* Phaser Game */}
               <div className="absolute inset-0">
-                <PhaserGame avatarSelection={runtimeAvatarSelection} />
+                {isReactLevel2Lobby
+                  ? <Level2LobbyRoom
+                      onPlay={() => setShowPingpongGame(true)}
+                      movementEnabled={roomVisible && !showPingpongGame && !pendingLevelUpModal && !showWorkspaceLevelUp && !showChangeRooms && !showCreateTask && !showOwnerBroadcast && !isModeratorTeamModalOpen && !isScreenOverlayOpen}
+                      avatarSelection={runtimeAvatarSelection}
+                    />
+                  : <PhaserGame avatarSelection={runtimeAvatarSelection} />}
               </div>
 
               {/* Overlays */}
               <TopBarBackdrop />
-              <LevelPhaseBadge />
+              <LevelPhaseBadge level={activeRoom.id === 'level-2-lobby' ? 2 : 1} />
               <RoomTitle
                 roomTitle={activeRoom.name}
                 roomSubtitle={activeRoom.subtitle}
@@ -3318,7 +3722,11 @@ export function VirtualRoomLayout({
               ) : null}
               {isOwnerRole && ownerNotice && !showOwnerBeforeStart ? (
                 <div className="pointer-events-none absolute right-[24px] top-[92px] z-[72] w-[360px] max-w-[calc(100%-48px)]" aria-live="polite">
-                  <MemberFlowNotice notice={ownerNotice} onOpen={() => undefined} />
+                  <MemberFlowNotice notice={ownerNotice} onOpen={() => {
+                    if (!ownerNotice.actionLabel) return;
+                    setOwnerNotice(null);
+                    onOpenWorkspacePanel?.('team');
+                  }} />
                 </div>
               ) : null}
               {(user.role === 'member' || user.role === 'employee') && memberNotice ? (
@@ -3395,7 +3803,7 @@ export function VirtualRoomLayout({
                 }}
               />
               <TomatoWidget key={activeRoom.id} />
-              <ClapHint />
+              {isReactLevel2Lobby ? <Level2MovementHint /> : <ClapHint />}
               <BottomControlBar
                 onShareScreen={() => openScreenOverlay('share')}
                 onWatchScreen={() => openScreenOverlay('watch')}
@@ -3413,6 +3821,8 @@ export function VirtualRoomLayout({
                 onZoomOut={() => sendViewportControl('zoom-out')}
                 onToggleFullscreen={toggleFullscreen}
               />
+              {showWorkspaceLevelUp ? <WorkspaceLevelUpModal onContinue={() => { setShowWorkspaceLevelUp(false); clearPendingLevelUpModal(); }} /> : null}
+              {showPingpongGame ? <PingpongMiniGame onClose={() => setShowPingpongGame(false)} /> : null}
             </div>
           </div>
 
@@ -3449,6 +3859,7 @@ export function VirtualRoomLayout({
         onClose={() => setShowChangeRooms(false)}
         onSelectRoom={handleRoomSelection}
         activeRoomId={activeRoom.id}
+        hasUnlockedLevel2Lobby={hasUnlockedLevel2Lobby}
       />
       <SharedCreateNewTaskModal open={showCreateTask} onClose={() => setShowCreateTask(false)} />
       <ModeratorTeamModal
